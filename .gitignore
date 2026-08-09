@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+logs/*.log
+reports/*.csv
+reports/*.json
+config/tables.yml
+.DS_Store
+
+config/decision_systems.yml

@@ -1,0 +1,12 @@
+MEDALLIO DW - ORDEN RECOMENDADO EN DBEAVER
+
+1. Conectarse a la base medallio_dw.
+2. Abrir queries/07_resumen_tablas.sql para ver el estado general.
+3. Ejecutar queries/03_diccionario_columnas.sql.
+4. Ejecutar queries/04_claves_y_constraints.sql.
+5. Ejecutar queries/05_indices.sql.
+6. Ejecutar queries/06_max_fechas_candidatas.sql.
+7. Confirmar key_columns + watermark_column en config/tables.example.yml.
+8. Ejecutar queries/08_crear_control_replication_runs.sql una sola vez.
+9. Integrar replication_runs en el ETL Python.
+10. Usar queries/10_dashboard_control.sql como panel de control SQL.

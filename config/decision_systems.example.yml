@@ -1,0 +1,50 @@
+decision_systems:
+  - name: riesgo_caida_separacion
+    objective: Reducir caídas de separaciones priorizando intervenciones comercialmente rentables.
+    decision_unit: separacion
+    decision_owner: supervisor_comercial
+    available_actions:
+      - CONTACTO_PRIORITARIO
+      - ESCALAR_A_JEFATURA
+      - NO_ACTUAR
+    target: caida_30d
+    prediction_horizon_days: 30
+    causal_estimand: ATE de contacto prioritario sobre probabilidad de evitar caída a 30 días
+    primary_value_metric: valor_incremental_esperado_soles
+    feedback_outcome: separacion_vigente_o_minuta_30d
+    constraints:
+      max_intervenciones_diarias: 20
+      presupuesto_diario_soles: 500
+
+  - name: priorizacion_leads
+    objective: Asignar capacidad comercial a leads donde una intervención tenga mayor valor incremental esperado.
+    decision_unit: lead
+    decision_owner: supervisor_comercial
+    available_actions:
+      - LLAMAR_HOY
+      - NURTURE
+      - NO_ACTUAR
+    target: separacion_14d
+    prediction_horizon_days: 14
+    causal_estimand: CATE de contacto temprano sobre probabilidad de separación a 14 días
+    primary_value_metric: margen_incremental_esperado_soles
+    feedback_outcome: separacion_14d
+    constraints:
+      llamadas_diarias_por_asesor: 25
+
+  - name: pricing_unidad
+    objective: Maximizar valor esperado de venta preservando velocidad de absorción y coherencia de precios.
+    decision_unit: unidad_inmobiliaria
+    decision_owner: gerencia_comercial
+    available_actions:
+      - SUBIR_PRECIO
+      - MANTENER_PRECIO
+      - AJUSTAR_DESCUENTO
+    target: venta_90d
+    prediction_horizon_days: 90
+    causal_estimand: Elasticidad causal de demanda respecto al precio neto por tipología y proyecto
+    primary_value_metric: margen_esperado_90d
+    feedback_outcome: venta_y_precio_cierre_90d
+    constraints:
+      respetar_coherencia_vertical: true
+      aprobacion_gerencial: true

@@ -1,0 +1,18 @@
+-- TEMPLATE: no ejecutar sin adaptar nombres de tablas/columnas reales.
+-- Objetivo: patrón para crear una tabla de features "as-of" sin leakage.
+
+-- CREATE TABLE features.lead_decision_snapshot AS
+-- SELECT
+--     l.id_lead,
+--     :decision_timestamp AS decision_at,
+--     /* usar únicamente eventos ocurridos ANTES de decision_at */
+--     COUNT(i.id_interaccion) FILTER (WHERE i.fecha < :decision_timestamp) AS interacciones_previas,
+--     MAX(i.fecha) FILTER (WHERE i.fecha < :decision_timestamp) AS ultima_interaccion_previa,
+--     /* target se calcula en una ventana FUTURA y solo para entrenamiento histórico */
+--     CASE WHEN MIN(s.fecha_separacion) >= :decision_timestamp
+--               AND MIN(s.fecha_separacion) < :decision_timestamp + INTERVAL '14 days'
+--          THEN 1 ELSE 0 END AS separacion_14d
+-- FROM ...
+-- GROUP BY ...;
+--
+-- Regla: nunca incluir en features datos posteriores a decision_at.

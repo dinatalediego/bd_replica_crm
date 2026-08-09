@@ -1,0 +1,9 @@
+version: 1
+defaults:
+  target_schema: raw_cygnus
+  batch_size: 5000
+  lookback_hours: 48
+  enabled: false
+  create_target_if_missing: true
+  add_etl_columns: true
+tables: []

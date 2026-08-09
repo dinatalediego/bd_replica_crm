@@ -1,0 +1,29 @@
+VALIDACION TECNICA - replica_redshift_local v0.2.0
+Fecha: 2026-08-07
+
+Resultado local:
+- Python compileall: OK
+- Pytest: 18 pruebas correctas
+- Contratos de decisión: 3 válidos
+- Demo sintética: 50 decisiones generadas
+
+Cobertura funcional validada sin conexiones externas:
+- identificadores y configuración de réplica
+- query builder y type mapping
+- contrato de decisión
+- valor económico esperado
+- CATE/uplift por entidad y ranking con capacidad
+- Difference-in-Differences baseline
+- modelo logístico probabilístico baseline
+- feedback/learning report
+
+No validado por ausencia de credenciales/red:
+- conexión real a Amazon Redshift
+- conexión real al PostgreSQL del usuario
+- DDL ejecutado en el PostgreSQL del usuario
+- sincronización horaria real
+- calidad/llaves/watermarks reales del esquema grupocygnus
+
+Regla operativa:
+No activar recomendaciones reales hasta definir dataset as-of, validar temporalmente,
+identificar el efecto causal de la intervención y acordar la función de valor económico.

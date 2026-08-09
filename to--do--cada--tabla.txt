@@ -1,0 +1,7 @@
+
+VALIDAR QUÉ SALDRÍA.
+.\.venv\Scripts\python.exe -m replica_cygnus.cli validate `
+    --only clientes_proyectos `
+    --include-disabled `
+    --deep
+
