@@ -1,0 +1,10 @@
+from_table,from_column,to_table,to_column,cardinality,cross_filter,active
+Dim Asset,asset_key,Pipeline Runs,asset_key,1:*,Single,true
+Dim Asset,asset_key,Asset Snapshots,asset_key,1:*,Single,true
+Dim Asset,asset_key,Quality Checks,asset_key,1:*,Single,true
+Dim Asset,asset_key,Asset Health Current,asset_key,1:*,Single,true
+Dim Asset,asset_key,Asset Quality Current,asset_key,1:*,Single,true
+Dim Date,Date,Pipeline Runs,run_date,1:*,Single,true
+Dim Date,Date,Asset Snapshots,snapshot_date,1:*,Single,true
+Dim Date,Date,Quality Checks,check_date,1:*,Single,true
+Dim Date,Date,Decision Health Daily,decision_date,1:*,Single,true

@@ -34,6 +34,7 @@ if errorlevel 1 exit /b 1
 if not exist ".env" copy ".env.example" ".env" >nul
 if not exist "config\tables.yml" copy "config\tables.example.yml" "config\tables.yml" >nul
 if not exist "config\decision_systems.yml" copy "config\decision_systems.example.yml" "config\decision_systems.yml" >nul
+if not exist "config\observability.yml" copy "config\observability.example.yml" "config\observability.yml" >nul
 
 echo.
 echo Instalacion/actualizacion completada.
@@ -42,5 +43,6 @@ echo 2. Verifica la base medallio_dw en PostgreSQL local.
 echo 3. Ejecuta scripts\02_probar_conexiones.bat
 echo 4. Ejecuta scripts\03_inicializar_postgres.bat
 echo 5. Ejecuta scripts\10_validar_contratos_decision.bat
-echo 6. Ejecuta scripts\11_demo_decisiones.bat
+echo 6. Ejecuta scripts\12_inicializar_observabilidad.bat
+echo 7. Ejecuta scripts\13_observar_ahora.bat
 endlocal

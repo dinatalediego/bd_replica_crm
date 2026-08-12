@@ -1,0 +1,9 @@
+phase: A
+name: absorption_mart_v1_discovery
+database: medallio_dw
+source_schema: raw_cygnus
+safety:
+  allow_raw_writes: false
+  run_explain_analyze_automatically: false
+  run_full_refresh: false
+  allow_cross_join_calendar_units: false

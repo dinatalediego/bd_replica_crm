@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "replica-redshift-local"
-version = "0.2.0"
-description = "Plataforma local Redshift -> PostgreSQL con capa de Decision Intelligence"
+version = "0.3.0"
+description = "Plataforma local Redshift -> PostgreSQL con Observabilidad y Decision Intelligence"
 requires-python = ">=3.11,<3.13"
 dependencies = [
   "redshift-connector>=2.1,<3",

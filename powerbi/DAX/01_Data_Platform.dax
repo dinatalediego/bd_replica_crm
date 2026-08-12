@@ -1,0 +1,128 @@
+-- =============================================================
+-- PÁGINA 01 | DATA PLATFORM
+-- Tablas esperadas: 'Dim Asset', 'Asset Health Current', 'Pipeline Runs'
+-- =============================================================
+
+Última Observación =
+MAX ( 'Asset Health Current'[snapshot_at] )
+
+Activos Habilitados =
+CALCULATE (
+    DISTINCTCOUNT ( 'Dim Asset'[asset_key] ),
+    'Dim Asset'[enabled] = TRUE ()
+)
+
+Activos Críticos =
+CALCULATE (
+    DISTINCTCOUNT ( 'Dim Asset'[asset_key] ),
+    'Dim Asset'[enabled] = TRUE (),
+    'Dim Asset'[criticality] = "critical"
+)
+
+Activos OK =
+CALCULATE (
+    DISTINCTCOUNT ( 'Asset Health Current'[asset_key] ),
+    'Asset Health Current'[health_status] = "OK"
+)
+
+Activos con Atención =
+CALCULATE (
+    DISTINCTCOUNT ( 'Asset Health Current'[asset_key] ),
+    'Asset Health Current'[health_status] IN { "WARN", "FAIL", "UNKNOWN" }
+)
+
+Activos Críticos OK =
+CALCULATE (
+    DISTINCTCOUNT ( 'Asset Health Current'[asset_key] ),
+    'Asset Health Current'[criticality] = "critical",
+    'Asset Health Current'[health_status] = "OK"
+)
+
+Freshness Crítica % =
+DIVIDE ( [Activos Críticos OK], [Activos Críticos] )
+
+Lag Replicación Máx (min) =
+MAX ( 'Asset Health Current'[replication_lag_minutes] )
+
+Min Desde Último Éxito Máx =
+MAX ( 'Asset Health Current'[minutes_since_success] )
+
+Score Salud Operativa =
+AVERAGEX (
+    FILTER (
+        'Asset Health Current',
+        NOT ISBLANK ( 'Asset Health Current'[operational_health_score] )
+    ),
+    'Asset Health Current'[operational_health_score]
+)
+
+Ejecuciones Exitosas 24h =
+CALCULATE (
+    COUNTROWS ( 'Pipeline Runs' ),
+    'Pipeline Runs'[started_at] >= NOW () - 1,
+    'Pipeline Runs'[status] = "SUCCESS"
+)
+
+Ejecuciones Fallidas 24h =
+CALCULATE (
+    COUNTROWS ( 'Pipeline Runs' ),
+    'Pipeline Runs'[started_at] >= NOW () - 1,
+    'Pipeline Runs'[status] <> "SUCCESS",
+    'Pipeline Runs'[status] <> "RUNNING"
+)
+
+Ejecuciones Esperadas 24h =
+SUMX (
+    FILTER ( 'Dim Asset', 'Dim Asset'[enabled] = TRUE () ),
+    DIVIDE ( 1440.0, 'Dim Asset'[expected_frequency_minutes] )
+)
+
+Reliability 24h =
+MIN ( 1.0, DIVIDE ( [Ejecuciones Exitosas 24h], [Ejecuciones Esperadas 24h] ) )
+
+Filas Cargadas 24h =
+CALCULATE (
+    SUM ( 'Pipeline Runs'[rows_loaded] ),
+    'Pipeline Runs'[started_at] >= NOW () - 1,
+    'Pipeline Runs'[status] = "SUCCESS"
+)
+
+Duración Promedio Run (min) =
+CALCULATE (
+    AVERAGE ( 'Pipeline Runs'[duration_minutes] ),
+    'Pipeline Runs'[status] = "SUCCESS"
+)
+
+Activos Críticos con Falla =
+CALCULATE (
+    DISTINCTCOUNT ( 'Asset Health Current'[asset_key] ),
+    'Asset Health Current'[criticality] = "critical",
+    'Asset Health Current'[health_status] = "FAIL"
+)
+
+Estado Global Datos =
+VAR CriticalFail = [Activos Críticos con Falla]
+VAR AnyAttention = [Activos con Atención]
+RETURN
+    SWITCH (
+        TRUE (),
+        CriticalFail > 0, "🔴 CRÍTICO",
+        AnyAttention > 0, "🟡 ATENCIÓN",
+        [Activos Habilitados] > 0, "🟢 OPERATIVO",
+        "⚪ SIN DATOS"
+    )
+
+Productos Impactados =
+VAR Impacted =
+    FILTER (
+        'Asset Health Current',
+        'Asset Health Current'[health_status] IN { "WARN", "FAIL" }
+            && NOT ISBLANK ( 'Asset Health Current'[downstream_products] )
+    )
+RETURN
+    CONCATENATEX (
+        Impacted,
+        'Asset Health Current'[downstream_products],
+        " | ",
+        'Asset Health Current'[criticality], DESC
+    )

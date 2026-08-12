@@ -13,6 +13,7 @@ src/replica_cygnus/logging_config.py
 src/replica_cygnus/metadata.py
 src/replica_cygnus/models.py
 src/replica_cygnus/query_builder.py
+src/replica_cygnus/redshift_diagnostics.py
 src/replica_cygnus/settings.py
 src/replica_cygnus/sync.py
 src/replica_cygnus/target_schema.py
@@ -28,6 +29,12 @@ src/replica_cygnus/decision_intelligence/engine.py
 src/replica_cygnus/decision_intelligence/forecasting.py
 src/replica_cygnus/decision_intelligence/learning.py
 src/replica_cygnus/decision_intelligence/prediction.py
+src/replica_cygnus/observability/__init__.py
+src/replica_cygnus/observability/collector.py
+src/replica_cygnus/observability/config.py
+src/replica_cygnus/observability/health.py
+src/replica_cygnus/observability/schema.py
+src/replica_cygnus/observability/service.py
 src/replica_redshift_local.egg-info/PKG-INFO
 src/replica_redshift_local.egg-info/SOURCES.txt
 src/replica_redshift_local.egg-info/dependency_links.txt
@@ -41,6 +48,8 @@ tests/test_decision_engine.py
 tests/test_economics.py
 tests/test_identifiers.py
 tests/test_learning.py
+tests/test_observability_config.py
+tests/test_observability_health.py
 tests/test_prediction.py
 tests/test_query.py
 tests/test_type_mapping.py

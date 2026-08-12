@@ -1,0 +1,18 @@
+MEDALLIO CONTROL TOWER v0.3.0 — VALIDACIÓN
+
+- Python: compileall OK
+- Tests: 23 passed
+- Theme Power BI JSON: parse OK
+- observability.example.yml: parse OK
+- Upgrade: no incluye .env ni config/tables.yml del usuario
+- Observabilidad horaria: diseñada como control ligero
+- Calidad profunda: separada para evitar COUNT(*)/duplicados cada hora
+- Power BI: incluye parámetros M, 9 consultas, 4 archivos DAX, modelo/relaciones, tema y layouts de 4 páginas
+
+NO VALIDADO CONTRA EL ENTORNO REAL:
+- Conectividad y permisos reales de Redshift Cygnus
+- Volumen/tiempo de ejecución de checks profundos en las tablas reales
+- Llaves y watermarks específicos del config/tables.yml del usuario
+- Compilación dentro de Power BI Desktop (se entregan scripts M/DAX basados en sintaxis estándar)
+
+Antes de automatizar calidad profunda, ejecutar manualmente scripts/14_calidad_profunda.bat y revisar costo/tiempo.

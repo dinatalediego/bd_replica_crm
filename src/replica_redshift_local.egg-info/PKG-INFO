@@ -1,7 +1,7 @@
 Metadata-Version: 2.4
 Name: replica-redshift-local
-Version: 0.2.0
-Summary: Plataforma local Redshift -> PostgreSQL con capa de Decision Intelligence
+Version: 0.3.0
+Summary: Plataforma local Redshift -> PostgreSQL con Observabilidad y Decision Intelligence
 Requires-Python: <3.13,>=3.11
 Requires-Dist: redshift-connector<3,>=2.1
 Requires-Dist: psycopg[binary]<4,>=3.2

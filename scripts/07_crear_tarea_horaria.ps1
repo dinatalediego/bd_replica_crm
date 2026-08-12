@@ -17,7 +17,7 @@ Register-ScheduledTask `
   -Action $Action `
   -Trigger $Trigger `
   -Settings $Settings `
-  -Description "Sincroniza tablas habilitadas desde Redshift hacia PostgreSQL local cada hora." `
+  -Description "Sincroniza Redshift hacia PostgreSQL y registra observabilidad para Medallio Control Tower cada hora." `
   -Force
 
 Write-Host "Tarea creada: $TaskName"

@@ -30,7 +30,47 @@ def list_source_tables(source_conn, schema_filter: str | None = None) -> list[tu
         return [(row[0], row[1]) for row in cursor.fetchall()]
 
 
-def get_source_columns(source_conn, schema: str, table: str) -> list[SourceColumn]:
+def _description_index(cursor) -> dict[str, int]:
+    return {str(col[0]).lower(): idx for idx, col in enumerate(cursor.description or [])}
+
+
+def _get_source_columns_show(source_conn, schema: str, table: str) -> list[SourceColumn]:
+    # AWS recomienda SHOW COLUMNS para descubrimiento de metadatos.
+    # Los identificadores ya pasan por validación/citado en qualified_redshift().
+    sql = f"SHOW COLUMNS FROM TABLE {qualified_redshift(schema, table)}"
+    with source_conn.cursor() as cursor:
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        idx = _description_index(cursor)
+
+    required = {
+        "column_name",
+        "data_type",
+        "ordinal_position",
+        "is_nullable",
+        "character_maximum_length",
+        "numeric_precision",
+        "numeric_scale",
+    }
+    missing = sorted(required.difference(idx))
+    if missing:
+        raise RuntimeError(f"SHOW COLUMNS no devolvió campos esperados: {missing}")
+
+    return [
+        SourceColumn(
+            name=row[idx["column_name"]],
+            data_type=row[idx["data_type"]],
+            ordinal_position=int(row[idx["ordinal_position"]]),
+            is_nullable=str(row[idx["is_nullable"]]).upper() == "YES",
+            character_maximum_length=row[idx["character_maximum_length"]],
+            numeric_precision=row[idx["numeric_precision"]],
+            numeric_scale=row[idx["numeric_scale"]],
+        )
+        for row in rows
+    ]
+
+
+def _get_source_columns_svv(source_conn, schema: str, table: str) -> list[SourceColumn]:
     sql = """
         SELECT
             column_name,
@@ -40,7 +80,7 @@ def get_source_columns(source_conn, schema: str, table: str) -> list[SourceColum
             character_maximum_length,
             numeric_precision,
             numeric_scale
-        FROM information_schema.columns
+        FROM svv_columns
         WHERE table_schema = %s
           AND table_name = %s
         ORDER BY ordinal_position
@@ -60,6 +100,28 @@ def get_source_columns(source_conn, schema: str, table: str) -> list[SourceColum
         )
         for row in rows
     ]
+
+
+def get_source_columns(source_conn, schema: str, table: str) -> list[SourceColumn]:
+    try:
+        columns = _get_source_columns_show(source_conn, schema, table)
+        if columns:
+            return columns
+    except Exception:
+        LOGGER.warning(
+            "SHOW COLUMNS falló para %s.%s; probando SVV_COLUMNS.",
+            schema,
+            table,
+            exc_info=True,
+        )
+
+    columns = _get_source_columns_svv(source_conn, schema, table)
+    if not columns:
+        raise RuntimeError(
+            f"No se encontraron columnas visibles para {schema}.{table}. "
+            "Verifica permisos USAGE/SELECT y que la tabla exista en la base configurada."
+        )
+    return columns
 
 
 def estimate_row_count(source_conn, schema: str, table: str) -> int | None:

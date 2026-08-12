@@ -34,8 +34,14 @@ def load_settings(project_root: Path | None = None) -> AppSettings:
         password=_required("REDSHIFT_PASSWORD"),
         sslmode=os.getenv("REDSHIFT_SSLMODE", "verify-ca"),
         ssl=_as_bool(os.getenv("REDSHIFT_SSL"), True),
-        connect_timeout=int(os.getenv("REDSHIFT_CONNECT_TIMEOUT", "20")),
+        # redshift_connector usa `timeout` también durante lecturas del socket.
+        # Mantenerlo en 20 s puede cortar consultas válidas bajo carga/WLM.
+        connect_timeout=int(os.getenv("REDSHIFT_SOCKET_TIMEOUT", "300")),
         statement_timeout_ms=int(os.getenv("REDSHIFT_STATEMENT_TIMEOUT_MS", "900000")),
+        tcp_keepalive=_as_bool(os.getenv("REDSHIFT_TCP_KEEPALIVE"), True),
+        tcp_keepalive_idle=int(os.getenv("REDSHIFT_TCP_KEEPALIVE_IDLE", "30")),
+        tcp_keepalive_interval=int(os.getenv("REDSHIFT_TCP_KEEPALIVE_INTERVAL", "15")),
+        tcp_keepalive_count=int(os.getenv("REDSHIFT_TCP_KEEPALIVE_COUNT", "5")),
     )
     postgres = DatabaseSettings(
         host=_required("POSTGRES_HOST"),

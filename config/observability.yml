@@ -1,0 +1,69 @@
+version: 1
+
+defaults:
+  criticality: high
+  business_domain: Commercial Analytics
+  business_process: CRM / Funnel Comercial
+  business_owner: Inteligencia de Negocios
+  business_impact: Afecta seguimiento comercial y confiabilidad de reportes.
+  downstream_products: Power BI Comercial; Reporte Comercial Mensual
+  expected_frequency_minutes: 60
+  freshness_sla_minutes: 90
+  replication_lag_sla_minutes: 90
+  reconciliation_tolerance_pct: 1.0
+  monitor_source_watermark: true
+  deep_quality_enabled: true
+
+# Las claves pueden ser el nombre de source_table o source_schema.source_table.
+# Ajusta impacto y criticidad a tu operación real. No cambia cómo se replica la tabla.
+assets:
+  clientes:
+    criticality: critical
+    business_process: Captación y base de clientes
+    business_impact: Si está desactualizada, leads, cohortes y segmentación pueden quedar incompletos.
+    downstream_products: Funnel; Leads; Cohortes; Segmentación; Reporte Comercial
+
+  clientes_proyectos:
+    criticality: critical
+    business_process: Asignación de cliente a proyecto
+    business_impact: Puede distorsionar cartera por proyecto, asesor, seguimiento y atribución comercial.
+    downstream_products: Funnel por proyecto; Performance asesores; Tubería
+
+  procesos:
+    criticality: critical
+    business_process: Separaciones, minutas, ventas y anulaciones
+    business_impact: Es una fuente crítica para resultados comerciales; atraso implica KPIs de venta potencialmente incorrectos.
+    downstream_products: Separaciones; Minutas; Ventas; Caídas; Reporte Comercial
+    freshness_sla_minutes: 75
+    replication_lag_sla_minutes: 75
+
+  interacciones:
+    criticality: high
+    business_process: Actividad y seguimiento comercial
+    business_impact: Afecta lectura de actividad de asesores, recencia y modelos de propensión o riesgo.
+    downstream_products: Seguimiento asesores; Lead scoring; Riesgo de caída
+    freshness_sla_minutes: 120
+    replication_lag_sla_minutes: 120
+
+  proformas:
+    criticality: critical
+    business_process: Cotización y avance comercial
+    business_impact: Afecta conversión, pricing observado y lectura de intención de compra.
+    downstream_products: Proformas; Conversión; Pricing; Responsabilidad administrativa
+
+  unidades:
+    criticality: critical
+    business_process: Inventario, disponibilidad y pricing
+    business_impact: Un atraso puede llevar a reportar stock o precios no vigentes y afectar decisiones comerciales.
+    downstream_products: Stock; Pricing; Absorción; Disponibilidad
+    freshness_sla_minutes: 180
+    replication_lag_sla_minutes: 180
+
+  proyectos:
+    criticality: medium
+    business_process: Maestro de proyectos
+    business_impact: Afecta atributos maestros y segmentaciones, pero suele cambiar con menor frecuencia.
+    downstream_products: Dimensión Proyecto; Reportes maestros
+    expected_frequency_minutes: 1440
+    freshness_sla_minutes: 2880
+    replication_lag_sla_minutes: 2880

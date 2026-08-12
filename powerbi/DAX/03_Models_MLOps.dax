@@ -1,0 +1,48 @@
+-- =============================================================
+-- PÁGINA 03 | MODELS & MLOPS
+-- Preparada para poblarse cuando registres model_runs/scoring_batches.
+-- Tabla esperada: 'Model Health Current'
+-- =============================================================
+
+Modelos Registrados =
+DISTINCTCOUNT ( 'Model Health Current'[model_name] )
+
+Modelos en Producción =
+CALCULATE (
+    DISTINCTCOUNT ( 'Model Health Current'[model_name] ),
+    'Model Health Current'[training_status] IN { "PROD", "PRODUCTION", "TRAINED" }
+)
+
+Último Entrenamiento =
+MAX ( 'Model Health Current'[trained_at] )
+
+Último Scoring =
+MAX ( 'Model Health Current'[last_scored_at] )
+
+Model Age Máx (días) =
+DIVIDE ( MAX ( 'Model Health Current'[model_age_hours] ), 24.0 )
+
+Feature Freshness Máx (min) =
+MAX ( 'Model Health Current'[feature_freshness_minutes] )
+
+Modelos con Drift =
+CALCULATE (
+    DISTINCTCOUNT ( 'Model Health Current'[model_name] ),
+    'Model Health Current'[drift_status] IN { "WARN", "HIGH", "FAIL", "DRIFT" }
+)
+
+Scorings Fallidos =
+CALCULATE (
+    DISTINCTCOUNT ( 'Model Health Current'[model_name] ),
+    NOT ISBLANK ( 'Model Health Current'[last_scored_at] ),
+    'Model Health Current'[scoring_status] <> "SUCCESS"
+)
+
+Estado Global Modelos =
+SWITCH (
+    TRUE (),
+    [Scorings Fallidos] > 0, "🔴 SCORING CON FALLAS",
+    [Modelos con Drift] > 0, "🟡 DRIFT / REVISIÓN",
+    [Modelos Registrados] > 0, "🟢 MODELOS OPERATIVOS",
+    "⚪ AÚN SIN MODELOS EN PRODUCCIÓN"
+)

@@ -21,6 +21,10 @@ class DatabaseSettings:
     ssl: bool = True
     connect_timeout: int = 20
     statement_timeout_ms: int = 900_000
+    tcp_keepalive: bool = True
+    tcp_keepalive_idle: int = 30
+    tcp_keepalive_interval: int = 15
+    tcp_keepalive_count: int = 5
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,47 @@
+-- =============================================================
+-- PÁGINA 04 | DECISIONS & LEARNING
+-- Tabla esperada: 'Decision Health Daily'
+-- =============================================================
+
+Recomendaciones =
+SUM ( 'Decision Health Daily'[recommendations] )
+
+Acciones Ejecutadas =
+SUM ( 'Decision Health Daily'[actions] )
+
+Outcomes Observados =
+SUM ( 'Decision Health Daily'[outcomes] )
+
+Adopción de Recomendaciones =
+DIVIDE ( [Acciones Ejecutadas], [Recomendaciones] )
+
+Cobertura de Outcomes =
+DIVIDE ( [Outcomes Observados], [Recomendaciones] )
+
+Valor Incremental Esperado =
+SUM ( 'Decision Health Daily'[expected_incremental_value] )
+
+Costo de Acciones =
+SUM ( 'Decision Health Daily'[action_cost] )
+
+Valor Realizado =
+SUM ( 'Decision Health Daily'[realized_value] )
+
+Valor Neto Realizado =
+[Valor Realizado] - [Costo de Acciones]
+
+ROI Realizado =
+DIVIDE ( [Valor Neto Realizado], [Costo de Acciones] )
+
+Realización vs Esperado =
+DIVIDE ( [Valor Realizado], [Valor Incremental Esperado] )
+
+Estado Ciclo de Aprendizaje =
+SWITCH (
+    TRUE (),
+    [Recomendaciones] = 0, "⚪ SIN DECISIONES REGISTRADAS",
+    [Adopción de Recomendaciones] < 0.50, "🟡 BAJA ADOPCIÓN",
+    [Cobertura de Outcomes] < 0.70, "🟡 FALTA FEEDBACK",
+    [Valor Neto Realizado] < 0, "🔴 VALOR NETO NEGATIVO",
+    "🟢 CICLO APRENDIENDO"
+)

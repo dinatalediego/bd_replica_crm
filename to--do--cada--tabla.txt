@@ -1,7 +1,23 @@
 
+PRIMERO
+****************************************
+
+.\scripts\12_diagnosticar_redshift.bat grupocygnus proforma_unidad
+
+
+SEGUNDO
+****************************************
 VALIDAR QUÉ SALDRÍA.
 .\.venv\Scripts\python.exe -m replica_cygnus.cli validate `
     --only clientes_proyectos `
     --include-disabled `
     --deep
 
+    .\.venv\Scripts\python.exe -m replica_cygnus.cli validate `
+    --only proforma_unidad `
+    --include-disabled `
+    --deep
+
+TERCERO: 
+****************************************************
+.\scripts\05_probar_una_tabla.bat proforma_unidad

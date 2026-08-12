@@ -1,0 +1,117 @@
+[
+  {
+    "path": "README.md",
+    "size_bytes": 1669,
+    "sha256": "72e4fc027bc4782d62ea1a840a0dace21c5687b6297b53f7a56ee100116a00dc"
+  },
+  {
+    "path": "config/absorption_phase_a.yml",
+    "size_bytes": 236,
+    "sha256": "b6d435521f169865aece64681bfd5489f28ed468f95f38d5974e12cd0a2cc345"
+  },
+  {
+    "path": "docs/EXPECTED_PHASE_A_OUTPUTS.md",
+    "size_bytes": 470,
+    "sha256": "5d38f4c39621987e9301389d5a4d880370fcd82b7871375aaa0ccc43d7774430"
+  },
+  {
+    "path": "docs/OPEN_BUSINESS_RULES.md",
+    "size_bytes": 649,
+    "sha256": "186a11e121929f6c2ee2da5e8be9aa00a272c6d18d479ad3adeac9d5cde871ac"
+  },
+  {
+    "path": "docs/PHASE_A_DATA_CONTRACT.md",
+    "size_bytes": 1484,
+    "sha256": "2b28aad692db0f4f401f7d5f928e931260cfc251664e65a123143a2946f51ddd"
+  },
+  {
+    "path": "docs/PHASE_A_RUN_ORDER.md",
+    "size_bytes": 897,
+    "sha256": "3313f028bbec5ecaac7c91e92f7be104b8489b2e735f294c5b57c5ab484f9c99"
+  },
+  {
+    "path": "docs/POST_PHASE_A_TARGET_ARCHITECTURE.md",
+    "size_bytes": 471,
+    "sha256": "73b4d56a1dd7fad7d5146be0815824951c863680723f788996c7e9e870eecf28"
+  },
+  {
+    "path": "scripts/20_absorption_phase_a_metadata.bat",
+    "size_bytes": 143,
+    "sha256": "61226b280e108ba3edecb2798c4b9eee3e6d6b0565a3d5098d7e26c77ff51eb0"
+  },
+  {
+    "path": "scripts/21_absorption_phase_a_full_discovery.bat",
+    "size_bytes": 210,
+    "sha256": "7500f6756d2a5baffd4d28f61c8092c6cb9661ab981ca8fa78d44e72daaefcef"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/00_preflight_control_and_schemas.sql",
+    "size_bytes": 640,
+    "sha256": "d49c63d4b264882916f311d5de9e2a5dd087800d4be4521f8eebcae94aeb04e0"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/01_inventory_metadata.sql",
+    "size_bytes": 1168,
+    "sha256": "69db87721764e60f20eb976d2c575f2845734f32951ca4bba123f8afe978e235"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/02_find_datos_extras.sql",
+    "size_bytes": 1080,
+    "sha256": "9fbe10fc002f86536b33221873965338354d6cb4c3dfabdb27d314a2c14a4500"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/03_process_event_domain.sql",
+    "size_bytes": 949,
+    "sha256": "d90d12e872927559f203c93ffa1a6a20be6a36aa5b2c288ed763a83e614bd363"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/04_business_key_cardinality.sql",
+    "size_bytes": 1569,
+    "sha256": "19882511309c911d253968657ee3a5db1e07c9403b985e88801f56c0b1e91bc8"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/05_proforma_unidad_relationships.sql",
+    "size_bytes": 985,
+    "sha256": "38325a3580cb46383444b5de679fbc80f56cb62f7428937c2b312ad77dbf7011"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/06_sale_date_dependency_probe.sql",
+    "size_bytes": 652,
+    "sha256": "e04cf7adec2ff1ee510b5205efa2219c70727ebcc05444f1cc747a34ab65be3d"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/07_stock_entry_candidate_probe.sql",
+    "size_bytes": 769,
+    "sha256": "9d97e09f8f276c8ebd5567114280252c8e8d1414f6cce2fe2ba342f08422fb5c"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/08_temporal_sequences_probe.sql",
+    "size_bytes": 1331,
+    "sha256": "f635df39e3ae8fa1d5b3ff40e2e455c40188e209c044f727cd1c2a1551784589"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/09_performance_probe.sql",
+    "size_bytes": 675,
+    "sha256": "2fe9444d7d5cbf8fd3a6eaa801733cd1955c9a77bec8b1aae7614297e540be6c"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/10_data_quality_probe.sql",
+    "size_bytes": 2133,
+    "sha256": "e517ff4e35787ed05a2573af29d24620c006b596529cfd9db3593af5eb5a6a39"
+  },
+  {
+    "path": "sql/10_absorption_phase_a/11_optional_discovery_registry.sql",
+    "size_bytes": 873,
+    "sha256": "a61d4bb7ea3d6451ae9b4a46b1abf4c987b8971b3cd5a74de4978e9d1704c40a"
+  },
+  {
+    "path": "src/absorption_phase_a/__init__.py",
+    "size_bytes": 21,
+    "sha256": "a69f49e6797408b4e3de81fc0f5b4ac1533a9e76a98f69298c7c7f77889f81de"
+  },
+  {
+    "path": "src/absorption_phase_a/runner.py",
+    "size_bytes": 3356,
+    "sha256": "bbf944fd4f3ad5ca049f499e16274bc74198fe92faa2bca6e650bca8208099c6"
+  }
+]

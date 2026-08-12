@@ -1,0 +1,20 @@
+PATCH v0.2.2 — Redshift timeout resilience
+
+1) Cierra cualquier sync activo.
+2) Copia el contenido de la carpeta replica_redshift_local de este ZIP sobre la raíz de tu proyecto.
+3) Permite reemplazar los archivos existentes.
+4) No se incluye ni modifica .env ni config/tables.yml.
+5) Opcional pero recomendado: agrega a tu .env:
+
+REDSHIFT_SOCKET_TIMEOUT=300
+REDSHIFT_TCP_KEEPALIVE=true
+REDSHIFT_TCP_KEEPALIVE_IDLE=30
+REDSHIFT_TCP_KEEPALIVE_INTERVAL=15
+REDSHIFT_TCP_KEEPALIVE_COUNT=5
+
+6) Prueba:
+.\scripts\12_diagnosticar_redshift.bat grupocygnus proforma_unidad
+
+7) Si pasa:
+.\.venv\Scripts\python.exe -m replica_cygnus.cli validate --only proforma_unidad --include-disabled --deep
+.\scripts\05_probar_una_tabla.bat proforma_unidad

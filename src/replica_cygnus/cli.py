@@ -17,6 +17,8 @@ from .metadata import ensure_control_tables, recent_runs
 from .settings import load_settings
 from .sync import select_configs, sync_table
 from .validation import validate_source_config
+from .observability.schema import ensure_observability
+from .observability.service import register_all_assets, run_observability
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +61,15 @@ def _parser() -> argparse.ArgumentParser:
 
     status = sub.add_parser("status", help="Muestra las ejecuciones recientes.")
     status.add_argument("--limit", type=int, default=30)
+
+    obs_init = sub.add_parser("observability-init", help="Crea observabilidad y registra activos configurados.")
+    obs_init.add_argument("--observability-config", default="config/observability.yml")
+
+    observe = sub.add_parser("observe", help="Toma snapshots de salud para Power BI Control Tower.")
+    observe.add_argument("--mode", choices=["hourly", "deep"], default="hourly")
+    observe.add_argument("--only", help="Tabla específica: tabla o esquema.tabla.")
+    observe.add_argument("--include-disabled", action="store_true")
+    observe.add_argument("--observability-config", default="config/observability.yml")
     return parser
 
 
@@ -94,41 +105,15 @@ def command_init(settings) -> int:
                 cursor.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
         target.commit()
         ensure_decision_intelligence(target, settings.project_root)
+        ensure_observability(target, settings.project_root)
     print(
         "PostgreSQL local inicializado: raw_cygnus, staging, analytics, etl_control, "
-        "features, decision_intelligence, model_control y experiments."
+        "features, decision_intelligence, model_control, experiments y observability."
     )
     return 0
+
 
 def command_test_connections(settings) -> int:
-    source = connect_redshift(settings)
-    try:
-        with source.cursor() as cursor:
-            cursor.execute(
-                "SELECT current_database(), current_user, GETDATE()"
-            )
-            source_row = cursor.fetchone()
-    finally:
-        source.close()
-
-    with connect_postgres(settings) as target:
-        with target.cursor() as cursor:
-            cursor.execute(
-                "SELECT current_database(), current_user, current_timestamp"
-            )
-            target_row = cursor.fetchone()
-
-    print(
-        f"Redshift OK   | base={source_row[0]} "
-        f"| usuario={source_row[1]} | hora={source_row[2]}"
-    )
-    print(
-        f"PostgreSQL OK | base={target_row[0]} "
-        f"| usuario={target_row[1]} | hora={target_row[2]}"
-    )
-    return 0
-
-""" def command_test_connections(settings) -> int:
     source = connect_redshift(settings)
     try:
         with source.cursor() as cursor:
@@ -146,7 +131,6 @@ def command_test_connections(settings) -> int:
     print(f"PostgreSQL OK | base={target_row[0]} | usuario={target_row[1]} | hora={target_row[2]}")
     return 0
 
- """
 
 def command_discover(settings, schema: str) -> int:
     source = connect_redshift(settings)
@@ -282,6 +266,42 @@ def command_decision_contracts(settings, config_value: str) -> int:
     print(f"Contratos válidos: {len(contracts)}")
     return 0
 
+
+def command_observability_init(settings, config_path: Path, observability_config: str) -> int:
+    obs_path = _resolve_config(settings.project_root, observability_config)
+    count = register_all_assets(settings, config_path, obs_path)
+    print(f"Observabilidad inicializada. Activos registrados: {count}")
+    return 0
+
+
+def command_observe(
+    settings,
+    config_path: Path,
+    observability_config: str,
+    mode: str,
+    only: str | None,
+    include_disabled: bool,
+) -> int:
+    obs_path = _resolve_config(settings.project_root, observability_config)
+    rows = run_observability(
+        settings, config_path, obs_path, mode=mode, only=only, include_disabled=include_disabled
+    )
+    if not rows:
+        print("No hay activos seleccionados para monitorear.")
+        return 0
+    _print_table(
+        ["activo", "modo", "salud", "score", "quality", "lag_min", "desde_exito_min"],
+        [
+            (
+                r["asset_key"], r["mode"], r["health_status"],
+                r["operational_health_score"], r["quality_score"],
+                r["replication_lag_minutes"], r["minutes_since_success"]
+            )
+            for r in rows
+        ],
+    )
+    return 0
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -314,6 +334,13 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.command == "status":
             return command_status(settings, args.limit)
+        if args.command == "observability-init":
+            return command_observability_init(settings, config_path, args.observability_config)
+        if args.command == "observe":
+            return command_observe(
+                settings, config_path, args.observability_config, args.mode,
+                args.only, args.include_disabled
+            )
         raise RuntimeError(f"Comando no implementado: {args.command}")
     except ReplicaError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

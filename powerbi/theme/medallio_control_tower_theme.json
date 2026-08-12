@@ -1,0 +1,16 @@
+{
+  "name": "Medallio Control Tower",
+  "dataColors": [
+    "#155E75",
+    "#0F766E",
+    "#4F46E5",
+    "#B45309",
+    "#B91C1C",
+    "#475569",
+    "#0891B2",
+    "#15803D"
+  ],
+  "background": "#F8FAFC",
+  "foreground": "#0F172A",
+  "tableAccent": "#155E75"
+}

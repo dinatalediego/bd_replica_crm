@@ -1,0 +1,88 @@
+-- =============================================================
+-- PÁGINA 02 | DATA QUALITY
+-- Tablas esperadas: 'Quality Checks', 'Asset Quality Current'
+-- =============================================================
+
+Último Control Profundo =
+MAX ( 'Asset Quality Current'[quality_snapshot_at] )
+
+Data Quality Score =
+AVERAGEX (
+    FILTER ( 'Asset Quality Current', NOT ISBLANK ( 'Asset Quality Current'[quality_score] ) ),
+    'Asset Quality Current'[quality_score]
+)
+
+Checks Ejecutados 24h =
+CALCULATE (
+    COUNTROWS ( 'Quality Checks' ),
+    'Quality Checks'[checked_at] >= NOW () - 1,
+    'Quality Checks'[status] <> "SKIPPED"
+)
+
+Checks PASS 24h =
+CALCULATE (
+    COUNTROWS ( 'Quality Checks' ),
+    'Quality Checks'[checked_at] >= NOW () - 1,
+    'Quality Checks'[status] = "PASS"
+)
+
+Checks FAIL 24h =
+CALCULATE (
+    COUNTROWS ( 'Quality Checks' ),
+    'Quality Checks'[checked_at] >= NOW () - 1,
+    'Quality Checks'[status] = "FAIL"
+)
+
+Checks Críticos FAIL 24h =
+CALCULATE (
+    COUNTROWS ( 'Quality Checks' ),
+    'Quality Checks'[checked_at] >= NOW () - 1,
+    'Quality Checks'[status] = "FAIL",
+    'Quality Checks'[severity] = "critical"
+)
+
+Pass Rate 24h =
+DIVIDE ( [Checks PASS 24h], [Checks Ejecutados 24h] )
+
+Activos con Gap de Conteo =
+CALCULATE (
+    DISTINCTCOUNT ( 'Quality Checks'[asset_key] ),
+    'Quality Checks'[check_name] = "row_count_reconciliation",
+    'Quality Checks'[status] = "FAIL"
+)
+
+Activos con Duplicados =
+CALCULATE (
+    DISTINCTCOUNT ( 'Quality Checks'[asset_key] ),
+    'Quality Checks'[check_name] = "duplicate_business_key",
+    'Quality Checks'[status] = "FAIL"
+)
+
+Activos con Keys NULL =
+CALCULATE (
+    DISTINCTCOUNT ( 'Quality Checks'[asset_key] ),
+    'Quality Checks'[check_name] = "null_business_key",
+    'Quality Checks'[status] = "FAIL"
+)
+
+Activos con Schema Drift =
+CALCULATE (
+    DISTINCTCOUNT ( 'Quality Checks'[asset_key] ),
+    'Quality Checks'[check_name] = "schema_drift",
+    'Quality Checks'[status] = "FAIL"
+)
+
+Gap Filas Absoluto =
+SUMX (
+    FILTER ( 'Asset Quality Current', NOT ISBLANK ( 'Asset Quality Current'[row_difference] ) ),
+    ABS ( 'Asset Quality Current'[row_difference] )
+)
+
+Estado Calidad Datos =
+SWITCH (
+    TRUE (),
+    [Checks Críticos FAIL 24h] > 0, "🔴 NO CONFIABLE",
+    [Checks FAIL 24h] > 0, "🟡 REVISAR",
+    NOT ISBLANK ( [Data Quality Score] ), "🟢 CONFIABLE",
+    "⚪ SIN CONTROL PROFUNDO"
+)

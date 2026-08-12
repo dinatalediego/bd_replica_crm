@@ -22,6 +22,10 @@ def connect_redshift(settings: AppSettings):
         ssl=cfg.ssl,
         sslmode=cfg.sslmode,
         timeout=cfg.connect_timeout,
+        tcp_keepalive=cfg.tcp_keepalive,
+        tcp_keepalive_idle=cfg.tcp_keepalive_idle,
+        tcp_keepalive_interval=cfg.tcp_keepalive_interval,
+        tcp_keepalive_count=cfg.tcp_keepalive_count,
         application_name="replica_redshift_local",
     )
     connection.autocommit = True
