@@ -21,3 +21,29 @@ VALIDAR QUÉ SALDRÍA.
 TERCERO: 
 ****************************************************
 .\scripts\05_probar_una_tabla.bat proforma_unidad
+
+
+///cuando he creado ya desde Script 11 ->
+
+    Start-ScheduledTask -TaskName "Medallio - Replica Redshift Local"
+
+
+/////////////////////// V3.0
+1.
+.\scripts\00_actualizar_a_v0.3.0.bat
+2
+ .\scripts\03_inicializar_postgres.bat
+ 3
+
+.\scripts\12_inicializar_observabilidad.bat
+
+4
+.\scripts\13_observar_ahora.bat
+
+5
+.\scripts\14_calidad_profunda.bat
+
+-----------------------------------------------------------------------------
+Sprint 1 deja operativas las páginas 01 y 02. Las páginas 03 y 04 ya tienen infraestructura, consultas y medidas preparadas, pero correctamente quedarán vacías hasta que realmente registres training/scoring y recomendaciones/acciones/outcomes.
+----------------------------------------------------------------------------
+Lo que haría ahora en tu PC

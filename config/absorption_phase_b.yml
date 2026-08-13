@@ -1,0 +1,29 @@
+version: "0.1.0"
+database: medallio_dw
+
+source_contract:
+  procesos:
+    source_key: [nombre, id]
+    business_cycle_key: [codigo_proforma, codigo_unidad]
+    event_date: fecha_inicio
+    update_watermark: fecha_actualizacion
+  datos_extras:
+    source_key: [id]
+    proforma_key: codigo
+    value_column: valor
+    update_watermark: fecha_actualizacion
+  proforma_unidad:
+    source_key: [id]
+    unit_key: codigo_unidad
+    stock_entry_date: fecha_creacion
+
+business_rules:
+  sale_method_cutover: "2026-01-01"
+  stock_entry_method: FIRST_PROFORMA_UNIDAD_FECHA_CREACION
+  adjust_separation_before_stock_entry: true
+  propagate_minute_to_accessories: false
+
+phase_b:
+  full_backfill_procedure: analytics.refresh_absorption_phase_b_full
+  incremental_procedure: analytics.refresh_absorption_phase_b_incremental
+  default_lookback_days: 7

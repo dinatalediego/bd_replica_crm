@@ -1,6 +1,27 @@
-MEDALLIO Absorption Mart v1 — Phase A
-Python compile: OK
-Files packaged: 26
-Full ZIP SHA256: f334d3e1b21bc7a8392daf540587083b9ee6dffc36aa4fa09865e3f4642512e4
-Overlay ZIP SHA256: e85208b67238c7da76e11956252b1519724841ad9db94238082f488a3e16ebcc
-No se ejecutó contra la instancia local medallio_dw del usuario.
+MEDALLIO Absorption Phase C Core v0.1.0
+
+Static validation:
+- Python compilation errors: 0
+- SQL objects included:
+  - fact_ventas_detalle
+  - agg_ventas_mensual
+  - dim_periodo_comercial_proyecto
+  - fact_stock_ofertado_diario
+  - fact_absorcion_proyecto_diario
+  - v_absorcion_proyecto_current
+  - v_stock_proyecto_current
+  - metric_definitions
+- Power BI M kit: included
+- Power BI DAX: included
+- Power BI 4-page blueprint: included
+
+Important:
+SQL was not executed against the user's local PostgreSQL instance in this environment.
+The detailed product grain remains intentionally open until real unit columns are discovered.
+
+Hardening:
+- analytics.dim_fecha: included
+- Power BI current snapshot measures: corrected
+- project consistency preflight by unit: included
+- hidden full-refresh 'incremental' procedure: removed
+- PostgreSQL FILTER aggregate syntax: corrected

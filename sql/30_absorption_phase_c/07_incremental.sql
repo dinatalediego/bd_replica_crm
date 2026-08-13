@@ -1,0 +1,16 @@
+-- Fase C Core v0.1 es BACKFILL/VALIDACIÓN.
+-- No integrar este mart al job horario todavía.
+--
+-- La incrementalidad productiva se implementará en Fase D después de validar:
+-- 1) proyecto estable por unidad;
+-- 2) stock diario;
+-- 3) absorción;
+-- 4) tiempos de ejecución.
+--
+-- Diseño de Fase D:
+-- identificar proyectos/unidades afectados por fecha_actualizacion,
+-- determinar la fecha mínima de negocio afectada y recalcular solo esos
+-- proyectos desde esa fecha hasta CURRENT_DATE.
+--
+-- Se evita deliberadamente esconder un TRUNCATE+INSERT diario detrás de un
+-- procedimiento llamado "incremental".

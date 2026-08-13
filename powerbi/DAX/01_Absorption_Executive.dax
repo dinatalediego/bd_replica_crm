@@ -1,0 +1,56 @@
+Stock Disponible Actual =
+SUM ( qAbsorcionCurrent[stock_fin] )
+
+Ventas 30d Actual =
+SUM ( qAbsorcionCurrent[ventas_30d] )
+
+Separaciones Netas 30d Actual =
+SUM ( qAbsorcionCurrent[separaciones_netas_30d] )
+
+Absorción Neta 30d Actual =
+DIVIDE(
+    SUM(qAbsorcionCurrent[separaciones_netas_30d]),
+    SUM(qAbsorcionCurrent[stock_inicio_ventana_30d])
+)
+
+Meses Stock 30d Actual =
+DIVIDE(
+    SUM(qAbsorcionCurrent[stock_fin]),
+    SUM(qAbsorcionCurrent[ventas_30d])
+)
+
+Tasa Caída 30d Actual =
+DIVIDE(
+    SUM(qAbsorcionCurrent[caidas_30d]),
+    SUM(qAbsorcionCurrent[separaciones_brutas_30d])
+)
+
+Conversión Sep-Venta 30d Actual =
+DIVIDE(
+    SUM(qAbsorcionCurrent[ventas_30d]),
+    SUM(qAbsorcionCurrent[separaciones_brutas_30d])
+)
+
+Stock Disponible Histórico =
+VAR FechaMaxVisible = MAX(qDimFecha[fecha])
+RETURN
+    CALCULATE(
+        SUM(qFactStockDiario[stock_fin]),
+        qFactStockDiario[fecha] = FechaMaxVisible
+    )
+
+Separadas Activas Histórico =
+VAR FechaMaxVisible = MAX(qDimFecha[fecha])
+RETURN
+    CALCULATE(
+        SUM(qFactStockDiario[separadas_activas]),
+        qFactStockDiario[fecha] = FechaMaxVisible
+    )
+
+Vendidas Acumuladas Histórico =
+VAR FechaMaxVisible = MAX(qDimFecha[fecha])
+RETURN
+    CALCULATE(
+        SUM(qFactStockDiario[vendidas_acumuladas]),
+        qFactStockDiario[fecha] = FechaMaxVisible
+    )

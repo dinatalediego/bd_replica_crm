@@ -1,0 +1,20 @@
+Ventas Canónicas =
+COUNTROWS(qFactVentasDetalle)
+
+Días Promedio Sep-Venta =
+AVERAGE(qFactVentasDetalle[dias_separacion_venta])
+
+Separaciones Brutas =
+SUM(qAggVentasMensual[separaciones_brutas])
+
+Caídas =
+SUM(qAggVentasMensual[caidas])
+
+Separaciones Netas =
+SUM(qAggVentasMensual[separaciones_netas])
+
+Conversión Mensual =
+DIVIDE(
+    SUM(qAggVentasMensual[ventas]),
+    SUM(qAggVentasMensual[separaciones_brutas])
+)

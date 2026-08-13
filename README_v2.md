@@ -1,0 +1,32 @@
+# MEDALLIO — Absorption Mart v1 / Fase A
+
+Objetivo: descubrir y documentar el contrato real de datos necesario para construir después el modelo temporal inmobiliario:
+
+RAW CYGNUS → canonical events → commercial state machine → unit commercial cycles → inventory ledger → point-in-time stock → sales + absorption mart → features → forecast / econometría / ML → decision intelligence
+
+Esta fase NO construye todavía `fact_movimientos_stock`, `fact_stock_ofertado_diario` ni `fact_absorcion_detallada`.
+
+## Principios
+- `raw_cygnus` es fuente operacional y no se modifica.
+- No se inventan columnas.
+- `procesos.id` se trata como source id del evento.
+- `codigo_proforma` NO se considera grain suficiente cuando existe `codigo_unidad`.
+- Se investiga `datos_extras` antes de implementar `fecha_de_minuta`.
+- Se investiga la fecha real de entrada al stock antes de inventar un proxy.
+- Se favorecen metadata, estimaciones y probes acotados antes de scans completos.
+- El runner opcional puede persistir resultados del discovery dentro de PostgreSQL.
+
+## Orden
+1. `00_preflight_control_and_schemas.sql`
+2. `01_inventory_metadata.sql`
+3. `02_find_datos_extras.sql`
+4. `03_process_event_domain.sql`
+5. `04_business_key_cardinality.sql`
+6. `05_proforma_unidad_relationships.sql`
+7. `06_sale_date_dependency_probe.sql`
+8. `07_stock_entry_candidate_probe.sql`
+9. `08_temporal_sequences_probe.sql`
+10. `09_performance_probe.sql`
+11. `10_data_quality_probe.sql`
+
+La Fase A termina cuando estén demostrados: ubicación/estructura de `datos_extras`, cardinalidades, business keys, secuencias temporales, fuente de entrada a stock e incrementalidad confiable.
