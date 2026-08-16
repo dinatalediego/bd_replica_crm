@@ -1,0 +1,74 @@
+version: 0.1.0
+
+defaults:
+  human_in_the_loop: true
+  require_point_in_time_features: true
+  require_economic_metric: true
+  block_on_reconciliation_error: true
+
+decisions:
+  separation_fall_risk:
+    owner: commercial
+    entity: separation
+    cadence: daily
+    baseline: inactivity_rules
+    outcome: falls_before_sale
+    horizon_days: 30
+    priority: 1
+    action_space:
+      - urgent_follow_up
+      - follow_up
+      - monitor
+
+  lead_daily_priority:
+    owner: commercial
+    entity: lead
+    cadence: daily
+    baseline: recency_funnel_rules
+    outcome: advances_funnel
+    horizon_days: 14
+    priority: 2
+    action_space:
+      - call_today
+      - nurture
+      - low_priority
+
+  stock_aging_risk:
+    owner: pricing
+    entity: unit
+    cadence: daily
+    baseline: aging_absorption_rules
+    outcome: remains_unsold
+    horizon_days: 90
+    priority: 3
+    action_space:
+      - commercial_push
+      - pricing_review
+      - protect_margin
+      - monitor
+
+  absorption_deviation:
+    owner: management
+    entity: project
+    cadence: daily
+    baseline: rolling_control_band
+    outcome: absorption_below_expected
+    horizon_days: 30
+    priority: 4
+    action_space:
+      - investigate
+      - commercial_action
+      - monitor
+
+  monthly_target_forecast:
+    owner: management
+    entity: project_month
+    cadence: daily
+    baseline: run_rate
+    outcome: target_attainment
+    horizon_days: 31
+    priority: 5
+    action_space:
+      - accelerate_pipeline
+      - maintain
+      - investigate_gap
