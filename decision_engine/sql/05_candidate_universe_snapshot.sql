@@ -75,7 +75,7 @@ begin
             'monto_pagado_cuota_inicial', u.monto_pagado_cuota_inicial,
             'monto_pago_ci_positivo', u.monto_pago_ci_positivo,
             'monto_pago_ci_parse_error', u.monto_pago_ci_parse_error,
-            'evidencia_pago_ci_confirmada', u.evidencia_pago_ci_confirmimada
+            'evidencia_pago_ci_confirmada', u.evidencia_pago_ci_confirmada
         )
     from features.v_separation_fall_risk_candidate_universe u
     where u.observed_at is not null
