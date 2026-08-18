@@ -14,11 +14,21 @@ from .runtime import SeparationCandidate
 CANDIDATE_SQL = """
 select
     separation_id::text as separation_id,
+    codigo_proforma,
+    codigo_unidad,
+    codigo_proyecto,
+    documento_cliente,
+    asesor,
+    fecha_separacion,
     observed_at,
     days_since_separation,
     days_since_last_interaction,
     interaction_count_14d,
     has_pending_admin_block,
+    last_interaction_at,
+    interaction_signal_mode,
+    admin_signal_mode,
+    feature_contract_version,
     quality_status,
     quality_reasons
 from features.separation_fall_risk_current
@@ -50,6 +60,20 @@ def load_candidates(conn: Connection) -> list[SeparationCandidate]:
                 separation_id=str(row["separation_id"]),
                 observed_at=row["observed_at"],
                 features={
+                    # Commercial identifiers are persisted in feature_snapshot so
+                    # the worklist remains operationally useful without joining
+                    # back to mutable RAW rows.
+                    "codigo_proforma": row.get("codigo_proforma"),
+                    "codigo_unidad": row.get("codigo_unidad"),
+                    "codigo_proyecto": row.get("codigo_proyecto"),
+                    "documento_cliente": row.get("documento_cliente"),
+                    "asesor": row.get("asesor"),
+                    "fecha_separacion": row.get("fecha_separacion"),
+                    "last_interaction_at": row.get("last_interaction_at"),
+                    "interaction_signal_mode": row.get("interaction_signal_mode"),
+                    "admin_signal_mode": row.get("admin_signal_mode"),
+                    "feature_contract_version": row.get("feature_contract_version"),
+                    # Baseline features.
                     "days_since_separation": row["days_since_separation"],
                     "days_since_last_interaction": row["days_since_last_interaction"],
                     "interaction_count_14d": row["interaction_count_14d"],
