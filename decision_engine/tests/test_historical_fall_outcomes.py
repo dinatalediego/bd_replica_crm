@@ -1,0 +1,57 @@
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
+OUTCOME_SQL = ROOT / "sql" / "06_historical_fall_outcomes.sql"
+CURRENT_FEATURE_SQL = ROOT / "sql" / "02_separation_fall_risk_features.sql"
+NLP_SCRIPT = REPO_ROOT / "scripts" / "analyze_fall_reason_text.py"
+
+
+def test_historical_outcome_contract_reads_requested_proforma_text_fields() -> None:
+    sql = OUTCOME_SQL.read_text(encoding="utf-8").lower()
+
+    assert "raw_cygnus.datos_extras" in sql
+    assert "motivo_caida_segun_asesor" in sql
+    assert "cambio_de_departamento" in sql
+    assert "depa_del_cambio" in sql
+    assert "de.codigo::text" in sql
+    assert "fecha_actualizacion desc nulls last" in sql
+
+
+def test_payment_conversion_has_precedence_over_raw_fall_for_target() -> None:
+    sql = " ".join(OUTCOME_SQL.read_text(encoding="utf-8").lower().split())
+
+    assert "target_fall_before_conversion" in sql
+    assert "when c.evidencia_pago_ci_confirmada or c.resultado_ciclo = 'venta' then 0" in sql
+    assert "when c.resultado_ciclo = 'caida' then 1" in sql
+    assert "raw_fall_reclassified_as_conversion_due_payment_evidence" in sql
+
+
+def test_fall_reason_is_explicitly_post_outcome_and_not_live_feature() -> None:
+    outcome_sql = OUTCOME_SQL.read_text(encoding="utf-8").lower()
+    current_sql = CURRENT_FEATURE_SQL.read_text(encoding="utf-8").lower()
+
+    assert "'post_outcome_only'::text as fall_reason_text_role" in outcome_sql
+    assert "false::boolean as fall_reason_live_feature_eligible" in outcome_sql
+    assert "motivo_caida_segun_asesor" not in current_sql
+    assert "cambio_de_departamento" not in current_sql
+    assert "depa_del_cambio" not in current_sql
+
+
+def test_text_corpus_is_deduplicated_at_proforma_grain() -> None:
+    sql = " ".join(OUTCOME_SQL.read_text(encoding="utf-8").lower().split())
+
+    assert "partition by h.codigo_proforma" in sql
+    assert "where h.target_fall_before_conversion = 1" in sql
+    assert "v_fall_reason_proforma_history" in sql
+
+
+def test_nlp_script_is_exploratory_and_self_contained() -> None:
+    code = NLP_SCRIPT.read_text(encoding="utf-8")
+
+    assert "TfidfVectorizer" in code
+    assert "NMF" in code
+    assert "POST_OUTCOME_ONLY" in code
+    assert "v_fall_reason_proforma_history" in code
+    assert "separation_fall_risk_current" not in code
