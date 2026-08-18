@@ -38,6 +38,8 @@ where rn = 1;
 
 create or replace view decision_intelligence.v_separation_fall_risk_worklist as
 select
+    -- Preserve the existing column order; v0.2 fields are appended at the end
+    -- so an installed view can be upgraded with CREATE OR REPLACE.
     recommendation_id,
     separation_id,
     observed_at,
@@ -55,11 +57,6 @@ select
     feature_snapshot ->> 'documento_cliente' as documento_cliente,
     feature_snapshot ->> 'asesor' as asesor,
     (feature_snapshot ->> 'fecha_separacion')::date as fecha_separacion,
-    nullif(feature_snapshot ->> 'proforma_first_seen_at', '')::timestamptz as proforma_first_seen_at,
-    (feature_snapshot ->> 'proforma_age_days')::integer as proforma_age_days,
-    feature_snapshot ->> 'eligibility_status' as eligibility_status,
-    feature_snapshot ->> 'eligibility_rule' as eligibility_rule,
-    (feature_snapshot ->> 'eligibility_window_months')::integer as eligibility_window_months,
     (feature_snapshot ->> 'days_since_separation')::integer as days_since_separation,
     (feature_snapshot ->> 'days_since_last_interaction')::integer as days_since_last_interaction,
     (feature_snapshot ->> 'interaction_count_14d')::integer as interaction_count_14d,
@@ -75,6 +72,13 @@ select
         when 'follow_up' then 2
         when 'monitor' then 3
         else 99
-    end as action_priority
+    end as action_priority,
+
+    -- v0.2 appended evidence.
+    nullif(feature_snapshot ->> 'proforma_first_seen_at', '')::timestamptz as proforma_first_seen_at,
+    (feature_snapshot ->> 'proforma_age_days')::integer as proforma_age_days,
+    feature_snapshot ->> 'eligibility_status' as eligibility_status,
+    feature_snapshot ->> 'eligibility_rule' as eligibility_rule,
+    (feature_snapshot ->> 'eligibility_window_months')::integer as eligibility_window_months
 from decision_intelligence.v_separation_fall_risk_latest
 where status = 'ACTIVE';
