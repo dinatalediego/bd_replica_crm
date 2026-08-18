@@ -13,6 +13,7 @@ SQL_FILES = (
     "decision_engine/sql/08_training_outcome_contract.sql",
     "decision_engine/sql/09_transfer_lineage_audit.sql",
     "decision_engine/sql/10_point_in_time_training_set.sql",
+    "decision_engine/sql/11_training_readiness_audit.sql",
 )
 
 
@@ -31,7 +32,8 @@ def main() -> int:
     print(
         "Decision maturity control instalado: PolicyOps + run audit + candidate snapshots "
         "+ historical fall outcomes + governed fall-reason corpus + supervised training target "
-        "+ transfer lineage audit + point-in-time supervised training set."
+        "+ transfer lineage audit + point-in-time supervised training set "
+        "+ training readiness audit."
     )
     return 0
 
