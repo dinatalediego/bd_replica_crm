@@ -62,6 +62,7 @@ def main() -> int:
         "resultados_no_validos",
         "abiertas_residenciales_con_pago_ci",
         "ventas_post_2026_sin_pago_ci",
+        "marcadores_pago_ci_desconocidos",
     ]
     failures = {
         key: int(result[key])
@@ -76,7 +77,12 @@ def main() -> int:
         print("Gate CORE NO aprobado: conteo total y granularidad distinta no coinciden.")
         return 1
 
-    print("Gate CORE APROBADO: ciclo comercial certificado, resoluble y consistente con venta v2.")
+    marker_debt = int(result.get("marcadores_pago_ci_confirmados_sin_fecha") or 0)
+    print(
+        "Gate CORE APROBADO: fecha_de_minuta gobierna la fecha de conversión; "
+        "pago_ci se trata como marcador categórico. "
+        f"Marcadores positivos sin fecha={marker_debt} (WARN, excluidos del risk scoring)."
+    )
     return 0
 
 
