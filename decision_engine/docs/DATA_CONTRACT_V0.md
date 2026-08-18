@@ -12,6 +12,29 @@ Una fila por separación/ciclo comercial activo y elegible en el instante de dec
 
 La vista se construye sobre el ciclo comercial reconciliado y fuentes analíticas confiables. No se infiere el estado de venta desde una sola fila RAW.
 
+## Authoritative commercial conversion — `pago_ci`
+
+La recomendación de riesgo busca intervenir antes de que se pierda una oportunidad que **todavía no convirtió**. Por lo tanto, la definición de venta/conversión es parte del contrato del modelo y no un detalle de reporting.
+
+Regla v2:
+
+- `fecha_pago_ci = datos_extras.valor` para `entidad='proforma'` y `nombre='pago_ci'`, parseado como fecha y relacionado por `codigo_proforma`;
+- para el ciclo residencial principal (`departamento flat` / `departamento duplex`), si existe `fecha_pago_ci`, esta es la `fecha_venta` autoritativa;
+- para separaciones anteriores a `2026-01-01`, si `fecha_pago_ci` no existe, se permite `fecha_firma_legacy` —la fecha del proceso `Venta`— como fallback;
+- desde `2026-01-01`, la fecha del proceso `Venta` representa **cierre del proceso comercial**, no evidencia suficiente de conversión;
+- `fecha_de_minuta` se conserva como hito administrativo/legal independiente y no define `fecha_venta`.
+
+Equivalente conceptual:
+
+```text
+Fecha_Venta = COALESCE(
+    Fecha_PagoCI,
+    IF(Fecha_Separacion < 2026-01-01, Fecha_Proceso_Venta, NULL)
+)
+```
+
+Consecuencia para `separation_fall_risk`: un ciclo residencial con `pago_ci` válido **no puede permanecer `ABIERTA` ni entrar al scoring de riesgo de caída**.
+
 ## Eligibility — proformas recientes
 
 El motor de recomendaciones se limita deliberadamente a ciclos cuya proforma sea reciente para evitar que oportunidades históricas o abandonadas generen recomendaciones espurias.
@@ -80,7 +103,7 @@ Los ciclos abiertos fuera de la ventana permanecen visibles en `features.v_separ
 
 ## Label
 
-Para una observación en `t`, `falls_before_sale_within_30d = 1` si la separación cae antes de venta canónica dentro de los siguientes 30 días. Casos censurados o no reconciliados deben tratarse explícitamente; no forzarlos a 0.
+Para una observación en `t`, `falls_before_sale_within_30d = 1` si la separación cae antes de la **venta canónica definida por el contrato `pago_ci`/legacy pre-2026** dentro de los siguientes 30 días. Casos censurados o no reconciliados deben tratarse explícitamente; no forzarlos a 0.
 
 ## Splits
 
@@ -100,7 +123,10 @@ Bloquear la recomendación si:
 - un candidato actual queda fuera de la regla de tres meses;
 - `proforma_first_seen_at > observed_at`;
 - falta `observed_at`;
-- hay inconsistencia temporal material;
+- existe un ciclo residencial `ABIERTA` con `fecha_pago_ci` válida;
+- existe una venta residencial post-2026 cuyo `metodo_fecha_venta` no sea `PAGO_CI_DATOS_EXTRAS`;
+- `pago_ci` no puede parsearse como fecha cuando viene informado;
+- hay inconsistencia temporal material (`fecha_venta < fecha_separacion`, etc.);
 - la unidad aparece simultáneamente en estados físicos incompatibles;
 - el snapshot usa datos posteriores a `observed_at`.
 
@@ -121,7 +147,11 @@ Antes de cada corrida se monitorean al menos:
 - candidatos actuales fuera de la ventana declarada;
 - duplicados;
 - `BLOCKED`;
-- `observed_at` faltante.
+- `observed_at` faltante;
+- ciclos residenciales abiertos con `pago_ci`;
+- ventas post-2026 sin evidencia `pago_ci`;
+- errores de parseo de `pago_ci`;
+- distribución de `metodo_fecha_venta` (`PAGO_CI_DATOS_EXTRAS`, `LEGACY_FECHA_FIRMA_PRE_2026`, `NO_CONFIRMADA`).
 
 ## Metrics
 
