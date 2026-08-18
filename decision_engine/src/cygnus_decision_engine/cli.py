@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -108,19 +109,42 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 conn.commit()
 
-            payload = [
-                {
-                    "recommendation_id": item.recommendation_id,
-                    "entity_id": item.entity_id,
-                    "action": item.action,
-                    "score": item.score,
-                    "status": item.status,
-                    "explanation": item.explanation,
-                }
-                for item in recommendations[: max(args.top, 0)]
-            ]
-            print(json.dumps(payload, ensure_ascii=False, indent=2))
-            print(f"candidates={len(candidates)} persisted={0 if args.dry_run else len(recommendations)}")
+            payload = []
+            for item in recommendations[: max(args.top, 0)]:
+                candidate = by_id[item.entity_id]
+                features = candidate.features
+                payload.append(
+                    {
+                        "recommendation_id": item.recommendation_id,
+                        "entity_id": item.entity_id,
+                        "codigo_proforma": features.get("codigo_proforma"),
+                        "codigo_unidad": features.get("codigo_unidad"),
+                        "codigo_proyecto": features.get("codigo_proyecto"),
+                        "asesor": features.get("asesor"),
+                        "days_since_separation": features.get("days_since_separation"),
+                        "days_since_last_interaction": features.get("days_since_last_interaction"),
+                        "interaction_count_14d": features.get("interaction_count_14d"),
+                        "action": item.action,
+                        "score": item.score,
+                        "status": item.status,
+                        "quality_status": candidate.quality_status,
+                        "explanation": item.explanation,
+                    }
+                )
+
+            action_counts = Counter(item.action for item in recommendations if item.status == "ACTIVE")
+            print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+            print(
+                "summary="
+                + json.dumps(
+                    {
+                        "candidates": len(candidates),
+                        "persisted": 0 if args.dry_run else len(recommendations),
+                        "active_action_counts": dict(sorted(action_counts.items())),
+                    },
+                    ensure_ascii=False,
+                )
+            )
         return 0
 
     return 2
