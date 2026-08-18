@@ -110,6 +110,8 @@ WITH client_project_interaction AS (
     WHERE u.eligibility_status = 'ELIGIBLE'
 )
 SELECT
+    -- Keep the v0.1 column order stable so CREATE OR REPLACE can upgrade an
+    -- already-installed local view without dropping downstream consumers.
     separation_id,
     codigo_proforma,
     codigo_unidad,
@@ -118,11 +120,6 @@ SELECT
     asesor,
     fecha_separacion,
     observed_at,
-    proforma_first_seen_at,
-    proforma_age_days,
-    eligibility_status,
-    eligibility_rule,
-    eligibility_window_months,
 
     GREATEST(
         0,
@@ -212,19 +209,36 @@ SELECT
             'ADMIN_BLOCK_SIGNAL_NOT_CERTIFIED'
         ]::text[],
         NULL
-    ) AS quality_reasons
+    ) AS quality_reasons,
+
+    -- v0.2 columns are appended for backwards-compatible CREATE OR REPLACE.
+    proforma_first_seen_at,
+    proforma_age_days,
+    eligibility_status,
+    eligibility_rule,
+    eligibility_window_months
 FROM candidate_base;
 
 CREATE OR REPLACE VIEW features.v_separation_fall_risk_health AS
 SELECT
+    -- Preserve the v0.1 health-view prefix for backwards compatibility.
+    COUNT(*)::bigint AS candidates,
+    COUNT(DISTINCT separation_id)::bigint AS distinct_candidates,
+    (COUNT(*) - COUNT(DISTINCT separation_id))::bigint AS duplicate_candidates,
+    COUNT(*) FILTER (WHERE quality_status = 'OK')::bigint AS quality_ok,
+    COUNT(*) FILTER (WHERE quality_status = 'WARN')::bigint AS quality_warn,
+    COUNT(*) FILTER (WHERE quality_status = 'BLOCKED')::bigint AS quality_blocked,
+    COUNT(*) FILTER (WHERE observed_at IS NULL)::bigint AS missing_observed_at,
+    COUNT(*) FILTER (WHERE interaction_count_14d = 0)::bigint AS without_recent_interaction_signal,
+    COUNT(*) FILTER (WHERE has_pending_admin_block IS NULL)::bigint AS admin_signal_pending_certification,
+    MAX(observed_at) AS observed_at,
+
+    -- v0.2 eligibility/recency quality metrics.
     (SELECT COUNT(*)::bigint
        FROM features.v_separation_fall_risk_candidate_universe) AS universe_candidates,
     (SELECT COUNT(*)::bigint
        FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'ELIGIBLE') AS eligible_candidates,
-    COUNT(*)::bigint AS candidates,
-    COUNT(DISTINCT separation_id)::bigint AS distinct_candidates,
-    (COUNT(*) - COUNT(DISTINCT separation_id))::bigint AS duplicate_candidates,
     (SELECT COUNT(*)::bigint
        FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'EXCLUDED_PROFORMA_OLDER_THAN_3_MONTHS')
@@ -243,14 +257,7 @@ SELECT
            OR proforma_first_seen_at > observed_at
            OR proforma_first_seen_at < observed_at - interval '3 months'
     )::bigint AS current_outside_proforma_recency_window,
-    COUNT(*) FILTER (WHERE quality_status = 'OK')::bigint AS quality_ok,
-    COUNT(*) FILTER (WHERE quality_status = 'WARN')::bigint AS quality_warn,
-    COUNT(*) FILTER (WHERE quality_status = 'BLOCKED')::bigint AS quality_blocked,
-    COUNT(*) FILTER (WHERE observed_at IS NULL)::bigint AS missing_observed_at,
-    COUNT(*) FILTER (WHERE interaction_count_14d = 0)::bigint AS without_recent_interaction_signal,
-    COUNT(*) FILTER (WHERE has_pending_admin_block IS NULL)::bigint AS admin_signal_pending_certification,
     MIN(proforma_first_seen_at) AS oldest_eligible_proforma_first_seen_at,
     MAX(proforma_first_seen_at) AS newest_eligible_proforma_first_seen_at,
-    MAX(observed_at) AS observed_at,
     3::integer AS eligibility_window_months
 FROM features.separation_fall_risk_current;
