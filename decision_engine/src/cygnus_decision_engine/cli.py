@@ -43,8 +43,8 @@ def _feature_health(conn) -> dict[str, Any]:
         cur.execute("select * from features.v_separation_fall_risk_health")
         feature_row = dict(cur.fetchone() or {})
 
-        # CORE owns the sale/outcome semantics. The Decision Engine must not
-        # silently score an ABIERTA cycle if pago_ci already proves conversion.
+        # CORE owns conversion semantics. fecha_de_minuta is the dated
+        # Fecha_PagoCI_pm evidence; pago_ci is a categorical positive marker.
         cur.execute("select * from core.v_ciclo_comercial_health")
         core_row = dict(cur.fetchone() or {})
 
@@ -53,6 +53,8 @@ def _feature_health(conn) -> dict[str, Any]:
         "ventas_por_pago_ci",
         "ventas_legacy_pre_2026",
         "ventas_post_2026_sin_pago_ci",
+        "marcadores_pago_ci_confirmados_sin_fecha",
+        "marcadores_pago_ci_desconocidos",
     }
     feature_row.update(
         {
@@ -65,21 +67,24 @@ def _feature_health(conn) -> dict[str, Any]:
             "core_ventas_post_2026_sin_pago_ci": core_row.get(
                 "ventas_post_2026_sin_pago_ci"
             ),
+            "core_marcadores_pago_ci_confirmados_sin_fecha": core_row.get(
+                "marcadores_pago_ci_confirmados_sin_fecha"
+            ),
+            "core_marcadores_pago_ci_desconocidos": core_row.get(
+                "marcadores_pago_ci_desconocidos"
+            ),
         }
     )
     return feature_row
 
 
 def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
-    """Hard quality gates for the operational candidate universe.
+    """Hard gates for the operational candidate set.
 
-    Old proformas are an intentional business exclusion. Missing proforma dates
-    are excluded and exposed as data-completeness debt. Neither contaminates the
-    current scoring set by itself.
-
-    CORE is also a hard dependency: pago_ci is the primary conversion evidence.
-    Therefore a residential ABIERTA with pago_ci, or a post-2026 VENTA without
-    pago_ci evidence, blocks scoring rather than producing a spurious risk alert.
+    Normal exclusions (old proformas, confirmed pago_ci markers, missing source
+    dates) do not poison a safe scoring set if they are explicitly accounted for.
+    A candidate that actually reaches scoring with conversion evidence, however,
+    is a hard failure.
     """
 
     if not bool(health.get("core_sale_date_contract_ready")):
@@ -92,8 +97,10 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
         "current_outside_proforma_recency_window",
         "excluded_proforma_after_observed_at",
         "excluded_missing_observed_at",
+        "current_with_pago_ci_marker",
         "core_abiertas_residenciales_con_pago_ci",
         "core_ventas_post_2026_sin_pago_ci",
+        "core_marcadores_pago_ci_desconocidos",
     )
     if any(int(health.get(field) or 0) > 0 for field in hard_count_fields):
         return True
@@ -113,6 +120,8 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
             "excluded_missing_proforma_date",
             "excluded_proforma_after_observed_at",
             "excluded_missing_observed_at",
+            "excluded_pago_ci_marker_confirmed",
+            "blocked_unknown_pago_ci_marker",
         )
     )
     return universe != accounted_universe
@@ -155,21 +164,27 @@ def main(argv: list[str] | None = None) -> int:
 
         if _separation_risk_health_is_unsafe(health):
             print(
-                "Gate separation_fall_risk NO aprobado: hay duplicados/leakage o el lifecycle "
-                "no cumple la regla de venta por pago de cuota inicial. Revisa especialmente "
-                "core_abiertas_residenciales_con_pago_ci y core_ventas_post_2026_sin_pago_ci."
+                "Gate separation_fall_risk NO aprobado: hay duplicados/leakage, "
+                "evidencia de conversión dentro del scoring o el lifecycle no cumple "
+                "el contrato fecha_de_minuta/pago_ci-marker."
             )
             return 1
 
         excluded_old = int(health.get("excluded_proforma_older_than_3_months") or 0)
+        excluded_paid_marker = int(health.get("excluded_pago_ci_marker_confirmed") or 0)
         missing_proforma_date = int(health.get("excluded_missing_proforma_date") or 0)
-        sales_by_payment = int(health.get("core_ventas_por_pago_ci") or 0)
+        sales_by_payment_date = int(health.get("core_ventas_por_pago_ci") or 0)
+        marker_without_date = int(
+            health.get("core_marcadores_pago_ci_confirmados_sin_fecha") or 0
+        )
         print(
-            "Gate separation_fall_risk APROBADO: solo entran proformas observadas dentro de "
-            "los últimos 3 meses calendario y ningún ciclo residencial con pago_ci permanece "
-            "ABIERTA. "
-            f"Excluidas por antigüedad={excluded_old}; sin fecha de proforma={missing_proforma_date}; "
-            f"ventas confirmadas por pago_ci={sales_by_payment}. "
+            "Gate separation_fall_risk APROBADO: scoring limitado a oportunidades "
+            "recientes y sin evidencia de conversión. "
+            f"Excluidas por antigüedad={excluded_old}; "
+            f"excluidas por marcador pago_ci={excluded_paid_marker}; "
+            f"sin fecha de proforma={missing_proforma_date}; "
+            f"ventas fechadas por Fecha_PagoCI_pm={sales_by_payment_date}; "
+            f"marcadores de pago sin fecha (deuda temporal, fuera del scoring)={marker_without_date}. "
             "WARN conserva limitaciones explícitas de features proxy."
         )
         return 0
@@ -181,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(health, ensure_ascii=False, indent=2, default=str))
                 print(
                     "Run separation_fall_risk BLOQUEADO por quality gate. "
-                    "Ejecuta validate-separation-risk después de refrescar el lifecycle."
+                    "Ejecuta validate-separation-risk después de refrescar lifecycle/CORE."
                 )
                 return 1
 
@@ -219,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
                         "days_since_separation": features.get("days_since_separation"),
                         "days_since_last_interaction": features.get("days_since_last_interaction"),
                         "interaction_count_14d": features.get("interaction_count_14d"),
+                        "pago_ci_marker_confirmado": features.get("pago_ci_marker_confirmado"),
+                        "fecha_pago_ci": features.get("fecha_pago_ci"),
                         "action": item.action,
                         "score": item.score,
                         "status": item.status,
