@@ -1,11 +1,12 @@
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ENGINE_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ENGINE_ROOT.parent
 
 
 def _sql() -> str:
-    text = (ROOT / "sql" / "02_separation_fall_risk_features.sql").read_text(encoding="utf-8")
+    text = (ENGINE_ROOT / "sql" / "02_separation_fall_risk_features.sql").read_text(encoding="utf-8")
     return " ".join(text.lower().split())
 
 
@@ -24,7 +25,7 @@ def test_unparseable_initial_payment_amount_is_blocked() -> None:
 
 
 def test_business_coalesce_is_governed_in_core() -> None:
-    core_sql = (ROOT.parent / "sql" / "init_core_commercial_lifecycle.sql").read_text(encoding="utf-8")
+    core_sql = (REPO_ROOT / "sql" / "init_core_commercial_lifecycle.sql").read_text(encoding="utf-8")
     normalized = " ".join(core_sql.lower().split())
     assert "monto_pagado_cuota_inicial" in normalized
     assert "monto_total_pagado" in normalized
