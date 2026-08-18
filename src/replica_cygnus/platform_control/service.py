@@ -32,13 +32,12 @@ def ensure_platform_control(conn: Connection, project_root: Path) -> None:
     """Create/upgrade Platform Command Center objects from versioned SQL."""
     sql_path = project_root / "sql" / "init_platform_control.sql"
     sql_text = sql_path.read_text(encoding="utf-8")
-    statements = [chunk.strip() for chunk in sql_text.split(";") if chunk.strip()]
+
     with conn.cursor() as cursor:
-        for statement in statements:
-            cursor.execute(statement)
+        cursor.execute(sql_text, prepare=False)
+
     conn.commit()
-
-
+    
 def _schema_exists(conn: Connection, schema: str) -> bool:
     with conn.cursor() as cursor:
         cursor.execute(

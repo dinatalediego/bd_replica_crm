@@ -1,5 +1,16 @@
 README.md
 pyproject.toml
+src/absorption_phase_a/__init__.py
+src/absorption_phase_a/runner.py
+src/absorption_phase_b/install.py
+src/absorption_phase_b/patch_tables_yml.py
+src/absorption_phase_b/repair_procesos.py
+src/absorption_phase_b/run_backfill.py
+src/absorption_phase_b/run_qa.py
+src/absorption_phase_c/backfill.py
+src/absorption_phase_c/install.py
+src/absorption_reconciliation/install.py
+src/absorption_reconciliation/run_qa.py
 src/replica_cygnus/__init__.py
 src/replica_cygnus/__main__.py
 src/replica_cygnus/catalog.py
@@ -35,6 +46,8 @@ src/replica_cygnus/observability/config.py
 src/replica_cygnus/observability/health.py
 src/replica_cygnus/observability/schema.py
 src/replica_cygnus/observability/service.py
+src/replica_cygnus/platform_control/__init__.py
+src/replica_cygnus/platform_control/service.py
 src/replica_redshift_local.egg-info/PKG-INFO
 src/replica_redshift_local.egg-info/SOURCES.txt
 src/replica_redshift_local.egg-info/dependency_links.txt

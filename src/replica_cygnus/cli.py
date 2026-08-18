@@ -117,7 +117,7 @@ def command_test_connections(settings) -> int:
     source = connect_redshift(settings)
     try:
         with source.cursor() as cursor:
-            cursor.execute("SELECT current_database, current_user, current_timestamp")
+            cursor.execute("SELECT current_database(), current_user, current_timestamp")
             source_row = cursor.fetchone()
     finally:
         source.close()
