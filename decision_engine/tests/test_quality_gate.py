@@ -10,6 +10,7 @@ def healthy(**overrides):
         "candidates": 20,
         "distinct_candidates": 20,
         "duplicate_candidates": 0,
+        "excluded_active_entrega_process": 0,
         "excluded_proforma_older_than_3_months": 90,
         "excluded_missing_proforma_date": 5,
         "excluded_proforma_after_observed_at": 0,
@@ -17,6 +18,7 @@ def healthy(**overrides):
         "excluded_pago_ci_marker_confirmed": 5,
         "blocked_unknown_pago_ci_marker": 0,
         "current_with_pago_ci_marker": 0,
+        "current_with_active_entrega_process": 0,
         "current_outside_proforma_recency_window": 0,
         "quality_blocked": 0,
         "missing_observed_at": 0,
@@ -33,10 +35,20 @@ def healthy(**overrides):
 
 
 def test_normal_business_exclusions_do_not_contaminate_current_candidates() -> None:
-    # Old proformas, missing proforma dates and confirmed payment markers are
-    # safely excluded and accounted for. Marker-without-date debt is allowed as
-    # long as those rows never reach scoring.
+    # Old proformas, active Entrega processes, missing proforma dates and
+    # confirmed payment markers are safely excluded and accounted for.
     assert _separation_risk_health_is_unsafe(healthy()) is False
+
+
+def test_active_entrega_is_safe_only_when_it_is_excluded_from_scoring() -> None:
+    health = healthy(
+        universe_candidates=121,
+        excluded_active_entrega_process=1,
+    )
+    assert _separation_risk_health_is_unsafe(health) is False
+    assert _separation_risk_health_is_unsafe(
+        healthy(current_with_active_entrega_process=1)
+    ) is True
 
 
 @pytest.mark.parametrize(
@@ -49,6 +61,7 @@ def test_normal_business_exclusions_do_not_contaminate_current_candidates() -> N
         "excluded_proforma_after_observed_at",
         "excluded_missing_observed_at",
         "current_with_pago_ci_marker",
+        "current_with_active_entrega_process",
         "core_abiertas_residenciales_con_pago_ci",
         "core_ventas_post_2026_sin_pago_ci",
         "core_marcadores_pago_ci_desconocidos",
