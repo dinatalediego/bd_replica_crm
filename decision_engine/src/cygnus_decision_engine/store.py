@@ -35,7 +35,20 @@ select
     admin_signal_mode,
     feature_contract_version,
     quality_status,
-    quality_reasons
+    quality_reasons,
+    pago_ci_marker_raw,
+    pago_ci_marker_confirmado,
+    pago_ci_marker_desconocido,
+    fecha_pago_ci,
+    has_active_entrega_process,
+    active_entrega_process_count,
+    active_entrega_source_id,
+    monto_total_pagado,
+    monto_pagado_de_cuota_inicial,
+    monto_pagado_cuota_inicial,
+    monto_pago_ci_positivo,
+    monto_pago_ci_parse_error,
+    evidencia_pago_ci_confirmada
 from features.separation_fall_risk_current
 order by observed_at, separation_id
 """
@@ -83,6 +96,22 @@ def load_candidates(conn: Connection) -> list[SeparationCandidate]:
                     "interaction_signal_mode": row.get("interaction_signal_mode"),
                     "admin_signal_mode": row.get("admin_signal_mode"),
                     "feature_contract_version": row.get("feature_contract_version"),
+                    # Conversion/payment evidence. These fields are not only for
+                    # display: persisting them makes every recommendation auditable.
+                    "pago_ci_marker_raw": row.get("pago_ci_marker_raw"),
+                    "pago_ci_marker_confirmado": row.get("pago_ci_marker_confirmado"),
+                    "pago_ci_marker_desconocido": row.get("pago_ci_marker_desconocido"),
+                    "fecha_pago_ci": row.get("fecha_pago_ci"),
+                    "monto_total_pagado": row.get("monto_total_pagado"),
+                    "monto_pagado_de_cuota_inicial": row.get("monto_pagado_de_cuota_inicial"),
+                    "monto_pagado_cuota_inicial": row.get("monto_pagado_cuota_inicial"),
+                    "monto_pago_ci_positivo": row.get("monto_pago_ci_positivo"),
+                    "monto_pago_ci_parse_error": row.get("monto_pago_ci_parse_error"),
+                    "evidencia_pago_ci_confirmada": row.get("evidencia_pago_ci_confirmada"),
+                    # Delivery evidence.
+                    "has_active_entrega_process": row.get("has_active_entrega_process"),
+                    "active_entrega_process_count": row.get("active_entrega_process_count"),
+                    "active_entrega_source_id": row.get("active_entrega_source_id"),
                     # Baseline features.
                     "days_since_separation": row["days_since_separation"],
                     "days_since_last_interaction": row["days_since_last_interaction"],
