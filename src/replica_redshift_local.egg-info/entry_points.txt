@@ -1,0 +1,2 @@
+[console_scripts]
+replica-cygnus = replica_cygnus.cli:main

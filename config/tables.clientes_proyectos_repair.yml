@@ -1,0 +1,104 @@
+version: 1
+
+defaults:
+  target_schema: raw_cygnus
+  strategy: incremental
+  batch_size: 5000
+  lookback_hours: 48
+  enabled: false
+  create_target_if_missing: true
+  add_etl_columns: true
+
+# IMPORTANTE:
+# 1. Ejecuta primero: python -m replica_cygnus.cli discover
+# 2. Revisa reports/source_catalog_*.csv
+# 3. Copia este archivo como config/tables.yml
+# 4. Corrige key_columns y watermark_column
+# 5. Activa inicialmente UNA sola tabla con enabled: false
+
+tables:
+  - source_schema: grupocygnus
+    source_table: clientes_proyectos
+    target_table: clientes_proyectos
+    key_columns: [id]                 
+    watermark_column: fecha_actualizacion
+    strategy: full_refresh
+    lookback_hours: 48
+    enabled: true
+
+  - source_schema: grupocygnus
+    source_table: procesos
+    target_table: procesos
+    key_columns: [nombre, id]   
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
+  - source_schema: grupocygnus
+    source_table: interacciones
+    target_table: interacciones
+    key_columns: [tipo, id]               
+
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
+  - source_schema: grupocygnus
+    source_table: clientes
+    target_table: clientes
+    key_columns: [id]                 # CONFIRMAR
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
+  - source_schema: grupocygnus
+    source_table: proformas
+    target_table: proformas
+    key_columns: [id]                 # CONFIRMAR
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
+  - source_schema: grupocygnus
+    source_table: proforma_unidad
+    target_table: proforma_unidad
+    key_columns: [id]                 # CONFIRMAR
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
+  - source_schema: grupocygnus
+    source_table: unidades
+    target_table: unidades
+    key_columns: [id]      # CONFIRMAR
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
+  - source_schema: grupocygnus
+    source_table: proyectos
+    target_table: proyectos
+    key_columns: [id]    # CONFIRMAR
+    watermark_column: null
+    strategy: full_refresh
+    enabled: false
+
+  - source_schema: grupocygnus
+    source_table: datos_extras
+    target_table: datos_extras
+    key_columns: [id, nombre]    # CONFIRMAR
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+    
+# Estrategias disponibles:
+# - incremental: filtra por watermark, carga por lotes y hace UPSERT por key_columns.
+# - full_refresh: carga una tabla staging completa y reemplaza el destino al final.
+# - append: inserta filas sin actualizar; úsala solo con datos realmente inmutables.
