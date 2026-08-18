@@ -17,8 +17,12 @@ def healthy(**overrides):
         "excluded_missing_observed_at": 0,
         "excluded_pago_ci_marker_confirmed": 5,
         "blocked_unknown_pago_ci_marker": 0,
+        "excluded_positive_initial_payment_amount": 0,
+        "blocked_unparseable_initial_payment_amount": 0,
         "current_with_pago_ci_marker": 0,
         "current_with_active_entrega_process": 0,
+        "current_with_positive_initial_payment_amount": 0,
+        "current_with_unparseable_initial_payment_amount": 0,
         "current_outside_proforma_recency_window": 0,
         "quality_blocked": 0,
         "missing_observed_at": 0,
@@ -29,25 +33,42 @@ def healthy(**overrides):
         "core_ventas_post_2026_sin_pago_ci": 0,
         "core_marcadores_pago_ci_confirmados_sin_fecha": 12,
         "core_marcadores_pago_ci_desconocidos": 0,
+        "core_abiertas_residenciales_con_monto_pago_ci_positivo": 0,
+        "core_montos_pago_ci_positivos_sin_fecha_ni_marcador": 0,
+        "core_montos_pago_ci_no_parseables": 0,
+        "core_ciclos_con_evidencia_pago_ci": 40,
     }
     base.update(overrides)
     return base
 
 
 def test_normal_business_exclusions_do_not_contaminate_current_candidates() -> None:
-    # Old proformas, active Entrega processes, missing proforma dates and
-    # confirmed payment markers are safely excluded and accounted for.
+    # Old proformas, active Entrega processes, missing proforma dates, confirmed
+    # payment markers and positive payment amounts are safe when explicitly
+    # excluded and accounted for.
     assert _separation_risk_health_is_unsafe(healthy()) is False
 
 
 def test_active_entrega_is_safe_only_when_it_is_excluded_from_scoring() -> None:
-    health = healthy(
-        universe_candidates=121,
-        excluded_active_entrega_process=1,
-    )
+    health = healthy(universe_candidates=121, excluded_active_entrega_process=1)
+    assert _separation_risk_health_is_unsafe(health) is False
+    assert _separation_risk_health_is_unsafe(healthy(current_with_active_entrega_process=1)) is True
+
+
+def test_positive_initial_payment_amount_is_safe_only_when_excluded() -> None:
+    health = healthy(universe_candidates=121, excluded_positive_initial_payment_amount=1)
     assert _separation_risk_health_is_unsafe(health) is False
     assert _separation_risk_health_is_unsafe(
-        healthy(current_with_active_entrega_process=1)
+        healthy(current_with_positive_initial_payment_amount=1)
+    ) is True
+
+
+def test_unparseable_initial_payment_amount_blocks_decisions() -> None:
+    assert _separation_risk_health_is_unsafe(
+        healthy(blocked_unparseable_initial_payment_amount=1, universe_candidates=121)
+    ) is True
+    assert _separation_risk_health_is_unsafe(
+        healthy(current_with_unparseable_initial_payment_amount=1)
     ) is True
 
 
@@ -62,6 +83,9 @@ def test_active_entrega_is_safe_only_when_it_is_excluded_from_scoring() -> None:
         "excluded_missing_observed_at",
         "current_with_pago_ci_marker",
         "current_with_active_entrega_process",
+        "current_with_positive_initial_payment_amount",
+        "current_with_unparseable_initial_payment_amount",
+        "blocked_unparseable_initial_payment_amount",
         "core_abiertas_residenciales_con_pago_ci",
         "core_ventas_post_2026_sin_pago_ci",
         "core_marcadores_pago_ci_desconocidos",
