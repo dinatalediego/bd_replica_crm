@@ -17,6 +17,11 @@ def healthy(**overrides):
         "current_outside_proforma_recency_window": 0,
         "quality_blocked": 0,
         "missing_observed_at": 0,
+        "core_sale_date_contract_ready": True,
+        "core_abiertas_residenciales_con_pago_ci": 0,
+        "core_ventas_por_pago_ci": 40,
+        "core_ventas_legacy_pre_2026": 100,
+        "core_ventas_post_2026_sin_pago_ci": 0,
     }
     base.update(overrides)
     return base
@@ -37,10 +42,16 @@ def test_old_and_missing_date_exclusions_do_not_contaminate_current_candidates()
         "current_outside_proforma_recency_window",
         "excluded_proforma_after_observed_at",
         "excluded_missing_observed_at",
+        "core_abiertas_residenciales_con_pago_ci",
+        "core_ventas_post_2026_sin_pago_ci",
     ],
 )
 def test_hard_quality_failures_block_decisions(field: str) -> None:
     assert _separation_risk_health_is_unsafe(healthy(**{field: 1})) is True
+
+
+def test_missing_core_sale_date_contract_blocks_decisions() -> None:
+    assert _separation_risk_health_is_unsafe(healthy(core_sale_date_contract_ready=False)) is True
 
 
 def test_candidate_count_must_equal_eligible_and_distinct_count() -> None:
