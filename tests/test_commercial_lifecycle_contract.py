@@ -13,6 +13,10 @@ def test_core_lifecycle_is_governed_projection_not_duplicate_logic() -> None:
     assert "fecha_de_minuta as fecha_pago_ci" in normalized
     assert "pago_ci_marker_confirmado" in normalized
     assert "pago_ci_marker_desconocido" in normalized
+    assert "monto_pagado_cuota_inicial" in normalized
+    assert "monto_pago_ci_positivo" in normalized
+    assert "monto_pago_ci_parse_error" in normalized
+    assert "evidencia_pago_ci_confirmada" in normalized
     assert "fecha_cierre_proceso_venta" in normalized
     assert "ventas_post_2026_sin_pago_ci" in normalized
 
