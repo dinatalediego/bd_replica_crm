@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS analytics.int_proforma_minuta (
     fecha_de_minuta date,
     pago_ci_raw text,
     pago_ci numeric,
+    datos_extras_pago_ci_id bigint,
+    fecha_pago_ci date,
     monto_total_pagado_raw text,
     monto_total_pagado numeric,
     monto_pagado_de_cuota_inicial_raw text,
@@ -39,6 +41,12 @@ CREATE TABLE IF NOT EXISTS analytics.int_proforma_minuta (
     refreshed_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (codigo_proforma, codigo_unidad)
 );
+
+-- Backwards-compatible migration for already-created local tables.
+ALTER TABLE analytics.int_proforma_minuta
+    ADD COLUMN IF NOT EXISTS datos_extras_pago_ci_id bigint;
+ALTER TABLE analytics.int_proforma_minuta
+    ADD COLUMN IF NOT EXISTS fecha_pago_ci date;
 
 CREATE TABLE IF NOT EXISTS analytics.int_ciclo_comercial_unidad (
     codigo_proforma text NOT NULL,
@@ -57,6 +65,8 @@ CREATE TABLE IF NOT EXISTS analytics.int_ciclo_comercial_unidad (
     fecha_de_minuta date,
     fecha_venta date,
     metodo_fecha_venta text NOT NULL,
+    datos_extras_pago_ci_id bigint,
+    fecha_pago_ci date,
 
     primera_fecha_caida date,
     ultima_fecha_caida date,
@@ -73,6 +83,12 @@ CREATE TABLE IF NOT EXISTS analytics.int_ciclo_comercial_unidad (
     refreshed_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (codigo_proforma, codigo_unidad)
 );
+
+-- Backwards-compatible migration for already-created local tables.
+ALTER TABLE analytics.int_ciclo_comercial_unidad
+    ADD COLUMN IF NOT EXISTS datos_extras_pago_ci_id bigint;
+ALTER TABLE analytics.int_ciclo_comercial_unidad
+    ADD COLUMN IF NOT EXISTS fecha_pago_ci date;
 
 CREATE TABLE IF NOT EXISTS analytics.fact_movimientos_stock (
     movement_id text PRIMARY KEY,
