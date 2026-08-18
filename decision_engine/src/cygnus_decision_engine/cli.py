@@ -81,10 +81,10 @@ def _feature_health(conn) -> dict[str, Any]:
 def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
     """Hard gates for the operational candidate set.
 
-    Normal exclusions (old proformas, confirmed pago_ci markers, missing source
-    dates) do not poison a safe scoring set if they are explicitly accounted for.
-    A candidate that actually reaches scoring with conversion evidence, however,
-    is a hard failure.
+    Normal exclusions (old proformas, active Entrega processes, confirmed
+    pago_ci markers, missing source dates) do not poison a safe scoring set if
+    they are explicitly accounted for. Any candidate that actually reaches
+    scoring with conversion or active-delivery evidence is a hard failure.
     """
 
     if not bool(health.get("core_sale_date_contract_ready")):
@@ -98,6 +98,7 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
         "excluded_proforma_after_observed_at",
         "excluded_missing_observed_at",
         "current_with_pago_ci_marker",
+        "current_with_active_entrega_process",
         "core_abiertas_residenciales_con_pago_ci",
         "core_ventas_post_2026_sin_pago_ci",
         "core_marcadores_pago_ci_desconocidos",
@@ -116,6 +117,7 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
         int(health.get(field) or 0)
         for field in (
             "eligible_candidates",
+            "excluded_active_entrega_process",
             "excluded_proforma_older_than_3_months",
             "excluded_missing_proforma_date",
             "excluded_proforma_after_observed_at",
@@ -165,13 +167,14 @@ def main(argv: list[str] | None = None) -> int:
         if _separation_risk_health_is_unsafe(health):
             print(
                 "Gate separation_fall_risk NO aprobado: hay duplicados/leakage, "
-                "evidencia de conversión dentro del scoring o el lifecycle no cumple "
-                "el contrato fecha_de_minuta/pago_ci-marker."
+                "evidencia de conversión o Entrega Activa dentro del scoring, o el lifecycle "
+                "no cumple el contrato fecha_de_minuta/pago_ci-marker."
             )
             return 1
 
         excluded_old = int(health.get("excluded_proforma_older_than_3_months") or 0)
         excluded_paid_marker = int(health.get("excluded_pago_ci_marker_confirmed") or 0)
+        excluded_active_entrega = int(health.get("excluded_active_entrega_process") or 0)
         missing_proforma_date = int(health.get("excluded_missing_proforma_date") or 0)
         sales_by_payment_date = int(health.get("core_ventas_por_pago_ci") or 0)
         marker_without_date = int(
@@ -179,8 +182,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(
             "Gate separation_fall_risk APROBADO: scoring limitado a oportunidades "
-            "recientes y sin evidencia de conversión. "
-            f"Excluidas por antigüedad={excluded_old}; "
+            "recientes, sin evidencia de conversión y sin proceso Entrega Activo. "
+            f"Excluidas por Entrega Activa={excluded_active_entrega}; "
+            f"excluidas por antigüedad={excluded_old}; "
             f"excluidas por marcador pago_ci={excluded_paid_marker}; "
             f"sin fecha de proforma={missing_proforma_date}; "
             f"ventas fechadas por Fecha_PagoCI_pm={sales_by_payment_date}; "
@@ -236,6 +240,8 @@ def main(argv: list[str] | None = None) -> int:
                         "interaction_count_14d": features.get("interaction_count_14d"),
                         "pago_ci_marker_confirmado": features.get("pago_ci_marker_confirmado"),
                         "fecha_pago_ci": features.get("fecha_pago_ci"),
+                        "has_active_entrega_process": features.get("has_active_entrega_process"),
+                        "active_entrega_process_count": features.get("active_entrega_process_count"),
                         "action": item.action,
                         "score": item.score,
                         "status": item.status,
