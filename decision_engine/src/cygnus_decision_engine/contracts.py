@@ -37,7 +37,9 @@ class Recommendation(BaseModel):
     policy_version: str
     explanation: str
     evidence: list[Evidence] = Field(default_factory=list)
-    status: Literal["ACTIVE", "BLOCKED", "EXPIRED"] = "ACTIVE"
+    # SHADOW recommendations are persisted for evaluation but intentionally
+    # excluded from the operational ACTIVE worklist.
+    status: Literal["ACTIVE", "SHADOW", "BLOCKED", "EXPIRED"] = "ACTIVE"
 
     @classmethod
     def blocked(cls, context: DecisionContext, *, policy_version: str) -> "Recommendation":
