@@ -40,28 +40,49 @@ Solo podría convertirse en feature predictiva si en el futuro se demuestra, con
 
 ---
 
-## Label histórico correcto
+## Dos conceptos que no debemos mezclar
 
-La decisión que queremos aprender es:
+### 1. Target temporal: caída antes de conversión
 
-`¿esta separación caerá antes de mostrar conversión/interés confirmado?`
+Fase B / CORE ya compara los eventos fechados:
 
-Por ello el target histórico es:
+- si `fecha_venta <= primera_fecha_caida` el ciclo es `VENTA`;
+- si la caída ocurre primero el ciclo es `CAIDA`;
+- si ninguno ha terminado, queda `ABIERTA`.
 
-- `1 = FELL`: existe caída y no existe evidencia confirmada de conversión;
-- `0 = CONVERTED`: existe pago/conversión confirmada;
-- `NULL = CENSORED_OPEN`: todavía no conocemos el outcome final.
+Por eso el target temporal gobernado es:
 
-La evidencia de conversión tiene precedencia sobre una etiqueta RAW/legacy de caída:
+- `1 = FELL` cuando `resultado_ciclo = CAIDA`;
+- `0 = CONVERTED` cuando `resultado_ciclo = VENTA`;
+- `NULL` cuando `resultado_ciclo = ABIERTA` y aún no existe outcome temporal suficiente.
+
+Esto preserva correctamente un caso que **cayó primero y eventualmente volvió/pagó después**: históricamente sigue siendo una caída-before-conversion para el problema de riesgo, aunque hoy ya no sea candidato.
+
+### 2. Muestra de interés/conversión actual
+
+Además se expone:
+
+`conversion_interest_sample`
+
+que vale verdadero cuando existe `VENTA` o cualquier evidencia consolidada de pago inicial:
 
 - `fecha_pago_ci`;
 - `pago_ci_marker_confirmado`;
-- `monto_pago_ci_positivo`;
-- `resultado_ciclo = VENTA` bajo el contrato CORE vigente.
+- `monto_pago_ci_positivo`.
 
-Esto evita usar como ejemplos positivos de riesgo casos que ya mostraron la señal de interés que nos importa: **pagar la cuota inicial / convertirse**.
+Esta señal responde a otra pregunta: **¿esta oportunidad ya mostró el interés fuerte que nos importa?**
 
-El contrato está en:
+En el sistema CURRENT, cualquiera de esas evidencias la saca de `risk_to_fall`: ya no debemos recomendar seguimiento preventivo de caída como si continuara siendo una separación abierta sin conversión.
+
+Cuando solo existe marcador/monto positivo pero no una fecha confiable, la fila puede servir como muestra descriptiva de interés, pero **no se inventa una fecha de conversión ni se usa como label temporal limpio**.
+
+Esta separación entre `target_fall_before_conversion` y `conversion_interest_sample` evita contaminar el backtest.
+
+---
+
+## Contratos creados
+
+SQL:
 
 `decision_engine/sql/06_historical_fall_outcomes.sql`
 
@@ -69,9 +90,33 @@ Vista principal:
 
 `decision_intelligence.v_separation_fall_outcome_history`
 
+Incluye:
+
+- outcome temporal certificado;
+- `conversion_interest_sample`;
+- evidencia de pago;
+- fechas de caída/venta;
+- motivo de caída;
+- cambio de departamento;
+- departamento del cambio;
+- flags de precisión temporal y leakage.
+
 Corpus de texto sin duplicar una proforma por cada unidad asociada:
 
 `decision_intelligence.v_fall_reason_proforma_history`
+
+Health check:
+
+`decision_intelligence.v_separation_fall_outcome_health`
+
+Entre otros, monitorea:
+
+- caídas etiquetadas;
+- conversiones etiquetadas;
+- muestras de interés/conversión;
+- evidencia de conversión sin label temporal;
+- cobertura de motivo de caída;
+- caídas históricas que hoy tienen evidencia de pago y requieren interpretación temporal.
 
 ---
 
