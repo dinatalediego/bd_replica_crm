@@ -53,7 +53,10 @@ def test_mistaken_pago_ci_date_override_is_removed() -> None:
     )
     normalized = " ".join(sql.lower().split())
 
-    assert "pago_ci is not a date" in normalized
+    # Assert the semantic contract, not an exact prose sentence in a comment.
+    assert "pago_ci" in normalized
+    assert "marker" in normalized
+    assert "not the dated conversion source" in normalized
     assert "drop procedure if exists analytics.apply_sale_date_pago_ci_rule" in normalized
     assert "refresh_absorption_phase_b_full_base" in normalized
     assert "authoritative fecha_pago_ci is fecha_de_minuta via core" in normalized
