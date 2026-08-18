@@ -4,31 +4,32 @@
 -- * distinguish a CRM-reported transfer from a lineage-verified continuation;
 -- * verify, when possible, that the successor matches depa_del_cambio rather
 --   than merely being any later separation for the same client;
--- * never use transfer/post-outcome evidence as a live feature;
--- * keep reported transfers excluded from binary training conservatively until
---   successor lineage is certified;
--- * surface evidence quality before any model training.
---
--- This file intentionally drops/recreates these views because the v2 audit adds
--- and reorders columns. PostgreSQL CREATE OR REPLACE VIEW cannot safely replace
--- an already-installed v1 view when the projected column layout changes.
+-- * distinguish true no-successor evidence from right-censored recent falls;
+-- * flag declared destinations that actually repeat the origin unit;
+-- * never use transfer/post-outcome evidence as a live feature.
 
 DROP VIEW IF EXISTS decision_intelligence.v_department_transfer_lineage_health;
 DROP VIEW IF EXISTS decision_intelligence.v_department_transfer_lineage_audit;
 
 CREATE VIEW decision_intelligence.v_department_transfer_lineage_audit AS
-WITH transfer_base AS (
+WITH observation_cutoff AS (
+    SELECT max(fecha_inicio)::date AS observed_through
+    FROM raw_cygnus.procesos
+    WHERE fecha_inicio IS NOT NULL
+), transfer_base AS (
     SELECT
-        -- v_separation_fall_training_outcome already inherits the governed
-        -- fall-reason fields from v_separation_fall_outcome_history. Do not
-        -- rejoin/project them a second time: doing so creates duplicate column
-        -- names (e.g. cambio_de_departamento) and makes the CTE ambiguous.
         t.*,
+        oc.observed_through,
+        uo.nombre_unidad::text AS origin_nombre_unidad,
         regexp_replace(
             translate(lower(coalesce(t.depa_del_cambio, '')), 'áéíóúüñ', 'aeiouun'),
             '[^a-z0-9]+', '', 'g'
-        ) AS declared_destination_norm
+        ) AS declared_destination_norm,
+        regexp_replace(coalesce(uo.nombre_unidad::text, ''), '[^0-9]+', '', 'g') AS origin_unit_number
     FROM decision_intelligence.v_separation_fall_training_outcome t
+    CROSS JOIN observation_cutoff oc
+    LEFT JOIN core.dim_unidad uo
+      ON uo.codigo_unidad = t.codigo_unidad
     WHERE t.training_outcome_class = 'TRANSFER_UNIT'
 )
 SELECT
@@ -44,6 +45,24 @@ SELECT
     t.depa_del_cambio,
     t.motivo_caida_segun_asesor,
     true::boolean AS transfer_reported_in_crm,
+    t.observed_through AS lineage_observed_through,
+    CASE
+        WHEN t.primera_fecha_caida IS NOT NULL AND t.observed_through IS NOT NULL
+        THEN greatest(0, t.observed_through - t.primera_fecha_caida::date)::integer
+        ELSE NULL::integer
+    END AS days_of_successor_observation,
+    (
+        t.primera_fecha_caida IS NOT NULL
+        AND t.observed_through IS NOT NULL
+        AND t.observed_through >= t.primera_fecha_caida::date + 90
+    ) AS successor_observation_window_complete_90d,
+    t.origin_nombre_unidad,
+    (
+        nullif(t.declared_destination_norm, '') IS NOT NULL
+        AND length(t.origin_unit_number) >= 2
+        AND lower(coalesce(t.depa_del_cambio, '')) ~
+            ('(^|[^0-9])' || t.origin_unit_number || '([^0-9]|$)')
+    ) AS declared_destination_matches_origin,
     s.successor_codigo_proforma,
     s.successor_codigo_unidad,
     s.successor_codigo_proyecto,
@@ -68,21 +87,25 @@ SELECT
         WHEN s.destination_match_score = 2
             THEN 'PROJECT_AND_UNIT_NUMBER_MATCH'
         WHEN s.destination_match_score = 1
-            THEN 'UNIT_NUMBER_ONLY_MATCH'
+            THEN 'UNIT_NUMBER_ONLY_MATCH_WEAK'
         ELSE 'DECLARED_DESTINATION_MISMATCH'
     END::text AS destination_match_status,
     CASE
         WHEN t.documento_cliente IS NULL THEN 'MISSING_CLIENT_KEY'
-        WHEN s.successor_separacion_at IS NULL THEN 'REPORTED_NO_SUCCESSOR_WITHIN_90D'
+        WHEN s.successor_separacion_at IS NULL
+         AND coalesce(t.observed_through < t.primera_fecha_caida::date + 90, true)
+            THEN 'PENDING_SUCCESSOR_OBSERVATION_90D'
+        WHEN s.successor_separacion_at IS NULL
+            THEN 'REPORTED_NO_SUCCESSOR_AFTER_90D'
         WHEN nullif(t.declared_destination_norm, '') IS NULL
          AND s.successor_separacion_at::date <= t.primera_fecha_caida::date + 30
             THEN 'SUCCESSOR_WITHIN_30D_DESTINATION_UNVERIFIABLE'
         WHEN nullif(t.declared_destination_norm, '') IS NULL
             THEN 'SUCCESSOR_31_TO_90D_DESTINATION_UNVERIFIABLE'
-        WHEN s.destination_match_score > 0
+        WHEN s.destination_match_score >= 2
          AND s.successor_separacion_at::date <= t.primera_fecha_caida::date + 30
             THEN 'VERIFIED_DESTINATION_WITHIN_30D'
-        WHEN s.destination_match_score > 0
+        WHEN s.destination_match_score >= 2
             THEN 'VERIFIED_DESTINATION_31_TO_90D'
         WHEN s.successor_separacion_at::date <= t.primera_fecha_caida::date + 30
             THEN 'SUCCESSOR_WITHIN_30D_DESTINATION_MISMATCH'
@@ -91,7 +114,7 @@ SELECT
     (s.successor_separacion_at IS NOT NULL) AS successor_lineage_observed,
     (
         s.successor_separacion_at IS NOT NULL
-        AND s.destination_match_score > 0
+        AND s.destination_match_score >= 2
         AND nullif(t.declared_destination_norm, '') IS NOT NULL
     ) AS declared_destination_lineage_verified,
     'POST_OUTCOME_AUDIT_ONLY'::text AS lineage_evidence_role,
@@ -105,7 +128,8 @@ LEFT JOIN LATERAL (
         z.successor_nombre_unidad,
         z.successor_nombre_proyecto,
         z.successor_separacion_at,
-        z.destination_match_score
+        z.destination_match_score,
+        z.successor_source_id
     FROM (
         SELECT
             p.codigo_proforma::text AS successor_codigo_proforma,
@@ -116,7 +140,6 @@ LEFT JOIN LATERAL (
             p.fecha_inicio AS successor_separacion_at,
             p.id AS successor_source_id,
             CASE
-                -- Strongest: declared text contains the canonical unit name.
                 WHEN nullif(t.declared_destination_norm, '') IS NOT NULL
                  AND nullif(
                     regexp_replace(
@@ -129,31 +152,31 @@ LEFT JOIN LATERAL (
                         '[^a-z0-9]+', '', 'g'
                      ) || '%'
                     THEN 3
-
-                -- Strong: project name plus numeric portion of unit agree.
                 WHEN nullif(t.declared_destination_norm, '') IS NOT NULL
                  AND nullif(
                     regexp_replace(
-                        translate(lower(coalesce(dp.nombre_proyecto::text, '')), 'áéíóúüñ', 'aeiouun'),
-                        '[^a-z0-9]+', '', 'g'
+                        regexp_replace(
+                            translate(lower(coalesce(dp.nombre_proyecto::text, '')), 'áéíóúüñ', 'aeiouun'),
+                            '[^a-z0-9]+', '', 'g'
+                        ),
+                        '^(torre|edificio|residencial|proyecto)', '', 'g'
                     ), ''
                  ) IS NOT NULL
                  AND t.declared_destination_norm LIKE '%' || regexp_replace(
-                        translate(lower(coalesce(dp.nombre_proyecto::text, '')), 'áéíóúüñ', 'aeiouun'),
-                        '[^a-z0-9]+', '', 'g'
+                        regexp_replace(
+                            translate(lower(coalesce(dp.nombre_proyecto::text, '')), 'áéíóúüñ', 'aeiouun'),
+                            '[^a-z0-9]+', '', 'g'
+                        ),
+                        '^(torre|edificio|residencial|proyecto)', '', 'g'
                      ) || '%'
                  AND length(regexp_replace(coalesce(u.nombre_unidad::text, ''), '[^0-9]+', '', 'g')) >= 2
-                 AND t.declared_destination_norm LIKE '%' || regexp_replace(
-                        coalesce(u.nombre_unidad::text, ''), '[^0-9]+', '', 'g'
-                     ) || '%'
+                 AND lower(coalesce(t.depa_del_cambio, '')) ~
+                     ('(^|[^0-9])' || regexp_replace(coalesce(u.nombre_unidad::text, ''), '[^0-9]+', '', 'g') || '([^0-9]|$)')
                     THEN 2
-
-                -- Weak but useful for abbreviated CRM destinations such as E-B24.
                 WHEN nullif(t.declared_destination_norm, '') IS NOT NULL
                  AND length(regexp_replace(coalesce(u.nombre_unidad::text, ''), '[^0-9]+', '', 'g')) >= 2
-                 AND t.declared_destination_norm LIKE '%' || regexp_replace(
-                        coalesce(u.nombre_unidad::text, ''), '[^0-9]+', '', 'g'
-                     ) || '%'
+                 AND lower(coalesce(t.depa_del_cambio, '')) ~
+                     ('(^|[^0-9])' || regexp_replace(coalesce(u.nombre_unidad::text, ''), '[^0-9]+', '', 'g') || '([^0-9]|$)')
                     THEN 1
                 ELSE 0
             END::integer AS destination_match_score
@@ -173,9 +196,6 @@ LEFT JOIN LATERAL (
           AND coalesce(p.nombre_flujo::text, '') <> 'Desistimiento de visita'
     ) z
     ORDER BY
-        -- When CRM names a destination, prefer a matching successor over an
-        -- unrelated earlier same-client separation. Without destination text,
-        -- preserve chronological-first semantics.
         CASE WHEN nullif(t.declared_destination_norm, '') IS NOT NULL
              THEN z.destination_match_score ELSE 0 END DESC,
         z.successor_separacion_at,
@@ -193,8 +213,10 @@ SELECT
     count(*) FILTER (WHERE transfer_lineage_status = 'SUCCESSOR_WITHIN_30D_DESTINATION_MISMATCH')::bigint AS successor_within_30d_destination_mismatch,
     count(*) FILTER (WHERE transfer_lineage_status = 'SUCCESSOR_31_TO_90D_DESTINATION_MISMATCH')::bigint AS successor_31_to_90d_destination_mismatch,
     count(*) FILTER (WHERE transfer_lineage_status LIKE '%DESTINATION_UNVERIFIABLE')::bigint AS successor_destination_unverifiable,
-    count(*) FILTER (WHERE transfer_lineage_status = 'REPORTED_NO_SUCCESSOR_WITHIN_90D')::bigint AS reported_without_successor_90d,
+    count(*) FILTER (WHERE transfer_lineage_status = 'PENDING_SUCCESSOR_OBSERVATION_90D')::bigint AS pending_successor_observation_90d,
+    count(*) FILTER (WHERE transfer_lineage_status = 'REPORTED_NO_SUCCESSOR_AFTER_90D')::bigint AS reported_without_successor_after_90d,
     count(*) FILTER (WHERE transfer_lineage_status = 'MISSING_CLIENT_KEY')::bigint AS missing_client_key,
+    count(*) FILTER (WHERE declared_destination_matches_origin)::bigint AS declared_destination_matches_origin_rows,
     round(
         count(*) FILTER (WHERE successor_lineage_observed)::numeric
         / nullif(count(*), 0),
@@ -208,7 +230,7 @@ SELECT
 FROM decision_intelligence.v_department_transfer_lineage_audit;
 
 COMMENT ON VIEW decision_intelligence.v_department_transfer_lineage_audit IS
-'Reported department-transfer outcomes audited against subsequent same-client separations within 90 days, with destination matching when depa_del_cambio is available. Post-outcome only; not a live feature.';
+'Reported department-transfer outcomes audited against subsequent same-client separations within 90 days, with destination matching and explicit right-censoring. Post-outcome only; not a live feature.';
 
 COMMENT ON VIEW decision_intelligence.v_department_transfer_lineage_health IS
-'Coverage and quality counters for generic successor lineage and CRM-declared destination verification.';
+'Coverage and quality counters for generic successor lineage, destination verification, right-censoring and origin-destination anomalies.';
