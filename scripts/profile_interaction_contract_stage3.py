@@ -225,13 +225,17 @@ def _timestamp_pairs(conn, columns: dict[str, str]) -> list[dict[str, Any]]:
     ]:
         if left not in temporal or right not in temporal:
             continue
+        # Normalize DATE and TIMESTAMP variants to timestamp before subtraction.
+        # In PostgreSQL DATE - DATE returns integer days, which cannot be passed to
+        # extract(epoch from ...). Explicit casts keep the profiler valid for mixed
+        # DATE/TIMESTAMP source schemas while preserving ordering semantics.
         q = sql.SQL(
             """
             with x as (
                 select
-                    {l} as l,
-                    {r} as r,
-                    extract(epoch from ({r} - {l})) / 3600.0 as delta_hours
+                    {l}::timestamp as l,
+                    {r}::timestamp as r,
+                    extract(epoch from ({r}::timestamp - {l}::timestamp)) / 3600.0 as delta_hours
                 from {t}
                 where {l} is not null and {r} is not null
             )
