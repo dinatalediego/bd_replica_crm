@@ -88,10 +88,17 @@ SELECT
     -- v2.2 monetary evidence. int_proforma_minuta already implements the exact
     -- Power Query fallback: monto_total_pagado first, otherwise
     -- monto_pagado_de_cuota_inicial.
-    ipm.monto_total_pagado AS monto_total_pagado,
-    ipm.monto_pagado_de_cuota_inicial AS monto_pagado_de_cuota_inicial,
-    ipm.monto_pagado_cuota_inicial AS monto_pagado_cuota_inicial,
+    ipm.monto_total_pagado_raw,
+    ipm.monto_pagado_de_cuota_inicial_raw,
+    ipm.monto_total_pagado,
+    ipm.monto_pagado_de_cuota_inicial,
+    ipm.monto_pagado_cuota_inicial,
     (coalesce(ipm.monto_pagado_cuota_inicial, 0) > 0) AS monto_pago_ci_positivo,
+    (
+        (ipm.monto_total_pagado_raw IS NOT NULL AND btrim(ipm.monto_total_pagado_raw)<>'' AND ipm.monto_total_pagado IS NULL)
+        OR
+        (ipm.monto_pagado_de_cuota_inicial_raw IS NOT NULL AND btrim(ipm.monto_pagado_de_cuota_inicial_raw)<>'' AND ipm.monto_pagado_de_cuota_inicial IS NULL)
+    ) AS monto_pago_ci_parse_error,
     (
         c.fecha_de_minuta IS NOT NULL
         OR lower(btrim(coalesce(m.marker_raw,''))) = lower('Pagó cuota inicial (Minuta)')
@@ -172,6 +179,7 @@ SELECT
           AND fecha_pago_ci IS NULL
           AND NOT pago_ci_marker_confirmado
     )::bigint AS montos_pago_ci_positivos_sin_fecha_ni_marcador,
+    COUNT(*) FILTER (WHERE monto_pago_ci_parse_error)::bigint AS montos_pago_ci_no_parseables,
     COUNT(*) FILTER (
         WHERE evidencia_pago_ci_confirmada
     )::bigint AS ciclos_con_evidencia_pago_ci
