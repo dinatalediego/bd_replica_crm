@@ -1,0 +1,85 @@
+version: 1
+
+defaults:
+  deployment_mode: shadow
+  human_in_the_loop: true
+  block_live_without_outcomes: true
+  require_point_in_time: true
+  require_replication_parity: true
+  require_reconciliation: true
+
+separation_fall_risk:
+  owner: commercial
+  technical_owner: analytics
+  policy_stage: baseline
+  allowed_modes:
+    - dry_run
+    - shadow
+  live_enabled: false
+
+  data_contract:
+    critical_tables:
+      - raw_cygnus.procesos
+      - raw_cygnus.proforma_unidad
+      - raw_cygnus.datos_extras
+      - core.fact_ciclo_comercial_unidad
+    required_replica_keys:
+      raw_cygnus.datos_extras:
+        - id
+        - nombre
+    max_duplicate_grain_rows: 0
+    max_source_target_key_difference: 0
+    max_replication_lag_minutes: 90
+
+  candidate_safety:
+    max_duplicate_candidates: 0
+    max_quality_blocked_in_scoring: 0
+    max_missing_observed_at: 0
+    max_future_dated_features: 0
+    max_active_entrega_in_scoring: 0
+    max_confirmed_payment_in_scoring: 0
+    max_unparseable_payment_amount_in_scoring: 0
+    recency_window_months: 3
+
+  baseline:
+    policy_version: separation-fall-risk-baseline-v0.5
+    require_deterministic_ranking: true
+    require_explanation: true
+    require_feature_snapshot: true
+    require_policy_version: true
+
+  shadow:
+    minimum_shadow_days: 14
+    minimum_outcome_coverage: 0.80
+    minimum_reviewed_recommendations: 30
+    max_known_false_positive_rate: 0.25
+    max_project_concentration_share: 0.60
+    max_advisor_concentration_share: 0.60
+
+  live_promotion:
+    require_business_owner_approval: true
+    require_technical_owner_approval: true
+    require_baseline_comparison: true
+    require_rollback_plan: true
+    require_outcome_coverage: 0.90
+    require_incremental_value_non_negative: true
+
+  monitoring:
+    daily:
+      - replication_health
+      - candidate_reconciliation
+      - candidate_count
+      - blocked_count
+      - action_distribution
+      - project_concentration
+      - advisor_concentration
+    weekly:
+      - feedback_coverage
+      - outcome_coverage
+      - known_false_positive_review
+      - action_acceptance_rate
+    monthly:
+      - baseline_vs_policy
+      - cohort_performance
+      - realized_economic_value
+      - policy_promotion_review
