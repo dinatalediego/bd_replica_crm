@@ -44,3 +44,26 @@ def test_interaction_features_remain_uncertified_until_historical_contract_exist
     sql = _sql()
     assert "false::boolean as interaction_features_certified" in sql
     assert "rows_with_certified_interaction_features" in sql
+
+
+def test_rerun_tears_down_known_downstream_views_before_point_in_time_views() -> None:
+    sql = _sql()
+
+    downstream = [
+        "drop view if exists features.v_separation_fall_training_30d_regime_profile",
+        "drop view if exists features.v_separation_fall_training_30d_health",
+        "drop view if exists features.separation_fall_training_30d",
+        "drop view if exists features.v_separation_fall_training_30d_audit",
+        "drop view if exists features.v_separation_fall_training_landmark_profile",
+        "drop view if exists features.v_separation_fall_training_period_profile",
+        "drop view if exists features.v_separation_fall_training_readiness",
+    ]
+    base_drop = "drop view if exists features.separation_fall_training_point_in_time"
+
+    for statement in downstream:
+        assert statement in sql
+        assert sql.index(statement) < sql.index(base_drop)
+
+    # Avoid broad CASCADE: the migration should only tear down Decision Engine
+    # views that it knows will be recreated by SQL 11/12 later in the installer.
+    assert "drop view if exists features.separation_fall_training_point_in_time cascade" not in sql
