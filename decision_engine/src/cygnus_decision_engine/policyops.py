@@ -58,6 +58,13 @@ def start_decision_run(
     source_snapshot: Mapping[str, Any] | None = None,
     git_sha: str | None = None,
 ) -> str:
+    """Create the durable run header before recommendation writes begin.
+
+    The header is committed independently so a later rollback of recommendation
+    writes does not erase the evidence that a run started. A failed execution can
+    then be marked FAILED in a fresh transaction, which is essential for audit.
+    """
+
     run_id = str(uuid4())
     with conn.cursor() as cur:
         cur.execute(
@@ -91,6 +98,7 @@ def start_decision_run(
                 git_sha,
             ),
         )
+    conn.commit()
     return run_id
 
 
@@ -125,6 +133,8 @@ def finish_decision_run(
                 run_id,
             ),
         )
+        if cur.rowcount != 1:
+            raise ValueError(f"decision_run no encontrado: {run_id}")
 
 
 def promote_policy(
