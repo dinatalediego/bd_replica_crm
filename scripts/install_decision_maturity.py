@@ -9,6 +9,7 @@ SQL_FILES = (
     "decision_engine/sql/04_seed_separation_policy.sql",
     "decision_engine/sql/05_candidate_universe_snapshot.sql",
     "decision_engine/sql/06_historical_fall_outcomes.sql",
+    "decision_engine/sql/07_fall_reason_analysis_corpus.sql",
 )
 
 
@@ -26,7 +27,7 @@ def main() -> int:
 
     print(
         "Decision maturity control instalado: PolicyOps + run audit + candidate snapshots "
-        "+ historical fall outcomes/text evidence."
+        "+ historical fall outcomes + governed fall-reason analysis corpus."
     )
     return 0
 
