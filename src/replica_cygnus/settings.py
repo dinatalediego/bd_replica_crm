@@ -61,5 +61,5 @@ def load_settings(project_root: Path | None = None) -> AppSettings:
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
         default_batch_size=int(os.getenv("DEFAULT_BATCH_SIZE", "5000")),
         default_lookback_hours=int(os.getenv("DEFAULT_LOOKBACK_HOURS", "48")),
-        lock_timeout_seconds=int(os.getenv("LOCK_TIMEOUT_SECONDS", "5")),
+        lock_timeout_seconds=int(os.getenv("LOCK_TIMEOUT_SECONDS", "180")),
     )

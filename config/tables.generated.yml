@@ -6,4 +6,242 @@ defaults:
   enabled: false
   create_target_if_missing: true
   add_etl_columns: true
-tables: []
+tables:
+- source_schema: grupocygnus
+  source_table: abonos
+  target_table: abonos
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: archivos
+  target_table: archivos
+  key_columns:
+  - codigo_proforma
+  watermark_column: fecha_carga
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: atencion
+  target_table: atencion
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: beneficiarios
+  target_table: beneficiarios
+  key_columns:
+  - codigo_proforma
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: bitacora
+  target_table: bitacora
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: cips
+  target_table: cips
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: clientes
+  target_table: clientes
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: clientes_proyectos
+  target_table: clientes_proyectos
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: datos_extras
+  target_table: datos_extras
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: depositos
+  target_table: depositos
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: documento_firmas
+  target_table: documento_firmas
+  key_columns:
+  - codigo_proforma
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: finanzas
+  target_table: finanzas
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: interacciones
+  target_table: interacciones
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: ipis
+  target_table: ipis
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: limite_descuento
+  target_table: limite_descuento
+  key_columns: []
+  watermark_column: null
+  strategy: full_refresh
+  enabled: false
+- source_schema: grupocygnus
+  source_table: metas
+  target_table: metas
+  key_columns: []
+  watermark_column: fecha_actualizacion
+  strategy: full_refresh
+  enabled: false
+- source_schema: grupocygnus
+  source_table: pagos
+  target_table: pagos
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: pasos
+  target_table: pasos
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: postventa
+  target_table: postventa
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: procesos
+  target_table: procesos
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: proforma_unidad
+  target_table: proforma_unidad
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: proformas
+  target_table: proformas
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: proyectos
+  target_table: proyectos
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: recepcion_obra
+  target_table: recepcion_obra
+  key_columns:
+  - codigo_unidad
+  watermark_column: fecha_creacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: seguimiento_atencion
+  target_table: seguimiento_atencion
+  key_columns:
+  - atencion_id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: subdivision
+  target_table: subdivision
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: titulares
+  target_table: titulares
+  key_columns:
+  - codigo_proforma
+  watermark_column: null
+  strategy: full_refresh
+  enabled: false
+- source_schema: grupocygnus
+  source_table: unidades
+  target_table: unidades
+  key_columns:
+  - id
+  watermark_column: fecha_actualizacion
+  strategy: incremental
+  enabled: false
+- source_schema: grupocygnus
+  source_table: unidades_precios_desde
+  target_table: unidades_precios_desde
+  key_columns:
+  - proyect_id
+  watermark_column: null
+  strategy: full_refresh
+  enabled: false
+- source_schema: grupocygnus
+  source_table: usuarios_asignados
+  target_table: usuarios_asignados
+  key_columns:
+  - documento_cliente
+  watermark_column: fecha_asignacion
+  strategy: incremental
+  enabled: false

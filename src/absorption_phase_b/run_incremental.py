@@ -22,6 +22,14 @@ with psycopg.connect(
     password=os.getenv("POSTGRES_PASSWORD", ""),
     sslmode=os.getenv("POSTGRES_SSLMODE", "prefer"),
 ) as conn:
-    conn.execute("CALL analytics.refresh_absorption_phase_b_incremental(%s)", (LOOKBACK_DAYS,))
+    #conn.execute("CALL analytics.refresh_absorption_phase_b_incremental(%s)", (LOOKBACK_DAYS,))
+    conn.execute(
+        """
+        CALL analytics.refresh_absorption_phase_b_incremental(
+            CAST(%s AS integer)
+        )
+        """,
+        (LOOKBACK_DAYS,),
+    )
     conn.commit()
     print(f"Absorption Phase B incremental completado. lookback_days={LOOKBACK_DAYS}")

@@ -17,7 +17,7 @@ def list_source_tables(source_conn, schema_filter: str | None = None) -> list[tu
     sql = """
         SELECT table_schema, table_name
         FROM information_schema.tables
-        WHERE table_type = 'BASE TABLE'
+        WHERE table_type IN ('BASE TABLE', 'VIEW')
           AND table_schema NOT IN ('pg_catalog', 'information_schema')
     """
     params: list[object] = []
@@ -101,8 +101,49 @@ def _get_source_columns_svv(source_conn, schema: str, table: str) -> list[Source
         for row in rows
     ]
 
+def _get_source_columns_information_schema(
+    source_conn,
+    schema: str,
+    table: str,
+) -> list[SourceColumn]:
+    sql = """
+        SELECT
+            column_name,
+            data_type,
+            ordinal_position,
+            is_nullable,
+            character_maximum_length,
+            numeric_precision,
+            numeric_scale
+        FROM information_schema.columns
+        WHERE LOWER(table_schema) = LOWER(%s)
+          AND LOWER(table_name) = LOWER(%s)
+        ORDER BY ordinal_position
+    """
 
-def get_source_columns(source_conn, schema: str, table: str) -> list[SourceColumn]:
+    with source_conn.cursor() as cursor:
+        cursor.execute(sql, (schema, table))
+        rows = cursor.fetchall()
+
+    return [
+        SourceColumn(
+            name=row[0],
+            data_type=row[1],
+            ordinal_position=int(row[2]),
+            is_nullable=str(row[3]).upper() == "YES",
+            character_maximum_length=row[4],
+            numeric_precision=row[5],
+            numeric_scale=row[6],
+        )
+        for row in rows
+    ]
+
+
+def get_source_columns(
+    source_conn,
+    schema: str,
+    table: str,
+) -> list[SourceColumn]:
     try:
         columns = _get_source_columns_show(source_conn, schema, table)
         if columns:
@@ -115,14 +156,41 @@ def get_source_columns(source_conn, schema: str, table: str) -> list[SourceColum
             exc_info=True,
         )
 
-    columns = _get_source_columns_svv(source_conn, schema, table)
-    if not columns:
-        raise RuntimeError(
-            f"No se encontraron columnas visibles para {schema}.{table}. "
-            "Verifica permisos USAGE/SELECT y que la tabla exista en la base configurada."
+    try:
+        columns = _get_source_columns_svv(source_conn, schema, table)
+        if columns:
+            return columns
+    except Exception:
+        LOGGER.warning(
+            "SVV_COLUMNS falló para %s.%s; "
+            "probando information_schema.columns.",
+            schema,
+            table,
+            exc_info=True,
         )
-    return columns
 
+    try:
+        columns = _get_source_columns_information_schema(
+            source_conn,
+            schema,
+            table,
+        )
+        if columns:
+            return columns
+    except Exception:
+        LOGGER.warning(
+            "information_schema.columns falló para %s.%s.",
+            schema,
+            table,
+            exc_info=True,
+        )
+
+    raise RuntimeError(
+        "No se encontraron columnas visibles para "
+        f"{schema}.{table}. "
+        "Se intentó SHOW COLUMNS, SVV_COLUMNS e "
+        "information_schema.columns."
+    )
 
 def estimate_row_count(source_conn, schema: str, table: str) -> int | None:
     # SVV_TABLE_INFO evita COUNT(*) costoso, aunque puede ser aproximado.
