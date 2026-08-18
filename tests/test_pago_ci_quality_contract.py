@@ -3,27 +3,40 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_phase_b_installs_effective_pago_ci_quality_override() -> None:
+def test_phase_b_installs_conversion_evidence_quality_contract() -> None:
     install_py = (ROOT / "src" / "absorption_phase_b" / "install.py").read_text(encoding="utf-8")
     assert '"03b_sale_date_pago_ci.sql"' in install_py
     assert '"03c_pago_ci_quality_override.sql"' in install_py
     assert install_py.index('"03b_sale_date_pago_ci.sql"') < install_py.index('"03c_pago_ci_quality_override.sql"')
 
 
-def test_hard_pago_ci_parse_gate_uses_latest_effective_value_per_proforma() -> None:
+def test_fecha_de_minuta_is_the_dated_parse_gate() -> None:
     sql = (ROOT / "sql" / "20_absorption_phase_b" / "03c_pago_ci_quality_override.sql").read_text(encoding="utf-8")
     normalized = " ".join(sql.lower().split())
 
-    assert "distinct on (de.codigo)" in normalized
-    assert "order by de.codigo, de.fecha_actualizacion desc nulls last, de.id desc" in normalized
-    assert "pago_ci_date_parse_error" in normalized
-    assert "latest_effective_value_per_proforma" in normalized
+    assert "fecha_pago_ci_parse_error" in normalized
+    assert "fecha_de_minuta" in normalized
+    assert "business_alias','fecha_pagoci_pm'" in normalized
+    assert "try_parse_business_date" in normalized
 
 
-def test_historical_malformed_pago_ci_remains_visible_without_becoming_hard_gate() -> None:
+def test_pago_ci_is_a_marker_not_a_date() -> None:
+    correction = (ROOT / "sql" / "20_absorption_phase_b" / "03b_sale_date_pago_ci.sql").read_text(encoding="utf-8")
+    qa = (ROOT / "sql" / "20_absorption_phase_b" / "03c_pago_ci_quality_override.sql").read_text(encoding="utf-8")
+    normalized_correction = " ".join(correction.lower().split())
+    normalized_qa = " ".join(qa.lower().split())
+
+    assert "pago_ci is not a date" in normalized_correction
+    assert "pagó cuota inicial (minuta)" in normalized_qa
+    assert "pago_ci_unknown_marker_value" in normalized_qa
+    assert "pago_ci_marker_without_fecha_pago_ci" in normalized_qa
+    assert "fecha_pago_ci_without_marker" in normalized_qa
+
+
+def test_marker_without_date_is_warn_not_false_negative_conversion() -> None:
     sql = (ROOT / "sql" / "20_absorption_phase_b" / "03c_pago_ci_quality_override.sql").read_text(encoding="utf-8")
     normalized = " ".join(sql.lower().split())
 
-    assert "pago_ci_historical_parse_debt" in normalized
+    assert "pago_ci_marker_without_fecha_pago_ci" in normalized
     assert "'warning'" in normalized
-    assert "all_raw_history" in normalized
+    assert "excluir del risk scoring" in normalized
