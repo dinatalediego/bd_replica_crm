@@ -259,5 +259,11 @@ SELECT
     )::bigint AS current_outside_proforma_recency_window,
     MIN(proforma_first_seen_at) AS oldest_eligible_proforma_first_seen_at,
     MAX(proforma_first_seen_at) AS newest_eligible_proforma_first_seen_at,
-    3::integer AS eligibility_window_months
+    3::integer AS eligibility_window_months,
+
+    -- Appended last to keep subsequent upgrades compatible.
+    (SELECT COUNT(*)::bigint
+       FROM features.v_separation_fall_risk_candidate_universe
+      WHERE eligibility_status = 'BLOCKED_MISSING_OBSERVED_AT')
+        AS excluded_missing_observed_at
 FROM features.separation_fall_risk_current;
