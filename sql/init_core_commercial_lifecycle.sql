@@ -1,9 +1,17 @@
--- Commercial lifecycle certified contract v1.
+-- Commercial lifecycle certified contract v2.
 --
 -- IMPORTANT:
 -- The temporal business logic is NOT duplicated here. The authoritative
 -- computation remains analytics.int_ciclo_comercial_unidad (Absorption Phase B).
 -- CORE exposes a governed semantic contract over that certified result.
+--
+-- Sale-date semantics v2:
+--   * pago_ci (datos_extras, proforma) is the primary commercial conversion date;
+--   * before 2026 only, the legacy Venta-process date is the fallback when
+--     pago_ci is absent;
+--   * from 2026 onward, the Venta-process date means process closure and does
+--     not by itself convert an opportunity to VENTA;
+--   * fecha_de_minuta remains a separate milestone, not fecha_venta.
 
 CREATE SCHEMA IF NOT EXISTS core;
 
@@ -40,7 +48,12 @@ SELECT
     c.documento_cliente,
     c.asesor,
     c.tipo_unidad_principal,
-    c.refreshed_at AS analytics_refreshed_at
+    c.refreshed_at AS analytics_refreshed_at,
+
+    -- v2 fields appended for CREATE OR REPLACE backwards compatibility.
+    c.datos_extras_pago_ci_id,
+    c.fecha_pago_ci,
+    c.fecha_firma_legacy AS fecha_cierre_proceso_venta
 FROM analytics.int_ciclo_comercial_unidad c
 LEFT JOIN core.dim_unidad u
     ON u.codigo_unidad = c.codigo_unidad
@@ -59,5 +72,30 @@ SELECT
     COUNT(*) FILTER (WHERE resultado_ciclo = 'ABIERTA')::bigint AS abiertas,
     COUNT(*) FILTER (WHERE resultado_ciclo = 'CAIDA')::bigint AS caidas,
     COUNT(*) FILTER (WHERE resultado_ciclo NOT IN ('VENTA','ABIERTA','CAIDA'))::bigint AS resultados_no_validos,
-    MAX(analytics_refreshed_at) AS ultimo_refresh_analytics
+    MAX(analytics_refreshed_at) AS ultimo_refresh_analytics,
+
+    -- v2 sale-date quality counters appended for backwards compatibility.
+    COUNT(*) FILTER (
+        WHERE resultado_ciclo='ABIERTA'
+          AND fecha_pago_ci IS NOT NULL
+          AND lower(coalesce(tipo_unidad_principal,'')) IN (
+              'departamento flat','departamento duplex'
+          )
+    )::bigint AS abiertas_residenciales_con_pago_ci,
+    COUNT(*) FILTER (
+        WHERE resultado_ciclo='VENTA'
+          AND metodo_fecha_venta='PAGO_CI_DATOS_EXTRAS'
+    )::bigint AS ventas_por_pago_ci,
+    COUNT(*) FILTER (
+        WHERE resultado_ciclo='VENTA'
+          AND metodo_fecha_venta='LEGACY_FECHA_FIRMA_PRE_2026'
+    )::bigint AS ventas_legacy_pre_2026,
+    COUNT(*) FILTER (
+        WHERE fecha_separacion >= DATE '2026-01-01'
+          AND resultado_ciclo='VENTA'
+          AND lower(coalesce(tipo_unidad_principal,'')) IN (
+              'departamento flat','departamento duplex'
+          )
+          AND metodo_fecha_venta <> 'PAGO_CI_DATOS_EXTRAS'
+    )::bigint AS ventas_post_2026_sin_pago_ci
 FROM core.fact_ciclo_comercial_unidad;
