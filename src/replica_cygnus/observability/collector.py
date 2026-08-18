@@ -116,19 +116,51 @@ def _last_run(conn: Connection, cfg: TableConfig) -> dict[str, Any]:
     }
 
 
-def _source_max_watermark(source_conn, cfg: TableConfig) -> object | None:
-    if not cfg.watermark_column:
-        return None
+""" def _source_max_watermark(source_conn, cfg):
     query = (
         f'SELECT MAX("{cfg.watermark_column}") '
         f'FROM "{cfg.source_schema}"."{cfg.source_table}"'
     )
-    with source_conn.cursor() as cursor:
-        cursor.execute(query)
-        return cursor.fetchone()[0]
 
+    try:
+        with source_conn.cursor() as cursor:
+            cursor.execute(query)
+            row = cursor.fetchone()
+            return row[0] if row else None
+    except TimeoutError:
+        LOGGER.warning(
+            "Timeout obteniendo watermark de origen para %s.%s; "
+            "la observación continuará sin watermark de origen.",
+            cfg.source_schema,
+            cfg.source_table,
+            exc_info=True,
+        )
+        return None """
 
+def _source_max_watermark(source_conn, cfg):
+    query = (
+        f'SELECT MAX("{cfg.watermark_column}") '
+        f'FROM "{cfg.source_schema}"."{cfg.source_table}"'
+    )
 
+    try:
+        with source_conn.cursor() as cursor:
+            cursor.execute(query)
+            row = cursor.fetchone()
+            return row[0] if row else None
+    except Exception as exc:
+        LOGGER.warning(
+            "No se pudo obtener watermark de origen para %s.%s. "
+            "tipo=%s; detalle=%s. "
+            "La observación continuará sin watermark de origen.",
+            cfg.source_schema,
+            cfg.source_table,
+            type(exc).__name__,
+            exc,
+            exc_info=True,
+        )
+        return None
+    
 def _target_table_exists(conn: Connection, cfg: TableConfig) -> bool:
     with conn.cursor() as cursor:
         cursor.execute(
@@ -318,16 +350,34 @@ def collect_asset_snapshot(
     target_exists = _target_table_exists(target_conn, cfg)
     source_wm = None
     target_wm = None
+
     if monitor.monitor_source_watermark and cfg.watermark_column:
-        source_wm = _source_max_watermark(source_conn, cfg)
+        if mode == "deep":
+            source_wm = _source_max_watermark(source_conn, cfg)
+
         if target_exists:
             target_wm = _target_max_watermark(target_conn, cfg)
 
     source_wm_dt = _as_datetime(source_wm)
     target_wm_dt = _as_datetime(target_wm)
     replication_lag = _minutes_between(source_wm_dt, target_wm_dt)
+
     if replication_lag is not None:
         replication_lag = max(replication_lag, 0.0)
+
+    """     target_exists = _target_table_exists(target_conn, cfg)
+    source_wm = None
+    target_wm = None
+    if mode == "hourly":
+        source_wm = None
+    else:
+        source_wm = _source_max_watermark(source_conn, cfg)
+
+    source_wm_dt = _as_datetime(source_wm)
+    target_wm_dt = _as_datetime(target_wm)
+    replication_lag = _minutes_between(source_wm_dt, target_wm_dt)
+    if replication_lag is not None:
+        replication_lag = max(replication_lag, 0.0) """
 
     rows_source = None
     rows_target = _target_estimated_rows(target_conn, cfg) if target_exists else None
