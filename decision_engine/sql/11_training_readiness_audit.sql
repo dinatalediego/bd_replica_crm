@@ -64,10 +64,12 @@ audit_counts AS (
             END
         )::integer AS max_days_until_proforma_observed,
         ROUND(
-            percentile_cont(0.5) WITHIN GROUP (
-                ORDER BY (proforma_first_seen_at::date - snapshot_at)
-            ) FILTER (
-                WHERE snapshot_eligibility_status = 'BLOCKED_PROFORMA_AFTER_SNAPSHOT'
+            (
+                percentile_cont(0.5) WITHIN GROUP (
+                    ORDER BY (proforma_first_seen_at::date - snapshot_at)
+                ) FILTER (
+                    WHERE snapshot_eligibility_status = 'BLOCKED_PROFORMA_AFTER_SNAPSHOT'
+                )
             )::numeric,
             2
         ) AS median_days_until_proforma_observed
