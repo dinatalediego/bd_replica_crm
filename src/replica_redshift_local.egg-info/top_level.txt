@@ -1,5 +1,1 @@
-absorption_phase_a
-absorption_phase_b
-absorption_phase_c
-absorption_reconciliation
 replica_cygnus
