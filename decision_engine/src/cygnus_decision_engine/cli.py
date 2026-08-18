@@ -45,6 +45,34 @@ def _feature_health(conn) -> dict[str, Any]:
     return dict(row or {})
 
 
+def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
+    """Hard quality gates for the operational candidate universe.
+
+    Normal exclusions because the proforma is older than 3 calendar months do
+    not fail the gate: they are precisely the business eligibility rule. Missing
+    proforma dates are excluded and reported for data-completeness monitoring.
+
+    We do fail on leakage/inconsistency capable of contaminating decisions:
+    duplicates, BLOCKED current candidates, missing decision timestamp, a current
+    row outside the declared recency window, or a proforma dated after observed_at.
+    """
+
+    hard_count_fields = (
+        "duplicate_candidates",
+        "quality_blocked",
+        "missing_observed_at",
+        "current_outside_proforma_recency_window",
+        "excluded_proforma_after_observed_at",
+    )
+    if any(int(health.get(field) or 0) > 0 for field in hard_count_fields):
+        return True
+
+    candidates = int(health.get("candidates") or 0)
+    eligible = int(health.get("eligible_candidates") or 0)
+    distinct = int(health.get("distinct_candidates") or 0)
+    return candidates != eligible or candidates != distinct
+
+
 def _install_separation_risk(conn) -> list[str]:
     root = _decision_engine_root()
     sql_files = [
@@ -80,15 +108,21 @@ def main(argv: list[str] | None = None) -> int:
             health = _feature_health(conn)
         print(json.dumps(health, ensure_ascii=False, indent=2, default=str))
 
-        unsafe = (
-            int(health.get("duplicate_candidates") or 0) > 0
-            or int(health.get("quality_blocked") or 0) > 0
-            or int(health.get("missing_observed_at") or 0) > 0
-        )
-        if unsafe:
-            print("Gate separation_fall_risk NO aprobado: existen candidatos inseguros o duplicados.")
+        if _separation_risk_health_is_unsafe(health):
+            print(
+                "Gate separation_fall_risk NO aprobado: hay duplicados, leakage temporal, "
+                "candidatos fuera de la ventana de 3 meses o inconsistencias de elegibilidad."
+            )
             return 1
-        print("Gate separation_fall_risk APROBADO para baseline operativo; WARN conserva limitaciones explícitas de features v0.1.")
+
+        excluded_old = int(health.get("excluded_proforma_older_than_3_months") or 0)
+        missing_proforma_date = int(health.get("excluded_missing_proforma_date") or 0)
+        print(
+            "Gate separation_fall_risk APROBADO: solo entran proformas observadas dentro de "
+            "los últimos 3 meses calendario. "
+            f"Excluidas por antigüedad={excluded_old}; sin fecha de proforma={missing_proforma_date}. "
+            "WARN conserva limitaciones explícitas de features proxy."
+        )
         return 0
 
     if args.command == "run-separation-risk":
@@ -121,6 +155,9 @@ def main(argv: list[str] | None = None) -> int:
                         "codigo_unidad": features.get("codigo_unidad"),
                         "codigo_proyecto": features.get("codigo_proyecto"),
                         "asesor": features.get("asesor"),
+                        "proforma_first_seen_at": features.get("proforma_first_seen_at"),
+                        "proforma_age_days": features.get("proforma_age_days"),
+                        "eligibility_rule": features.get("eligibility_rule"),
                         "days_since_separation": features.get("days_since_separation"),
                         "days_since_last_interaction": features.get("days_since_last_interaction"),
                         "interaction_count_14d": features.get("interaction_count_14d"),
