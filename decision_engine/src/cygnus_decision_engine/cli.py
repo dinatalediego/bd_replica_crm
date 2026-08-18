@@ -41,8 +41,33 @@ def _decision_engine_root() -> Path:
 def _feature_health(conn) -> dict[str, Any]:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("select * from features.v_separation_fall_risk_health")
-        row = cur.fetchone()
-    return dict(row or {})
+        feature_row = dict(cur.fetchone() or {})
+
+        # CORE owns the sale/outcome semantics. The Decision Engine must not
+        # silently score an ABIERTA cycle if pago_ci already proves conversion.
+        cur.execute("select * from core.v_ciclo_comercial_health")
+        core_row = dict(cur.fetchone() or {})
+
+    required_sale_fields = {
+        "abiertas_residenciales_con_pago_ci",
+        "ventas_por_pago_ci",
+        "ventas_legacy_pre_2026",
+        "ventas_post_2026_sin_pago_ci",
+    }
+    feature_row.update(
+        {
+            "core_sale_date_contract_ready": required_sale_fields.issubset(core_row),
+            "core_abiertas_residenciales_con_pago_ci": core_row.get(
+                "abiertas_residenciales_con_pago_ci"
+            ),
+            "core_ventas_por_pago_ci": core_row.get("ventas_por_pago_ci"),
+            "core_ventas_legacy_pre_2026": core_row.get("ventas_legacy_pre_2026"),
+            "core_ventas_post_2026_sin_pago_ci": core_row.get(
+                "ventas_post_2026_sin_pago_ci"
+            ),
+        }
+    )
+    return feature_row
 
 
 def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
@@ -52,10 +77,13 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
     are excluded and exposed as data-completeness debt. Neither contaminates the
     current scoring set by itself.
 
-    The gate fails for leakage/inconsistency capable of contaminating decisions,
-    and also requires the complete pre-filter universe to reconcile into exactly
-    one eligibility bucket per row.
+    CORE is also a hard dependency: pago_ci is the primary conversion evidence.
+    Therefore a residential ABIERTA with pago_ci, or a post-2026 VENTA without
+    pago_ci evidence, blocks scoring rather than producing a spurious risk alert.
     """
+
+    if not bool(health.get("core_sale_date_contract_ready")):
+        return True
 
     hard_count_fields = (
         "duplicate_candidates",
@@ -64,6 +92,8 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
         "current_outside_proforma_recency_window",
         "excluded_proforma_after_observed_at",
         "excluded_missing_observed_at",
+        "core_abiertas_residenciales_con_pago_ci",
+        "core_ventas_post_2026_sin_pago_ci",
     )
     if any(int(health.get(field) or 0) > 0 for field in hard_count_fields):
         return True
@@ -125,23 +155,36 @@ def main(argv: list[str] | None = None) -> int:
 
         if _separation_risk_health_is_unsafe(health):
             print(
-                "Gate separation_fall_risk NO aprobado: hay duplicados, leakage temporal, "
-                "candidatos fuera de la ventana de 3 meses o inconsistencias de elegibilidad."
+                "Gate separation_fall_risk NO aprobado: hay duplicados/leakage o el lifecycle "
+                "no cumple la regla de venta por pago de cuota inicial. Revisa especialmente "
+                "core_abiertas_residenciales_con_pago_ci y core_ventas_post_2026_sin_pago_ci."
             )
             return 1
 
         excluded_old = int(health.get("excluded_proforma_older_than_3_months") or 0)
         missing_proforma_date = int(health.get("excluded_missing_proforma_date") or 0)
+        sales_by_payment = int(health.get("core_ventas_por_pago_ci") or 0)
         print(
             "Gate separation_fall_risk APROBADO: solo entran proformas observadas dentro de "
-            "los últimos 3 meses calendario. "
-            f"Excluidas por antigüedad={excluded_old}; sin fecha de proforma={missing_proforma_date}. "
+            "los últimos 3 meses calendario y ningún ciclo residencial con pago_ci permanece "
+            "ABIERTA. "
+            f"Excluidas por antigüedad={excluded_old}; sin fecha de proforma={missing_proforma_date}; "
+            f"ventas confirmadas por pago_ci={sales_by_payment}. "
             "WARN conserva limitaciones explícitas de features proxy."
         )
         return 0
 
     if args.command == "run-separation-risk":
         with settings.connect() as conn:
+            health = _feature_health(conn)
+            if _separation_risk_health_is_unsafe(health):
+                print(json.dumps(health, ensure_ascii=False, indent=2, default=str))
+                print(
+                    "Run separation_fall_risk BLOQUEADO por quality gate. "
+                    "Ejecuta validate-separation-risk después de refrescar el lifecycle."
+                )
+                return 1
+
             candidates = load_candidates(conn)
             recommendations = score_candidates(candidates)
             by_id = {candidate.separation_id: candidate for candidate in candidates}
