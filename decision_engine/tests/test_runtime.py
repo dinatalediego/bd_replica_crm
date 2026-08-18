@@ -34,6 +34,40 @@ def test_worklist_prioritizes_highest_score():
     assert results[0].action == "urgent_follow_up"
 
 
+def test_equal_scores_prioritize_older_separation_then_contact_gap():
+    results = score_candidates(
+        [
+            candidate(
+                "NEWER",
+                days_since_separation=25,
+                days_since_last_interaction=20,
+                interaction_count_14d=0,
+                has_pending_admin_block=False,
+            ),
+            candidate(
+                "OLDER_SHORT_GAP",
+                days_since_separation=40,
+                days_since_last_interaction=10,
+                interaction_count_14d=0,
+                has_pending_admin_block=False,
+            ),
+            candidate(
+                "OLDER_LONG_GAP",
+                days_since_separation=40,
+                days_since_last_interaction=30,
+                interaction_count_14d=0,
+                has_pending_admin_block=False,
+            ),
+        ]
+    )
+
+    assert [item.entity_id for item in results] == [
+        "OLDER_LONG_GAP",
+        "OLDER_SHORT_GAP",
+        "NEWER",
+    ]
+
+
 def test_blocked_candidate_is_never_prioritized_as_active():
     blocked = SeparationCandidate(
         separation_id="BLOCKED",
