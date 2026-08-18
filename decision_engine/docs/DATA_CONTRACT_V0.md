@@ -41,17 +41,20 @@ Fecha_Venta = COALESCE(
 - Ese caso **no entra al risk scoring**. Se excluye y se reporta como deuda de calidad; nunca se interpreta como “no pagó”.
 - Un valor no vacío de `pago_ci` distinto del marcador conocido es semántica desconocida y se aísla.
 
-## Eligibility — proformas recientes
+## Eligibility — proformas recientes y sin Entrega activa
 
-Regla operativa v0.3:
+Regla operativa v0.4:
 
 - el ciclo debe estar `ABIERTA` y la separación actual `Activo`;
+- no debe existir un proceso `Entrega` con `estado='Activo'` para el mismo par `codigo_proforma + codigo_unidad`;
 - `proforma_first_seen_at = MIN(raw_cygnus.proforma_unidad.fecha_creacion)` por `codigo_proforma`;
 - la proforma debe caer entre `observed_at - interval '3 months'` y `observed_at`, inclusive;
 - se usan 3 meses calendario, no 90 días;
 - una proforma antigua no se rejuvenece por nuevas filas posteriores;
-- después del filtro temporal, cualquier marcador positivo `pago_ci` excluye la oportunidad del scoring;
+- cualquier marcador positivo `pago_ci` excluye la oportunidad del scoring;
 - un marcador desconocido queda en bucket bloqueado y tampoco llega al scoring.
+
+La exclusión por `Entrega Activa` se resuelve en el grain comercial `codigo_proforma + codigo_unidad`, no por `procesos.id`, porque `procesos.id` no es globalmente único entre namespaces de proceso. Las filas de Entrega se agregan antes del join para impedir que duplicados de origen multipliquen candidatos.
 
 `features.v_separation_fall_risk_candidate_universe` conserva todos los buckets; `features.separation_fall_risk_current` contiene solo `ELIGIBLE`.
 
@@ -62,7 +65,7 @@ Regla operativa v0.3:
 - `interaction_count_14d`;
 - `has_pending_admin_block`.
 
-Limitaciones v0.3:
+Limitaciones v0.4:
 
 - `interaction_count_14d` es proxy binario 0/1 basado en la interacción más reciente cliente-proyecto;
 - `has_pending_admin_block` permanece `NULL` hasta certificar la regla administrativa.
@@ -88,6 +91,7 @@ Bloquear o excluir de forma segura si:
 - un candidato sale de la ventana de 3 meses;
 - `proforma_first_seen_at > observed_at`;
 - falta `observed_at`;
+- existe un proceso `Entrega Activo` dentro del conjunto que llegó al scoring;
 - existe `fecha_de_minuta` no parseable;
 - una `ABIERTA` residencial tiene `fecha_pago_ci` válida;
 - una venta residencial post-2026 usa evidencia distinta de `FECHA_DE_MINUTA`;
@@ -97,6 +101,7 @@ Bloquear o excluir de forma segura si:
 
 No son fallos del modelo si están explicitados y excluidos:
 
+- proceso `Entrega Activo`: exclusión operativa por diseño;
 - proforma mayor a 3 meses;
 - proforma sin fecha observable;
 - marcador positivo `pago_ci` sin `fecha_de_minuta`: es deuda de precisión temporal, pero evidencia suficiente para no recomendar riesgo.
@@ -107,6 +112,8 @@ Antes de cada corrida se monitorean:
 
 - universo abierto/activo;
 - candidatos elegibles;
+- exclusiones por proceso `Entrega Activo`;
+- candidatos actuales que todavía contienen un `Entrega Activo` —debe ser 0;
 - exclusiones por antigüedad;
 - exclusiones por fecha de proforma faltante;
 - exclusiones por marcador positivo `pago_ci`;
@@ -119,6 +126,25 @@ Antes de cada corrida se monitorean:
 - ventas por `FECHA_DE_MINUTA`;
 - ventas legacy pre-2026;
 - ventas post-2026 sin fecha efectiva.
+
+### Reconciliación del universo
+
+Cada fila del universo debe caer en exactamente un bucket:
+
+```text
+universo abierto/activo
+=
+ELIGIBLE
++ EXCLUDED_ACTIVE_ENTREGA_PROCESS
++ EXCLUDED_PROFORMA_OLDER_THAN_3_MONTHS
++ BLOCKED_MISSING_PROFORMA_DATE
++ BLOCKED_PROFORMA_AFTER_OBSERVED_AT
++ BLOCKED_MISSING_OBSERVED_AT
++ EXCLUDED_PAGO_CI_MARKER_CONFIRMED
++ BLOCKED_UNKNOWN_PAGO_CI_MARKER
+```
+
+Si la igualdad no se cumple, la corrida se bloquea.
 
 ## Métricas del modelo
 
