@@ -43,8 +43,9 @@ def _feature_health(conn) -> dict[str, Any]:
         cur.execute("select * from features.v_separation_fall_risk_health")
         feature_row = dict(cur.fetchone() or {})
 
-        # CORE owns conversion semantics. fecha_de_minuta is the dated
-        # Fecha_PagoCI_pm evidence; pago_ci is a categorical positive marker.
+        # CORE owns conversion semantics. fecha_de_minuta is dated evidence;
+        # pago_ci is a categorical marker; positive payment amount is an
+        # independent third signal of conversion/payment progress.
         cur.execute("select * from core.v_ciclo_comercial_health")
         core_row = dict(cur.fetchone() or {})
 
@@ -55,24 +56,24 @@ def _feature_health(conn) -> dict[str, Any]:
         "ventas_post_2026_sin_pago_ci",
         "marcadores_pago_ci_confirmados_sin_fecha",
         "marcadores_pago_ci_desconocidos",
+        "abiertas_residenciales_con_monto_pago_ci_positivo",
+        "montos_pago_ci_positivos_sin_fecha_ni_marcador",
+        "montos_pago_ci_no_parseables",
+        "ciclos_con_evidencia_pago_ci",
     }
     feature_row.update(
         {
             "core_sale_date_contract_ready": required_sale_fields.issubset(core_row),
-            "core_abiertas_residenciales_con_pago_ci": core_row.get(
-                "abiertas_residenciales_con_pago_ci"
-            ),
+            "core_abiertas_residenciales_con_pago_ci": core_row.get("abiertas_residenciales_con_pago_ci"),
             "core_ventas_por_pago_ci": core_row.get("ventas_por_pago_ci"),
             "core_ventas_legacy_pre_2026": core_row.get("ventas_legacy_pre_2026"),
-            "core_ventas_post_2026_sin_pago_ci": core_row.get(
-                "ventas_post_2026_sin_pago_ci"
-            ),
-            "core_marcadores_pago_ci_confirmados_sin_fecha": core_row.get(
-                "marcadores_pago_ci_confirmados_sin_fecha"
-            ),
-            "core_marcadores_pago_ci_desconocidos": core_row.get(
-                "marcadores_pago_ci_desconocidos"
-            ),
+            "core_ventas_post_2026_sin_pago_ci": core_row.get("ventas_post_2026_sin_pago_ci"),
+            "core_marcadores_pago_ci_confirmados_sin_fecha": core_row.get("marcadores_pago_ci_confirmados_sin_fecha"),
+            "core_marcadores_pago_ci_desconocidos": core_row.get("marcadores_pago_ci_desconocidos"),
+            "core_abiertas_residenciales_con_monto_pago_ci_positivo": core_row.get("abiertas_residenciales_con_monto_pago_ci_positivo"),
+            "core_montos_pago_ci_positivos_sin_fecha_ni_marcador": core_row.get("montos_pago_ci_positivos_sin_fecha_ni_marcador"),
+            "core_montos_pago_ci_no_parseables": core_row.get("montos_pago_ci_no_parseables"),
+            "core_ciclos_con_evidencia_pago_ci": core_row.get("ciclos_con_evidencia_pago_ci"),
         }
     )
     return feature_row
@@ -81,10 +82,10 @@ def _feature_health(conn) -> dict[str, Any]:
 def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
     """Hard gates for the operational candidate set.
 
-    Normal exclusions (old proformas, active Entrega processes, confirmed
-    pago_ci markers, missing source dates) do not poison a safe scoring set if
-    they are explicitly accounted for. Any candidate that actually reaches
-    scoring with conversion or active-delivery evidence is a hard failure.
+    Normal exclusions (old proformas, active Entrega, confirmed payment markers,
+    positive payment amounts, missing proforma dates) do not poison a safe
+    scoring set if they are explicitly accounted for. Any conversion/payment
+    evidence that actually reaches scoring is a hard failure.
     """
 
     if not bool(health.get("core_sale_date_contract_ready")):
@@ -99,6 +100,9 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
         "excluded_missing_observed_at",
         "current_with_pago_ci_marker",
         "current_with_active_entrega_process",
+        "current_with_positive_initial_payment_amount",
+        "current_with_unparseable_initial_payment_amount",
+        "blocked_unparseable_initial_payment_amount",
         "core_abiertas_residenciales_con_pago_ci",
         "core_ventas_post_2026_sin_pago_ci",
         "core_marcadores_pago_ci_desconocidos",
@@ -124,6 +128,8 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
             "excluded_missing_observed_at",
             "excluded_pago_ci_marker_confirmed",
             "blocked_unknown_pago_ci_marker",
+            "excluded_positive_initial_payment_amount",
+            "blocked_unparseable_initial_payment_amount",
         )
     )
     return universe != accounted_universe
@@ -166,29 +172,27 @@ def main(argv: list[str] | None = None) -> int:
 
         if _separation_risk_health_is_unsafe(health):
             print(
-                "Gate separation_fall_risk NO aprobado: hay duplicados/leakage, "
-                "evidencia de conversión o Entrega Activa dentro del scoring, o el lifecycle "
-                "no cumple el contrato fecha_de_minuta/pago_ci-marker."
+                "Gate separation_fall_risk NO aprobado: hay duplicados/leakage, Entrega activa, "
+                "evidencia de conversión/pago dentro del scoring o evidencia monetaria que no "
+                "puede interpretarse de forma segura."
             )
             return 1
 
         excluded_old = int(health.get("excluded_proforma_older_than_3_months") or 0)
+        excluded_entrega = int(health.get("excluded_active_entrega_process") or 0)
         excluded_paid_marker = int(health.get("excluded_pago_ci_marker_confirmed") or 0)
-        excluded_active_entrega = int(health.get("excluded_active_entrega_process") or 0)
+        excluded_paid_amount = int(health.get("excluded_positive_initial_payment_amount") or 0)
         missing_proforma_date = int(health.get("excluded_missing_proforma_date") or 0)
         sales_by_payment_date = int(health.get("core_ventas_por_pago_ci") or 0)
-        marker_without_date = int(
-            health.get("core_marcadores_pago_ci_confirmados_sin_fecha") or 0
-        )
+        marker_without_date = int(health.get("core_marcadores_pago_ci_confirmados_sin_fecha") or 0)
+        amount_without_date_or_marker = int(health.get("core_montos_pago_ci_positivos_sin_fecha_ni_marcador") or 0)
         print(
-            "Gate separation_fall_risk APROBADO: scoring limitado a oportunidades "
-            "recientes, sin evidencia de conversión y sin proceso Entrega Activo. "
-            f"Excluidas por Entrega Activa={excluded_active_entrega}; "
-            f"excluidas por antigüedad={excluded_old}; "
-            f"excluidas por marcador pago_ci={excluded_paid_marker}; "
-            f"sin fecha de proforma={missing_proforma_date}; "
-            f"ventas fechadas por Fecha_PagoCI_pm={sales_by_payment_date}; "
-            f"marcadores de pago sin fecha (deuda temporal, fuera del scoring)={marker_without_date}. "
+            "Gate separation_fall_risk APROBADO: scoring limitado a oportunidades recientes, "
+            "sin Entrega activa y sin evidencia de conversión/pago. "
+            f"Excluidas por Entrega Activa={excluded_entrega}; antigüedad={excluded_old}; "
+            f"marcador pago_ci={excluded_paid_marker}; monto de cuota inicial positivo={excluded_paid_amount}; "
+            f"sin fecha de proforma={missing_proforma_date}; ventas fechadas por Fecha_PagoCI_pm={sales_by_payment_date}; "
+            f"marcadores de pago sin fecha={marker_without_date}; montos positivos sin fecha ni marcador={amount_without_date_or_marker}. "
             "WARN conserva limitaciones explícitas de features proxy."
         )
         return 0
@@ -240,6 +244,11 @@ def main(argv: list[str] | None = None) -> int:
                         "interaction_count_14d": features.get("interaction_count_14d"),
                         "pago_ci_marker_confirmado": features.get("pago_ci_marker_confirmado"),
                         "fecha_pago_ci": features.get("fecha_pago_ci"),
+                        "monto_total_pagado": features.get("monto_total_pagado"),
+                        "monto_pagado_de_cuota_inicial": features.get("monto_pagado_de_cuota_inicial"),
+                        "monto_pagado_cuota_inicial": features.get("monto_pagado_cuota_inicial"),
+                        "monto_pago_ci_positivo": features.get("monto_pago_ci_positivo"),
+                        "evidencia_pago_ci_confirmada": features.get("evidencia_pago_ci_confirmada"),
                         "has_active_entrega_process": features.get("has_active_entrega_process"),
                         "active_entrega_process_count": features.get("active_entrega_process_count"),
                         "action": item.action,
