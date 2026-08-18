@@ -19,13 +19,15 @@ def test_historical_outcome_contract_reads_requested_proforma_text_fields() -> N
     assert "fecha_actualizacion desc nulls last" in sql
 
 
-def test_payment_conversion_has_precedence_over_raw_fall_for_target() -> None:
+def test_temporal_target_follows_certified_core_competing_event_result() -> None:
     sql = " ".join(OUTCOME_SQL.read_text(encoding="utf-8").lower().split())
 
     assert "target_fall_before_conversion" in sql
-    assert "when c.evidencia_pago_ci_confirmada or c.resultado_ciclo = 'venta' then 0" in sql
+    assert "when c.resultado_ciclo = 'venta' then 0" in sql
     assert "when c.resultado_ciclo = 'caida' then 1" in sql
-    assert "raw_fall_reclassified_as_conversion_due_payment_evidence" in sql
+    assert "conversion_interest_sample" in sql
+    assert "conversion_interest_without_temporal_label" in sql
+    assert "falls_with_payment_evidence_now_for_temporal_review" in sql
 
 
 def test_fall_reason_is_explicitly_post_outcome_and_not_live_feature() -> None:
