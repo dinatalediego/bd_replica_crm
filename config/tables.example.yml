@@ -70,6 +70,17 @@ tables:
     strategy: full_refresh
     enabled: false
 
+  - source_schema: grupocygnus
+    source_table: datos_extras
+    target_table: datos_extras
+    # Certificado contra Redshift 2026-08-18:
+    # id por sí solo NO es único; (id, nombre) sí lo es en el origen observado.
+    key_columns: [id, nombre]
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
 # Estrategias disponibles:
 # - incremental: filtra por watermark, carga por lotes y hace UPSERT por key_columns.
 # - full_refresh: carga una tabla staging completa y reemplaza el destino al final.
