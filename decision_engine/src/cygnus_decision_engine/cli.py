@@ -48,13 +48,13 @@ def _feature_health(conn) -> dict[str, Any]:
 def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
     """Hard quality gates for the operational candidate universe.
 
-    Normal exclusions because the proforma is older than 3 calendar months do
-    not fail the gate: they are precisely the business eligibility rule. Missing
-    proforma dates are excluded and reported for data-completeness monitoring.
+    Old proformas are an intentional business exclusion. Missing proforma dates
+    are excluded and exposed as data-completeness debt. Neither contaminates the
+    current scoring set by itself.
 
-    We do fail on leakage/inconsistency capable of contaminating decisions:
-    duplicates, BLOCKED current candidates, missing decision timestamp, a current
-    row outside the declared recency window, or a proforma dated after observed_at.
+    The gate fails for leakage/inconsistency capable of contaminating decisions,
+    and also requires the complete pre-filter universe to reconcile into exactly
+    one eligibility bucket per row.
     """
 
     hard_count_fields = (
@@ -63,6 +63,7 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
         "missing_observed_at",
         "current_outside_proforma_recency_window",
         "excluded_proforma_after_observed_at",
+        "excluded_missing_observed_at",
     )
     if any(int(health.get(field) or 0) > 0 for field in hard_count_fields):
         return True
@@ -70,7 +71,21 @@ def _separation_risk_health_is_unsafe(health: dict[str, Any]) -> bool:
     candidates = int(health.get("candidates") or 0)
     eligible = int(health.get("eligible_candidates") or 0)
     distinct = int(health.get("distinct_candidates") or 0)
-    return candidates != eligible or candidates != distinct
+    if candidates != eligible or candidates != distinct:
+        return True
+
+    universe = int(health.get("universe_candidates") or 0)
+    accounted_universe = sum(
+        int(health.get(field) or 0)
+        for field in (
+            "eligible_candidates",
+            "excluded_proforma_older_than_3_months",
+            "excluded_missing_proforma_date",
+            "excluded_proforma_after_observed_at",
+            "excluded_missing_observed_at",
+        )
+    )
+    return universe != accounted_universe
 
 
 def _install_separation_risk(conn) -> list[str]:
