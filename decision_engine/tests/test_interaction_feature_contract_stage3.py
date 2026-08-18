@@ -33,3 +33,11 @@ def test_stage3_profiles_identity_and_event_taxonomy() -> None:
     assert "duplicate_id_samples.csv" in text
     assert "category_top_values.csv" in text
     assert "duplicate id groups block id-only interaction identity certification" in text
+
+
+def test_stage3_normalizes_date_timestamp_pairs_before_epoch_subtraction() -> None:
+    text = _text()
+    assert "{l}::timestamp as l" in text
+    assert "{r}::timestamp as r" in text
+    assert "extract(epoch from ({r}::timestamp - {l}::timestamp))" in text
+    assert "date - date returns integer days" in text
