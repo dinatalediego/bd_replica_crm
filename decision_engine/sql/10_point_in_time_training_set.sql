@@ -10,9 +10,28 @@
 --
 -- IMPORTANT: this is a first governed structural/temporal baseline dataset.
 -- It is intentionally not the final production feature set.
+--
+-- RERUN / MIGRATION SAFETY:
+-- downstream views introduced by SQL 11 and 12 can already exist on a repeated
+-- installation and depend on the point-in-time views rebuilt below. PostgreSQL
+-- correctly refuses to drop a referenced view. Tear down only our known
+-- downstream Decision Engine views first, in reverse dependency order, rather
+-- than using DROP ... CASCADE and risking unrelated objects.
 
 CREATE SCHEMA IF NOT EXISTS features;
 
+-- SQL 12 downstream views.
+DROP VIEW IF EXISTS features.v_separation_fall_training_30d_regime_profile;
+DROP VIEW IF EXISTS features.v_separation_fall_training_30d_health;
+DROP VIEW IF EXISTS features.separation_fall_training_30d;
+DROP VIEW IF EXISTS features.v_separation_fall_training_30d_audit;
+
+-- SQL 11 downstream views that depend directly on SQL 10.
+DROP VIEW IF EXISTS features.v_separation_fall_training_landmark_profile;
+DROP VIEW IF EXISTS features.v_separation_fall_training_period_profile;
+DROP VIEW IF EXISTS features.v_separation_fall_training_readiness;
+
+-- SQL 10 views, now safe to rebuild.
 DROP VIEW IF EXISTS features.v_separation_fall_training_point_in_time_health;
 DROP VIEW IF EXISTS features.separation_fall_training_point_in_time;
 DROP VIEW IF EXISTS features.v_separation_fall_training_point_in_time_audit;
