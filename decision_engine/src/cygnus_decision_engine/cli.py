@@ -9,6 +9,13 @@ from typing import Any
 from dotenv import load_dotenv
 from psycopg.rows import dict_row
 
+from .policyops import (
+    finish_decision_run,
+    get_policy_status,
+    policy_allows_mode,
+    start_decision_run,
+)
+from .rules import POLICY_VERSION
 from .runtime import score_candidates
 from .settings import PostgresSettings
 from .store import load_candidates, persist_recommendation
@@ -21,15 +28,33 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser(
         "install-separation-risk",
-        help="Instala control, feature contract y vistas operativas de separation_fall_risk.",
+        help="Instala control, feature contract, PolicyOps y vistas operativas de separation_fall_risk.",
     )
     sub.add_parser(
         "validate-separation-risk",
         help="Valida el feature contract actual antes de generar decisiones.",
     )
+    sub.add_parser(
+        "policy-status",
+        help="Muestra el lifecycle status de la policy separation_fall_risk registrada.",
+    )
 
-    run = sub.add_parser("run-separation-risk", help="Genera y persiste recomendaciones para separaciones activas.")
-    run.add_argument("--dry-run", action="store_true", help="Evalúa candidatos pero no escribe recomendaciones.")
+    run = sub.add_parser(
+        "run-separation-risk",
+        help="Evalúa separation_fall_risk. Por seguridad, sin flag de modo se ejecuta DRY_RUN.",
+    )
+    modes = run.add_mutually_exclusive_group()
+    modes.add_argument("--dry-run", action="store_true", help="Evalúa candidatos y no escribe recomendaciones.")
+    modes.add_argument(
+        "--shadow",
+        action="store_true",
+        help="Persiste recomendaciones con status SHADOW; no aparecen en la worklist ACTIVE.",
+    )
+    modes.add_argument(
+        "--live",
+        action="store_true",
+        help="Persiste recomendaciones ACTIVE. Solo permitido si policy_registry está ACTIVE.",
+    )
     run.add_argument("--top", type=int, default=20, help="Número de recomendaciones a imprimir.")
     return parser
 
@@ -139,6 +164,8 @@ def _install_separation_risk(conn) -> list[str]:
     root = _decision_engine_root()
     sql_files = [
         root / "sql" / "00_decision_control.sql",
+        root / "sql" / "03_decision_maturity_control.sql",
+        root / "sql" / "04_seed_separation_policy.sql",
         root / "sql" / "02_separation_fall_risk_features.sql",
         root / "sql" / "01_separation_fall_risk_runtime.sql",
     ]
@@ -153,6 +180,15 @@ def _install_separation_risk(conn) -> list[str]:
     return installed
 
 
+def _run_mode(args: argparse.Namespace) -> str:
+    if getattr(args, "live", False):
+        return "LIVE"
+    if getattr(args, "shadow", False):
+        return "SHADOW"
+    # Explicit --dry-run and no mode flag are intentionally equivalent.
+    return "DRY_RUN"
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     load_dotenv(Path(args.env_file))
@@ -162,12 +198,60 @@ def main(argv: list[str] | None = None) -> int:
         with settings.connect() as conn:
             installed = _install_separation_risk(conn)
             health = _feature_health(conn)
-        print(json.dumps({"installed": installed, "feature_health": health}, ensure_ascii=False, indent=2, default=str))
+            policy_status = get_policy_status(
+                conn,
+                decision_key="separation_fall_risk",
+                policy_version=POLICY_VERSION,
+            )
+        print(
+            json.dumps(
+                {
+                    "installed": installed,
+                    "policy_version": POLICY_VERSION,
+                    "policy_status": policy_status,
+                    "feature_health": health,
+                },
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+        )
+        return 0
+
+    if args.command == "policy-status":
+        with settings.connect() as conn:
+            policy_status = get_policy_status(
+                conn,
+                decision_key="separation_fall_risk",
+                policy_version=POLICY_VERSION,
+            )
+        print(
+            json.dumps(
+                {
+                    "decision_key": "separation_fall_risk",
+                    "policy_version": POLICY_VERSION,
+                    "policy_status": policy_status,
+                    "live_allowed": policy_allows_mode(policy_status, "LIVE"),
+                    "shadow_allowed": policy_allows_mode(policy_status, "SHADOW"),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "validate-separation-risk":
         with settings.connect() as conn:
             health = _feature_health(conn)
+            policy_status = get_policy_status(
+                conn,
+                decision_key="separation_fall_risk",
+                policy_version=POLICY_VERSION,
+            )
+        health["policy_version"] = POLICY_VERSION
+        health["policy_status"] = policy_status
+        health["live_allowed"] = policy_allows_mode(policy_status, "LIVE")
+        health["shadow_allowed"] = policy_allows_mode(policy_status, "SHADOW")
         print(json.dumps(health, ensure_ascii=False, indent=2, default=str))
 
         if _separation_risk_health_is_unsafe(health):
@@ -193,11 +277,13 @@ def main(argv: list[str] | None = None) -> int:
             f"marcador pago_ci={excluded_paid_marker}; monto de cuota inicial positivo={excluded_paid_amount}; "
             f"sin fecha de proforma={missing_proforma_date}; ventas fechadas por Fecha_PagoCI_pm={sales_by_payment_date}; "
             f"marcadores de pago sin fecha={marker_without_date}; montos positivos sin fecha ni marcador={amount_without_date_or_marker}. "
+            f"Policy={POLICY_VERSION} status={policy_status}. "
             "WARN conserva limitaciones explícitas de features proxy."
         )
         return 0
 
     if args.command == "run-separation-risk":
+        run_mode = _run_mode(args)
         with settings.connect() as conn:
             health = _feature_health(conn)
             if _separation_risk_health_is_unsafe(health):
@@ -208,26 +294,108 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 1
 
+            policy_status = get_policy_status(
+                conn,
+                decision_key="separation_fall_risk",
+                policy_version=POLICY_VERSION,
+            )
+            if not policy_allows_mode(policy_status, run_mode):
+                print(
+                    json.dumps(
+                        {
+                            "decision_key": "separation_fall_risk",
+                            "policy_version": POLICY_VERSION,
+                            "policy_status": policy_status,
+                            "requested_mode": run_mode,
+                            "allowed": False,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                print(
+                    "Run BLOQUEADO por PolicyOps. Una policy SHADOW no puede ejecutarse LIVE; "
+                    "la promoción debe ser explícita y aprobada."
+                )
+                return 1
+
             candidates = load_candidates(conn)
             recommendations = score_candidates(candidates)
             by_id = {candidate.separation_id: candidate for candidate in candidates}
+            action_counts = Counter(item.action for item in recommendations if item.status == "ACTIVE")
+            observed_at = max((candidate.observed_at for candidate in candidates), default=None)
 
-            if not args.dry_run:
-                for recommendation in recommendations:
-                    candidate = by_id[recommendation.entity_id]
-                    persist_recommendation(
+            run_id: str | None = None
+            persisted = 0
+            if run_mode in {"SHADOW", "LIVE"}:
+                run_id = start_decision_run(
+                    conn,
+                    decision_key="separation_fall_risk",
+                    policy_version=POLICY_VERSION,
+                    run_mode=run_mode,
+                    observed_at=observed_at,
+                    candidate_count=len(candidates),
+                    quality_snapshot=health,
+                    source_snapshot={
+                        "candidate_view": "features.separation_fall_risk_current",
+                        "core_view": "core.v_ciclo_comercial_health",
+                    },
+                )
+
+                try:
+                    for recommendation in recommendations:
+                        candidate = by_id[recommendation.entity_id]
+                        persisted_recommendation = (
+                            recommendation.model_copy(update={"status": "SHADOW"})
+                            if run_mode == "SHADOW" and recommendation.status == "ACTIVE"
+                            else recommendation
+                        )
+                        persist_recommendation(
+                            conn,
+                            persisted_recommendation,
+                            observed_at=candidate.observed_at,
+                            quality_status=candidate.quality_status,
+                            feature_snapshot=candidate.features,
+                        )
+                        persisted += 1
+
+                    finish_decision_run(
                         conn,
-                        recommendation,
-                        observed_at=candidate.observed_at,
-                        quality_status=candidate.quality_status,
-                        feature_snapshot=candidate.features,
+                        run_id=run_id,
+                        run_status="SUCCESS",
+                        recommendation_count=persisted,
+                        blocked_count=sum(item.status == "BLOCKED" for item in recommendations),
+                        action_distribution=dict(sorted(action_counts.items())),
                     )
-                conn.commit()
+                    conn.commit()
+                except Exception as exc:
+                    conn.rollback()
+                    # Run logging must never hide the original failure. Best effort
+                    # uses a new transaction after the rollback.
+                    try:
+                        finish_decision_run(
+                            conn,
+                            run_id=run_id,
+                            run_status="FAILED",
+                            recommendation_count=persisted,
+                            blocked_count=0,
+                            action_distribution=dict(sorted(action_counts.items())),
+                            error_message=str(exc),
+                        )
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+                    raise
 
             payload = []
             for item in recommendations[: max(args.top, 0)]:
                 candidate = by_id[item.entity_id]
                 features = candidate.features
+                display_status = (
+                    "SHADOW"
+                    if run_mode == "SHADOW" and item.status == "ACTIVE"
+                    else item.status
+                )
                 payload.append(
                     {
                         "recommendation_id": item.recommendation_id,
@@ -253,20 +421,23 @@ def main(argv: list[str] | None = None) -> int:
                         "active_entrega_process_count": features.get("active_entrega_process_count"),
                         "action": item.action,
                         "score": item.score,
-                        "status": item.status,
+                        "status": display_status,
                         "quality_status": candidate.quality_status,
                         "explanation": item.explanation,
                     }
                 )
 
-            action_counts = Counter(item.action for item in recommendations if item.status == "ACTIVE")
             print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
             print(
                 "summary="
                 + json.dumps(
                     {
+                        "run_id": run_id,
+                        "run_mode": run_mode,
+                        "policy_version": POLICY_VERSION,
+                        "policy_status": policy_status,
                         "candidates": len(candidates),
-                        "persisted": 0 if args.dry_run else len(recommendations),
+                        "persisted": persisted,
                         "active_action_counts": dict(sorted(action_counts.items())),
                     },
                     ensure_ascii=False,
