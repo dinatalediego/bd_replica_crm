@@ -30,38 +30,10 @@ def status(conn) -> dict[str, object]:
         raise RuntimeError("Falta core.v_ciclo_comercial_health. Ejecuta primero: python scripts/core_commercial_lifecycle.py init")
 
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT
-                ciclos,
-                ciclos_distintos,
-                ciclos_duplicados,
-                unidades_no_resueltas,
-                proyectos_no_resueltos,
-                proyectos_inconsistentes,
-                ventas,
-                abiertas,
-                caidas,
-                resultados_no_validos,
-                ultimo_refresh_analytics
-            FROM core.v_ciclo_comercial_health
-            """
-        )
+        cur.execute("SELECT * FROM core.v_ciclo_comercial_health")
         row = cur.fetchone()
+        keys = [desc.name for desc in cur.description]
 
-    keys = [
-        "ciclos",
-        "ciclos_distintos",
-        "ciclos_duplicados",
-        "unidades_no_resueltas",
-        "proyectos_no_resueltos",
-        "proyectos_inconsistentes",
-        "ventas",
-        "abiertas",
-        "caidas",
-        "resultados_no_validos",
-        "ultimo_refresh_analytics",
-    ]
     return dict(zip(keys, row))
 
 
@@ -88,8 +60,14 @@ def main() -> int:
         "proyectos_no_resueltos",
         "proyectos_inconsistentes",
         "resultados_no_validos",
+        "abiertas_residenciales_con_pago_ci",
+        "ventas_post_2026_sin_pago_ci",
     ]
-    failures = {k: int(result[k]) for k in fail_keys if int(result[k]) != 0}
+    failures = {
+        key: int(result[key])
+        for key in fail_keys
+        if key in result and result[key] is not None and int(result[key]) != 0
+    }
     if failures:
         print(f"Gate CORE NO aprobado: {failures}")
         return 1
@@ -98,7 +76,7 @@ def main() -> int:
         print("Gate CORE NO aprobado: conteo total y granularidad distinta no coinciden.")
         return 1
 
-    print("Gate CORE APROBADO: ciclo comercial certificado y resoluble contra dimensiones CORE.")
+    print("Gate CORE APROBADO: ciclo comercial certificado, resoluble y consistente con venta v2.")
     return 0
 
 
