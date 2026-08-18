@@ -1,34 +1,28 @@
 -- Governed current feature contract for the first operational decision.
 --
--- Prerequisites merged in the MEDALLIO data foundation:
+-- Prerequisites:
 --   * core.fact_ciclo_comercial_unidad
---   * raw_cygnus.procesos
---   * raw_cygnus.clientes_proyectos
---   * raw_cygnus.proforma_unidad
+--   * raw_cygnus.procesos / clientes_proyectos / proforma_unidad
 --
 -- The commercial state is NEVER reconstructed from a single RAW row here.
--- Lifecycle identity/state comes from the certified CORE contract. RAW is used
--- only for current separation status, interaction metadata and proforma recency.
+-- Lifecycle identity/state comes from CORE. RAW is used only for current
+-- separation status, interaction metadata and proforma recency.
 --
--- Eligibility v0.2:
+-- Eligibility v0.3:
 --   * only open/active cycles whose proforma was first observed within the last
---     3 calendar months as of observed_at are eligible for recommendations;
---   * proforma_first_seen_at = MIN(raw_cygnus.proforma_unidad.fecha_creacion)
---     per codigo_proforma. MIN is intentionally conservative: a later duplicate
---     or a unit added to an old proforma must not make that proforma look recent;
---   * the exact boundary observed_at - interval '3 months' is INCLUDED.
+--     3 calendar months as of observed_at are eligible;
+--   * proforma_first_seen_at = MIN(proforma_unidad.fecha_creacion) per proforma;
+--   * a positive pago_ci marker is conversion evidence even when its dated
+--     companion fecha_de_minuta is missing. Such rows are excluded from risk;
+--   * unknown populated pago_ci markers are isolated as a blocked eligibility
+--     bucket rather than silently interpreted.
 --
 -- Known feature limitations remain explicit in quality metadata:
---   * interaction_count_14d is a binary 0/1 proxy derived from the latest
---     project-specific interaction timestamp. The baseline only tests zero vs
---     non-zero, so this is operationally sufficient for the first benchmark;
---   * has_pending_admin_block remains NULL until its business rule is certified.
---     The baseline treats NULL as False, while quality_status remains WARN.
+--   * interaction_count_14d is a binary 0/1 proxy;
+--   * has_pending_admin_block remains NULL until certified.
 
 CREATE SCHEMA IF NOT EXISTS features;
 
--- Keep the pre-filter universe visible so exclusions are auditable. Old
--- proformas are a normal business exclusion, not a failed quality gate.
 CREATE OR REPLACE VIEW features.v_separation_fall_risk_candidate_universe AS
 WITH proforma_recency AS (
     SELECT
@@ -71,10 +65,20 @@ SELECT
             THEN 'BLOCKED_PROFORMA_AFTER_OBSERVED_AT'
         WHEN pr.proforma_first_seen_at < c.analytics_refreshed_at - interval '3 months'
             THEN 'EXCLUDED_PROFORMA_OLDER_THAN_3_MONTHS'
+        WHEN c.pago_ci_marker_desconocido
+            THEN 'BLOCKED_UNKNOWN_PAGO_CI_MARKER'
+        WHEN c.pago_ci_marker_confirmado
+            THEN 'EXCLUDED_PAGO_CI_MARKER_CONFIRMED'
         ELSE 'ELIGIBLE'
     END::text AS eligibility_status,
-    'PROFORMA_FIRST_SEEN_WITHIN_3_CALENDAR_MONTHS'::text AS eligibility_rule,
-    3::integer AS eligibility_window_months
+    'PROFORMA_FIRST_SEEN_WITHIN_3_CALENDAR_MONTHS_AND_NOT_CONVERTED'::text AS eligibility_rule,
+    3::integer AS eligibility_window_months,
+
+    -- v0.3 evidence appended for backwards-compatible CREATE OR REPLACE.
+    c.pago_ci_marker_raw,
+    c.pago_ci_marker_confirmado,
+    c.pago_ci_marker_desconocido,
+    c.fecha_pago_ci
 FROM core.fact_ciclo_comercial_unidad c
 JOIN raw_cygnus.procesos s
   ON s.nombre = 'Separacion'
@@ -110,8 +114,6 @@ WITH client_project_interaction AS (
     WHERE u.eligibility_status = 'ELIGIBLE'
 )
 SELECT
-    -- Keep the v0.1 column order stable so CREATE OR REPLACE can upgrade an
-    -- already-installed local view without dropping downstream consumers.
     separation_id,
     codigo_proforma,
     codigo_unidad,
@@ -121,10 +123,7 @@ SELECT
     fecha_separacion,
     observed_at,
 
-    GREATEST(
-        0,
-        observed_at::date - fecha_separacion
-    )::integer AS days_since_separation,
+    GREATEST(0, observed_at::date - fecha_separacion)::integer AS days_since_separation,
 
     GREATEST(
         0,
@@ -134,8 +133,7 @@ SELECT
     CASE
         WHEN last_interaction_at IS NOT NULL
          AND last_interaction_at >= observed_at - interval '14 days'
-        THEN 1
-        ELSE 0
+        THEN 1 ELSE 0
     END::integer AS interaction_count_14d,
 
     NULL::boolean AS has_pending_admin_block,
@@ -143,7 +141,7 @@ SELECT
     total_interactions_observed,
     'LAST_PROJECT_INTERACTION_BINARY_PROXY'::text AS interaction_signal_mode,
     'NOT_YET_CERTIFIED'::text AS admin_signal_mode,
-    'separation-fall-risk-current-v0.2.0'::text AS feature_contract_version,
+    'separation-fall-risk-current-v0.3.0'::text AS feature_contract_version,
 
     CASE
         WHEN separacion_source_id IS NULL
@@ -158,6 +156,8 @@ SELECT
           OR observed_at::date < fecha_separacion
           OR proforma_first_seen_at > observed_at
           OR proforma_first_seen_at < observed_at - interval '3 months'
+          OR pago_ci_marker_confirmado
+          OR pago_ci_marker_desconocido
           OR (
                 last_interaction_at IS NOT NULL
             AND last_interaction_at > observed_at
@@ -178,50 +178,49 @@ SELECT
             CASE WHEN observed_at IS NULL THEN 'MISSING_OBSERVED_AT' END,
             CASE WHEN proforma_first_seen_at IS NULL THEN 'MISSING_PROFORMA_FIRST_SEEN_AT' END,
             CASE
-                WHEN observed_at IS NOT NULL
-                 AND fecha_separacion IS NOT NULL
+                WHEN observed_at IS NOT NULL AND fecha_separacion IS NOT NULL
                  AND observed_at::date < fecha_separacion
                 THEN 'SEPARATION_AFTER_OBSERVED_AT'
             END,
             CASE
-                WHEN proforma_first_seen_at IS NOT NULL
-                 AND observed_at IS NOT NULL
+                WHEN proforma_first_seen_at IS NOT NULL AND observed_at IS NOT NULL
                  AND proforma_first_seen_at > observed_at
                 THEN 'PROFORMA_AFTER_OBSERVED_AT'
             END,
             CASE
-                WHEN proforma_first_seen_at IS NOT NULL
-                 AND observed_at IS NOT NULL
+                WHEN proforma_first_seen_at IS NOT NULL AND observed_at IS NOT NULL
                  AND proforma_first_seen_at < observed_at - interval '3 months'
                 THEN 'PROFORMA_OUTSIDE_RECENCY_WINDOW'
             END,
+            CASE WHEN pago_ci_marker_confirmado THEN 'PAGO_CI_MARKER_CONFIRMED_MUST_NOT_BE_SCORED' END,
+            CASE WHEN pago_ci_marker_desconocido THEN 'UNKNOWN_PAGO_CI_MARKER_VALUE' END,
             CASE
-                WHEN last_interaction_at IS NOT NULL
-                 AND observed_at IS NOT NULL
+                WHEN last_interaction_at IS NOT NULL AND observed_at IS NOT NULL
                  AND last_interaction_at > observed_at
                 THEN 'INTERACTION_AFTER_OBSERVED_AT'
             END,
-            CASE
-                WHEN interaction_match_documento IS NULL
-                THEN 'NO_CLIENT_PROJECT_INTERACTION_MATCH'
-            END,
+            CASE WHEN interaction_match_documento IS NULL THEN 'NO_CLIENT_PROJECT_INTERACTION_MATCH' END,
             'INTERACTION_COUNT_14D_BINARY_PROXY',
             'ADMIN_BLOCK_SIGNAL_NOT_CERTIFIED'
         ]::text[],
         NULL
     ) AS quality_reasons,
 
-    -- v0.2 columns are appended for backwards-compatible CREATE OR REPLACE.
     proforma_first_seen_at,
     proforma_age_days,
     eligibility_status,
     eligibility_rule,
-    eligibility_window_months
+    eligibility_window_months,
+
+    -- v0.3 columns appended after the stable v0.2 prefix.
+    pago_ci_marker_raw,
+    pago_ci_marker_confirmado,
+    pago_ci_marker_desconocido,
+    fecha_pago_ci
 FROM candidate_base;
 
 CREATE OR REPLACE VIEW features.v_separation_fall_risk_health AS
 SELECT
-    -- Preserve the v0.1 health-view prefix for backwards compatibility.
     COUNT(*)::bigint AS candidates,
     COUNT(DISTINCT separation_id)::bigint AS distinct_candidates,
     (COUNT(*) - COUNT(DISTINCT separation_id))::bigint AS duplicate_candidates,
@@ -233,22 +232,17 @@ SELECT
     COUNT(*) FILTER (WHERE has_pending_admin_block IS NULL)::bigint AS admin_signal_pending_certification,
     MAX(observed_at) AS observed_at,
 
-    -- v0.2 eligibility/recency quality metrics.
-    (SELECT COUNT(*)::bigint
-       FROM features.v_separation_fall_risk_candidate_universe) AS universe_candidates,
-    (SELECT COUNT(*)::bigint
-       FROM features.v_separation_fall_risk_candidate_universe
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe)
+        AS universe_candidates,
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'ELIGIBLE') AS eligible_candidates,
-    (SELECT COUNT(*)::bigint
-       FROM features.v_separation_fall_risk_candidate_universe
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'EXCLUDED_PROFORMA_OLDER_THAN_3_MONTHS')
         AS excluded_proforma_older_than_3_months,
-    (SELECT COUNT(*)::bigint
-       FROM features.v_separation_fall_risk_candidate_universe
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'BLOCKED_MISSING_PROFORMA_DATE')
         AS excluded_missing_proforma_date,
-    (SELECT COUNT(*)::bigint
-       FROM features.v_separation_fall_risk_candidate_universe
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'BLOCKED_PROFORMA_AFTER_OBSERVED_AT')
         AS excluded_proforma_after_observed_at,
     COUNT(*) FILTER (
@@ -260,10 +254,18 @@ SELECT
     MIN(proforma_first_seen_at) AS oldest_eligible_proforma_first_seen_at,
     MAX(proforma_first_seen_at) AS newest_eligible_proforma_first_seen_at,
     3::integer AS eligibility_window_months,
-
-    -- Appended last to keep subsequent upgrades compatible.
-    (SELECT COUNT(*)::bigint
-       FROM features.v_separation_fall_risk_candidate_universe
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'BLOCKED_MISSING_OBSERVED_AT')
-        AS excluded_missing_observed_at
+        AS excluded_missing_observed_at,
+
+    -- v0.3 conversion-marker safety metrics.
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
+      WHERE eligibility_status = 'EXCLUDED_PAGO_CI_MARKER_CONFIRMED')
+        AS excluded_pago_ci_marker_confirmed,
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
+      WHERE eligibility_status = 'BLOCKED_UNKNOWN_PAGO_CI_MARKER')
+        AS blocked_unknown_pago_ci_marker,
+    COUNT(*) FILTER (
+        WHERE pago_ci_marker_confirmado OR pago_ci_marker_desconocido
+    )::bigint AS current_with_pago_ci_marker
 FROM features.separation_fall_risk_current;
