@@ -1,4 +1,4 @@
--- Commercial lifecycle certified contract v2.1.
+-- Commercial lifecycle certified contract v2.2.
 --
 -- IMPORTANT:
 -- The temporal business logic is NOT duplicated here. The authoritative dated
@@ -10,8 +10,13 @@
 --     business Power Query as Fecha_PagoCI_pm; CORE exposes it as fecha_pago_ci.
 --   * datos_extras.pago_ci is a categorical marker, not a date. The currently
 --     known positive value is 'Pagó cuota inicial (Minuta)'.
---   * a positive marker without fecha_pago_ci is conversion evidence with
---     missing temporal precision. It must be excluded from fall-risk scoring.
+--   * analytics.int_proforma_minuta.monto_pagado_cuota_inicial reproduces the
+--     business Power Query COALESCE(monto_total_pagado,
+--     monto_pagado_de_cuota_inicial). A positive amount is payment/conversion
+--     evidence even when neither marker nor dated evidence is present.
+--   * marker/positive amount without fecha_pago_ci means conversion evidence
+--     with missing temporal precision. Those rows must be excluded from
+--     separation fall-risk scoring rather than interpreted as "not paid".
 --   * before 2026 only, the legacy Venta-process date remains the fallback dated
 --     sale evidence when fecha_de_minuta is absent.
 --   * from 2026 onward, the Venta-process date is process closure only.
@@ -69,7 +74,7 @@ SELECT
     c.fecha_de_minuta AS fecha_pago_ci,
     c.fecha_firma_legacy AS fecha_cierre_proceso_venta,
 
-    -- v2.1 marker evidence appended after the stable v2 prefix.
+    -- v2.1 marker evidence.
     m.marker_raw AS pago_ci_marker_raw,
     (
         lower(btrim(coalesce(m.marker_raw,''))) = lower('Pagó cuota inicial (Minuta)')
@@ -78,14 +83,30 @@ SELECT
         m.marker_raw IS NOT NULL
         AND btrim(m.marker_raw)<>''
         AND lower(btrim(m.marker_raw)) <> lower('Pagó cuota inicial (Minuta)')
-    ) AS pago_ci_marker_desconocido
+    ) AS pago_ci_marker_desconocido,
+
+    -- v2.2 monetary evidence. int_proforma_minuta already implements the exact
+    -- Power Query fallback: monto_total_pagado first, otherwise
+    -- monto_pagado_de_cuota_inicial.
+    ipm.monto_total_pagado AS monto_total_pagado,
+    ipm.monto_pagado_de_cuota_inicial AS monto_pagado_de_cuota_inicial,
+    ipm.monto_pagado_cuota_inicial AS monto_pagado_cuota_inicial,
+    (coalesce(ipm.monto_pagado_cuota_inicial, 0) > 0) AS monto_pago_ci_positivo,
+    (
+        c.fecha_de_minuta IS NOT NULL
+        OR lower(btrim(coalesce(m.marker_raw,''))) = lower('Pagó cuota inicial (Minuta)')
+        OR coalesce(ipm.monto_pagado_cuota_inicial, 0) > 0
+    ) AS evidencia_pago_ci_confirmada
 FROM analytics.int_ciclo_comercial_unidad c
 LEFT JOIN core.dim_unidad u
     ON u.codigo_unidad = c.codigo_unidad
 LEFT JOIN core.dim_proyecto p
     ON p.codigo_proyecto = u.codigo_proyecto
 LEFT JOIN pago_ci_marker m
-    ON m.codigo_proforma = c.codigo_proforma;
+    ON m.codigo_proforma = c.codigo_proforma
+LEFT JOIN analytics.int_proforma_minuta ipm
+    ON ipm.codigo_proforma = c.codigo_proforma
+   AND ipm.codigo_unidad = c.codigo_unidad;
 
 CREATE OR REPLACE VIEW core.v_ciclo_comercial_health AS
 SELECT
@@ -136,5 +157,22 @@ SELECT
     )::bigint AS marcadores_pago_ci_confirmados_sin_fecha,
     COUNT(*) FILTER (
         WHERE pago_ci_marker_desconocido
-    )::bigint AS marcadores_pago_ci_desconocidos
+    )::bigint AS marcadores_pago_ci_desconocidos,
+
+    -- v2.2 monetary-evidence counters.
+    COUNT(*) FILTER (
+        WHERE resultado_ciclo='ABIERTA'
+          AND monto_pago_ci_positivo
+          AND lower(coalesce(tipo_unidad_principal,'')) IN (
+              'departamento flat','departamento duplex'
+          )
+    )::bigint AS abiertas_residenciales_con_monto_pago_ci_positivo,
+    COUNT(*) FILTER (
+        WHERE monto_pago_ci_positivo
+          AND fecha_pago_ci IS NULL
+          AND NOT pago_ci_marker_confirmado
+    )::bigint AS montos_pago_ci_positivos_sin_fecha_ni_marcador,
+    COUNT(*) FILTER (
+        WHERE evidencia_pago_ci_confirmada
+    )::bigint AS ciclos_con_evidencia_pago_ci
 FROM core.fact_ciclo_comercial_unidad;
