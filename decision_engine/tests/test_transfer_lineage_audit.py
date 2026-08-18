@@ -23,6 +23,21 @@ def test_transfer_lineage_prefers_declared_destination_match_when_available() ->
     assert "destination_unverifiable" in sql
 
 
+def test_transfer_base_reuses_governed_reason_fields_without_duplicate_names() -> None:
+    sql = " ".join(SQL.read_text(encoding="utf-8").lower().split())
+    assert "coalesce(t.depa_del_cambio, '')" in sql
+    assert "a.cambio_de_departamento" not in sql
+    assert "a.depa_del_cambio" not in sql
+    assert "a.motivo_caida_segun_asesor" not in sql
+
+
+def test_transfer_views_are_rebuilt_when_projection_changes() -> None:
+    sql = " ".join(SQL.read_text(encoding="utf-8").lower().split())
+    assert "drop view if exists decision_intelligence.v_department_transfer_lineage_health" in sql
+    assert "drop view if exists decision_intelligence.v_department_transfer_lineage_audit" in sql
+    assert "create view decision_intelligence.v_department_transfer_lineage_audit" in sql
+
+
 def test_transfer_lineage_is_explicitly_post_outcome_only() -> None:
     sql = SQL.read_text(encoding="utf-8").lower()
     assert "'post_outcome_audit_only'::text as lineage_evidence_role" in sql
