@@ -28,7 +28,7 @@ def test_proforma_recency_contract_is_conservative_and_auditable() -> None:
     assert "BLOCKED_PROFORMA_AFTER_OBSERVED_AT" in sql
     assert "WHERE u.eligibility_status = 'ELIGIBLE'" in sql
     assert "current_outside_proforma_recency_window" in sql
-    assert "separation-fall-risk-current-v0.2.0" in sql
+    assert "separation-fall-risk-current-v0.5.0" in sql
 
 
 def test_three_month_boundary_is_inclusive() -> None:
