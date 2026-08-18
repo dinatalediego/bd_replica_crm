@@ -21,6 +21,23 @@ def test_transfer_lineage_prefers_declared_destination_match_when_available() ->
     assert "verified_destination_within_30d" in sql
     assert "destination_mismatch" in sql
     assert "destination_unverifiable" in sql
+    assert "s.destination_match_score >= 2" in sql
+    assert "unit_number_only_match_weak" in sql
+
+
+def test_transfer_lineage_distinguishes_right_censoring_from_no_successor() -> None:
+    sql = " ".join(SQL.read_text(encoding="utf-8").lower().split())
+    assert "max(fecha_inicio)::date as observed_through" in sql
+    assert "pending_successor_observation_90d" in sql
+    assert "reported_no_successor_after_90d" in sql
+    assert "successor_observation_window_complete_90d" in sql
+
+
+def test_transfer_lineage_surfaces_declared_destination_equal_to_origin() -> None:
+    sql = " ".join(SQL.read_text(encoding="utf-8").lower().split())
+    assert "declared_destination_matches_origin" in sql
+    assert "origin_nombre_unidad" in sql
+    assert "declared_destination_matches_origin_rows" in sql
 
 
 def test_transfer_base_reuses_governed_reason_fields_without_duplicate_names() -> None:
