@@ -6,12 +6,15 @@
 --
 -- The commercial state is NEVER reconstructed from a single RAW row here.
 -- Lifecycle identity/state comes from CORE. RAW is used only for current
--- separation status, interaction metadata and proforma recency.
+-- separation/delivery status, interaction metadata and proforma recency.
 --
--- Eligibility v0.3:
+-- Eligibility v0.4:
 --   * only open/active cycles whose proforma was first observed within the last
 --     3 calendar months as of observed_at are eligible;
 --   * proforma_first_seen_at = MIN(proforma_unidad.fecha_creacion) per proforma;
+--   * an active Entrega process for the same codigo_proforma + codigo_unidad is
+--     operational evidence that the case is already beyond fall-risk follow-up,
+--     so it is excluded from scoring;
 --   * a positive pago_ci marker is conversion evidence even when its dated
 --     companion fecha_de_minuta is missing. Such rows are excluded from risk;
 --   * unknown populated pago_ci markers are isolated as a blocked eligibility
@@ -31,6 +34,20 @@ WITH proforma_recency AS (
     FROM raw_cygnus.proforma_unidad
     WHERE codigo_proforma IS NOT NULL
     GROUP BY codigo_proforma::text
+), active_entrega AS (
+    -- Aggregate by the certified lifecycle grain so duplicate Entrega rows do
+    -- not multiply candidates. procesos.id is not assumed globally unique.
+    SELECT
+        codigo_proforma::text AS codigo_proforma,
+        codigo_unidad::text AS codigo_unidad,
+        COUNT(*)::integer AS active_entrega_process_count,
+        MAX(id) AS active_entrega_source_id
+    FROM raw_cygnus.procesos
+    WHERE lower(coalesce(nombre,'')) = 'entrega'
+      AND lower(coalesce(estado,'')) = 'activo'
+      AND codigo_proforma IS NOT NULL
+      AND codigo_unidad IS NOT NULL
+    GROUP BY codigo_proforma::text, codigo_unidad::text
 )
 SELECT
     'separacion:' || c.separacion_source_id::text AS separation_id,
@@ -63,6 +80,8 @@ SELECT
             THEN 'BLOCKED_MISSING_PROFORMA_DATE'
         WHEN pr.proforma_first_seen_at > c.analytics_refreshed_at
             THEN 'BLOCKED_PROFORMA_AFTER_OBSERVED_AT'
+        WHEN ae.codigo_proforma IS NOT NULL
+            THEN 'EXCLUDED_ACTIVE_ENTREGA_PROCESS'
         WHEN pr.proforma_first_seen_at < c.analytics_refreshed_at - interval '3 months'
             THEN 'EXCLUDED_PROFORMA_OLDER_THAN_3_MONTHS'
         WHEN c.pago_ci_marker_desconocido
@@ -71,14 +90,19 @@ SELECT
             THEN 'EXCLUDED_PAGO_CI_MARKER_CONFIRMED'
         ELSE 'ELIGIBLE'
     END::text AS eligibility_status,
-    'PROFORMA_FIRST_SEEN_WITHIN_3_CALENDAR_MONTHS_AND_NOT_CONVERTED'::text AS eligibility_rule,
+    'PROFORMA_RECENT_NOT_CONVERTED_AND_NO_ACTIVE_ENTREGA'::text AS eligibility_rule,
     3::integer AS eligibility_window_months,
 
-    -- v0.3 evidence appended for backwards-compatible CREATE OR REPLACE.
+    -- v0.3 evidence kept stable for backwards-compatible CREATE OR REPLACE.
     c.pago_ci_marker_raw,
     c.pago_ci_marker_confirmado,
     c.pago_ci_marker_desconocido,
-    c.fecha_pago_ci
+    c.fecha_pago_ci,
+
+    -- v0.4 delivery-process evidence appended after the stable v0.3 prefix.
+    (ae.codigo_proforma IS NOT NULL) AS has_active_entrega_process,
+    COALESCE(ae.active_entrega_process_count, 0)::integer AS active_entrega_process_count,
+    ae.active_entrega_source_id
 FROM core.fact_ciclo_comercial_unidad c
 JOIN raw_cygnus.procesos s
   ON s.nombre = 'Separacion'
@@ -87,6 +111,9 @@ JOIN raw_cygnus.procesos s
  AND s.codigo_unidad::text = c.codigo_unidad
 LEFT JOIN proforma_recency pr
   ON pr.codigo_proforma = c.codigo_proforma
+LEFT JOIN active_entrega ae
+  ON ae.codigo_proforma = c.codigo_proforma
+ AND ae.codigo_unidad = c.codigo_unidad
 WHERE c.resultado_ciclo = 'ABIERTA'
   AND s.estado = 'Activo';
 
@@ -141,7 +168,7 @@ SELECT
     total_interactions_observed,
     'LAST_PROJECT_INTERACTION_BINARY_PROXY'::text AS interaction_signal_mode,
     'NOT_YET_CERTIFIED'::text AS admin_signal_mode,
-    'separation-fall-risk-current-v0.3.0'::text AS feature_contract_version,
+    'separation-fall-risk-current-v0.4.0'::text AS feature_contract_version,
 
     CASE
         WHEN separacion_source_id IS NULL
@@ -158,6 +185,7 @@ SELECT
           OR proforma_first_seen_at < observed_at - interval '3 months'
           OR pago_ci_marker_confirmado
           OR pago_ci_marker_desconocido
+          OR has_active_entrega_process
           OR (
                 last_interaction_at IS NOT NULL
             AND last_interaction_at > observed_at
@@ -194,6 +222,7 @@ SELECT
             END,
             CASE WHEN pago_ci_marker_confirmado THEN 'PAGO_CI_MARKER_CONFIRMED_MUST_NOT_BE_SCORED' END,
             CASE WHEN pago_ci_marker_desconocido THEN 'UNKNOWN_PAGO_CI_MARKER_VALUE' END,
+            CASE WHEN has_active_entrega_process THEN 'ACTIVE_ENTREGA_PROCESS_MUST_NOT_BE_SCORED' END,
             CASE
                 WHEN last_interaction_at IS NOT NULL AND observed_at IS NOT NULL
                  AND last_interaction_at > observed_at
@@ -212,11 +241,16 @@ SELECT
     eligibility_rule,
     eligibility_window_months,
 
-    -- v0.3 columns appended after the stable v0.2 prefix.
+    -- v0.3 columns kept stable.
     pago_ci_marker_raw,
     pago_ci_marker_confirmado,
     pago_ci_marker_desconocido,
-    fecha_pago_ci
+    fecha_pago_ci,
+
+    -- v0.4 columns appended.
+    has_active_entrega_process,
+    active_entrega_process_count,
+    active_entrega_source_id
 FROM candidate_base;
 
 CREATE OR REPLACE VIEW features.v_separation_fall_risk_health AS
@@ -258,7 +292,7 @@ SELECT
       WHERE eligibility_status = 'BLOCKED_MISSING_OBSERVED_AT')
         AS excluded_missing_observed_at,
 
-    -- v0.3 conversion-marker safety metrics.
+    -- v0.3 conversion-marker safety metrics kept stable.
     (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'EXCLUDED_PAGO_CI_MARKER_CONFIRMED')
         AS excluded_pago_ci_marker_confirmed,
@@ -267,5 +301,12 @@ SELECT
         AS blocked_unknown_pago_ci_marker,
     COUNT(*) FILTER (
         WHERE pago_ci_marker_confirmado OR pago_ci_marker_desconocido
-    )::bigint AS current_with_pago_ci_marker
+    )::bigint AS current_with_pago_ci_marker,
+
+    -- v0.4 Entrega exclusion metrics appended after the stable v0.3 prefix.
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
+      WHERE eligibility_status = 'EXCLUDED_ACTIVE_ENTREGA_PROCESS')
+        AS excluded_active_entrega_process,
+    COUNT(*) FILTER (WHERE has_active_entrega_process)::bigint
+        AS current_with_active_entrega_process
 FROM features.separation_fall_risk_current;
