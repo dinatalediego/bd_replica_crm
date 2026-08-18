@@ -26,7 +26,10 @@ def test_pago_ci_is_a_marker_not_a_date() -> None:
     normalized_correction = " ".join(correction.lower().split())
     normalized_qa = " ".join(qa.lower().split())
 
-    assert "pago_ci is not a date" in normalized_correction
+    # Assert semantic evidence rather than depending on one exact comment phrase.
+    assert "pago_ci" in normalized_correction
+    assert "marker" in normalized_correction
+    assert "not the dated conversion source" in normalized_correction
     assert "pagó cuota inicial (minuta)" in normalized_qa
     assert "pago_ci_unknown_marker_value" in normalized_qa
     assert "pago_ci_marker_without_fecha_pago_ci" in normalized_qa
