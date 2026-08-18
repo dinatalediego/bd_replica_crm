@@ -11,6 +11,7 @@ SQL_FILES = (
     "decision_engine/sql/06_historical_fall_outcomes.sql",
     "decision_engine/sql/07_fall_reason_analysis_corpus.sql",
     "decision_engine/sql/08_training_outcome_contract.sql",
+    "decision_engine/sql/09_transfer_lineage_audit.sql",
 )
 
 
@@ -28,7 +29,8 @@ def main() -> int:
 
     print(
         "Decision maturity control instalado: PolicyOps + run audit + candidate snapshots "
-        "+ historical fall outcomes + governed fall-reason corpus + supervised training target."
+        "+ historical fall outcomes + governed fall-reason corpus + supervised training target "
+        "+ transfer lineage audit."
     )
     return 0
 
