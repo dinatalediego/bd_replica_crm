@@ -42,3 +42,26 @@ contracts:
       one_text_document_per_proforma: true
       only_confirmed_fall_outcomes: true
       live_feature_eligible: false
+
+  decision_intelligence.v_separation_fall_training_outcome:
+    owner: analytics
+    business_domain: decision_intelligence
+    grain:
+      - separation_id
+    purpose: supervised_binary_target
+    target: training_target_fall_before_conversion
+    competing_events:
+      - TRANSFER_UNIT
+    target_rules:
+      converted: 0
+      true_fall: 1
+      known_department_transfer: null
+      censored_open: null
+    requirements:
+      department_transfer_excluded_from_binary_target: true
+      transfer_evidence_live_feature_eligible: false
+      eligible_with_null_target: 0
+      transfer_rows_leaking_into_binary_target: 0
+    notes:
+      - A known department change is a continuation/transfer of the commercial opportunity, not a confirmed lost customer.
+      - Transfer rows stay auditable but are excluded until successor-opportunity lineage is certified.
