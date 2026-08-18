@@ -32,13 +32,36 @@ def score_separation(candidate: SeparationCandidate) -> Recommendation:
     return separation_fall_risk_baseline(candidate.to_context())
 
 
+def _int_feature(candidate: SeparationCandidate, name: str) -> int:
+    value = candidate.features.get(name)
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def score_candidates(candidates: Iterable[SeparationCandidate]) -> list[Recommendation]:
-    recommendations = [score_separation(candidate) for candidate in candidates]
-    return sorted(
-        recommendations,
-        key=lambda item: (
-            item.status != "ACTIVE",
-            -(item.score or 0.0),
-            item.entity_id,
+    """Score and rank candidates deterministically for an operational worklist.
+
+    Score remains the primary ranking signal. For equal baseline scores, older
+    separations and longer contact gaps are prioritized before falling back to
+    the stable entity id. This avoids an arbitrary lexicographic ordering when
+    many candidates share the same coarse baseline score.
+    """
+    scored = [
+        (score_separation(candidate), candidate)
+        for candidate in candidates
+    ]
+
+    ranked = sorted(
+        scored,
+        key=lambda pair: (
+            pair[0].status != "ACTIVE",
+            -(pair[0].score or 0.0),
+            -_int_feature(pair[1], "days_since_separation"),
+            -_int_feature(pair[1], "days_since_last_interaction"),
+            _int_feature(pair[1], "interaction_count_14d"),
+            pair[0].entity_id,
         ),
     )
+    return [recommendation for recommendation, _candidate in ranked]
