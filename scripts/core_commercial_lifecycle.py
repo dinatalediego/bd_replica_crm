@@ -63,6 +63,7 @@ def main() -> int:
         "abiertas_residenciales_con_pago_ci",
         "ventas_post_2026_sin_pago_ci",
         "marcadores_pago_ci_desconocidos",
+        "montos_pago_ci_no_parseables",
     ]
     failures = {
         key: int(result[key])
@@ -78,10 +79,12 @@ def main() -> int:
         return 1
 
     marker_debt = int(result.get("marcadores_pago_ci_confirmados_sin_fecha") or 0)
+    amount_debt = int(result.get("montos_pago_ci_positivos_sin_fecha_ni_marcador") or 0)
     print(
-        "Gate CORE APROBADO: fecha_de_minuta gobierna la fecha de conversión; "
-        "pago_ci se trata como marcador categórico. "
-        f"Marcadores positivos sin fecha={marker_debt} (WARN, excluidos del risk scoring)."
+        "Gate CORE APROBADO: fecha_de_minuta gobierna la fecha de conversión; pago_ci se trata como marcador; "
+        "monto_pagado_cuota_inicial > 0 es evidencia monetaria de pago. "
+        f"Marcadores positivos sin fecha={marker_debt}; montos positivos sin fecha ni marcador={amount_debt} "
+        "(WARN, ambos fuera del risk scoring)."
     )
     return 0
 
