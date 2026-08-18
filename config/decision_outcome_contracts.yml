@@ -6,12 +6,14 @@ contracts:
     business_domain: decision_intelligence
     grain:
       - separation_id
-    target: target_fall_before_conversion
+    temporal_target: target_fall_before_conversion
     target_rules:
+      source_of_truth: core.resultado_ciclo
       fall: 1
       converted: 0
       censored_open: null
-      confirmed_conversion_precedes_raw_fall: true
+      dated_competing_events_required: true
+    conversion_interest_signal: conversion_interest_sample
     conversion_evidence:
       - fecha_pago_ci
       - pago_ci_marker_confirmado
@@ -23,8 +25,12 @@ contracts:
       - depa_del_cambio
     requirements:
       post_outcome_fields_forbidden_in_live_features: true
-      payment_evidence_never_labeled_as_fall: true
-      censored_open_rows_have_null_target: true
+      undated_payment_evidence_does_not_manufacture_temporal_label: true
+      censored_open_rows_have_null_temporal_target: true
+      current_payment_evidence_excludes_live_fall_risk: true
+    notes:
+      - A historical fall can later have payment evidence and still remain a valid fall-before-conversion label when CORE dated the fall first.
+      - conversion_interest_sample is broader than the clean temporal target and must be analyzed separately.
 
   decision_intelligence.v_fall_reason_proforma_history:
     owner: analytics
