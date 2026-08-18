@@ -46,6 +46,7 @@ jobs:
 
           for path in (
               Path("config/data_contracts.yml"),
+              Path("config/decision_outcome_contracts.yml"),
               Path("config/tables.example.yml"),
               Path("decision_engine/config/decisions.yml"),
               Path("decision_engine/config/production_gates.yml"),
