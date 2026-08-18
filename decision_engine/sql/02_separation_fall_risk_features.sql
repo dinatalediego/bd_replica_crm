@@ -8,17 +8,22 @@
 -- Lifecycle identity/state comes from CORE. RAW is used only for current
 -- separation/delivery status, interaction metadata and proforma recency.
 --
--- Eligibility v0.4:
+-- Eligibility v0.5:
 --   * only open/active cycles whose proforma was first observed within the last
 --     3 calendar months as of observed_at are eligible;
 --   * proforma_first_seen_at = MIN(proforma_unidad.fecha_creacion) per proforma;
 --   * an active Entrega process for the same codigo_proforma + codigo_unidad is
---     operational evidence that the case is already beyond fall-risk follow-up,
---     so it is excluded from scoring;
---   * a positive pago_ci marker is conversion evidence even when its dated
---     companion fecha_de_minuta is missing. Such rows are excluded from risk;
---   * unknown populated pago_ci markers are isolated as a blocked eligibility
---     bucket rather than silently interpreted.
+--     operational evidence that the case is already beyond fall-risk follow-up;
+--   * positive initial-payment evidence is broader than the pago_ci marker:
+--       - fecha_de_minuta / Fecha_PagoCI_pm,
+--       - pago_ci marker = 'Pagó cuota inicial (Minuta)',
+--       - monto_pagado_cuota_inicial > 0, where the amount reproduces the
+--         Power Query COALESCE(monto_total_pagado,
+--         monto_pagado_de_cuota_inicial).
+--     Any of those means the opportunity must not be scored as fall risk;
+--   * populated but unparseable payment amounts are BLOCKED, never interpreted
+--     as zero/no-payment evidence;
+--   * unknown populated pago_ci markers are also blocked.
 --
 -- Known feature limitations remain explicit in quality metadata:
 --   * interaction_count_14d is a binary 0/1 proxy;
@@ -88,9 +93,13 @@ SELECT
             THEN 'BLOCKED_UNKNOWN_PAGO_CI_MARKER'
         WHEN c.pago_ci_marker_confirmado
             THEN 'EXCLUDED_PAGO_CI_MARKER_CONFIRMED'
+        WHEN c.monto_pago_ci_parse_error
+            THEN 'BLOCKED_UNPARSEABLE_INITIAL_PAYMENT_AMOUNT'
+        WHEN c.monto_pago_ci_positivo
+            THEN 'EXCLUDED_POSITIVE_INITIAL_PAYMENT_AMOUNT'
         ELSE 'ELIGIBLE'
     END::text AS eligibility_status,
-    'PROFORMA_RECENT_NOT_CONVERTED_AND_NO_ACTIVE_ENTREGA'::text AS eligibility_rule,
+    'PROFORMA_RECENT_NOT_CONVERTED_NO_ACTIVE_ENTREGA_NO_INITIAL_PAYMENT'::text AS eligibility_rule,
     3::integer AS eligibility_window_months,
 
     -- v0.3 evidence kept stable for backwards-compatible CREATE OR REPLACE.
@@ -99,10 +108,18 @@ SELECT
     c.pago_ci_marker_desconocido,
     c.fecha_pago_ci,
 
-    -- v0.4 delivery-process evidence appended after the stable v0.3 prefix.
+    -- v0.4 delivery-process evidence.
     (ae.codigo_proforma IS NOT NULL) AS has_active_entrega_process,
     COALESCE(ae.active_entrega_process_count, 0)::integer AS active_entrega_process_count,
-    ae.active_entrega_source_id
+    ae.active_entrega_source_id,
+
+    -- v0.5 monetary payment evidence.
+    c.monto_total_pagado,
+    c.monto_pagado_de_cuota_inicial,
+    c.monto_pagado_cuota_inicial,
+    c.monto_pago_ci_positivo,
+    c.monto_pago_ci_parse_error,
+    c.evidencia_pago_ci_confirmada
 FROM core.fact_ciclo_comercial_unidad c
 JOIN raw_cygnus.procesos s
   ON s.nombre = 'Separacion'
@@ -168,7 +185,7 @@ SELECT
     total_interactions_observed,
     'LAST_PROJECT_INTERACTION_BINARY_PROXY'::text AS interaction_signal_mode,
     'NOT_YET_CERTIFIED'::text AS admin_signal_mode,
-    'separation-fall-risk-current-v0.4.0'::text AS feature_contract_version,
+    'separation-fall-risk-current-v0.5.0'::text AS feature_contract_version,
 
     CASE
         WHEN separacion_source_id IS NULL
@@ -186,6 +203,8 @@ SELECT
           OR pago_ci_marker_confirmado
           OR pago_ci_marker_desconocido
           OR has_active_entrega_process
+          OR monto_pago_ci_parse_error
+          OR monto_pago_ci_positivo
           OR (
                 last_interaction_at IS NOT NULL
             AND last_interaction_at > observed_at
@@ -223,6 +242,8 @@ SELECT
             CASE WHEN pago_ci_marker_confirmado THEN 'PAGO_CI_MARKER_CONFIRMED_MUST_NOT_BE_SCORED' END,
             CASE WHEN pago_ci_marker_desconocido THEN 'UNKNOWN_PAGO_CI_MARKER_VALUE' END,
             CASE WHEN has_active_entrega_process THEN 'ACTIVE_ENTREGA_PROCESS_MUST_NOT_BE_SCORED' END,
+            CASE WHEN monto_pago_ci_parse_error THEN 'UNPARSEABLE_INITIAL_PAYMENT_AMOUNT' END,
+            CASE WHEN monto_pago_ci_positivo THEN 'POSITIVE_INITIAL_PAYMENT_AMOUNT_MUST_NOT_BE_SCORED' END,
             CASE
                 WHEN last_interaction_at IS NOT NULL AND observed_at IS NOT NULL
                  AND last_interaction_at > observed_at
@@ -247,10 +268,18 @@ SELECT
     pago_ci_marker_desconocido,
     fecha_pago_ci,
 
-    -- v0.4 columns appended.
+    -- v0.4 columns kept stable.
     has_active_entrega_process,
     active_entrega_process_count,
-    active_entrega_source_id
+    active_entrega_source_id,
+
+    -- v0.5 columns appended.
+    monto_total_pagado,
+    monto_pagado_de_cuota_inicial,
+    monto_pagado_cuota_inicial,
+    monto_pago_ci_positivo,
+    monto_pago_ci_parse_error,
+    evidencia_pago_ci_confirmada
 FROM candidate_base;
 
 CREATE OR REPLACE VIEW features.v_separation_fall_risk_health AS
@@ -303,10 +332,22 @@ SELECT
         WHERE pago_ci_marker_confirmado OR pago_ci_marker_desconocido
     )::bigint AS current_with_pago_ci_marker,
 
-    -- v0.4 Entrega exclusion metrics appended after the stable v0.3 prefix.
+    -- v0.4 Entrega exclusion metrics.
     (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
       WHERE eligibility_status = 'EXCLUDED_ACTIVE_ENTREGA_PROCESS')
         AS excluded_active_entrega_process,
     COUNT(*) FILTER (WHERE has_active_entrega_process)::bigint
-        AS current_with_active_entrega_process
+        AS current_with_active_entrega_process,
+
+    -- v0.5 payment-amount safety metrics.
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
+      WHERE eligibility_status = 'EXCLUDED_POSITIVE_INITIAL_PAYMENT_AMOUNT')
+        AS excluded_positive_initial_payment_amount,
+    (SELECT COUNT(*)::bigint FROM features.v_separation_fall_risk_candidate_universe
+      WHERE eligibility_status = 'BLOCKED_UNPARSEABLE_INITIAL_PAYMENT_AMOUNT')
+        AS blocked_unparseable_initial_payment_amount,
+    COUNT(*) FILTER (WHERE monto_pago_ci_positivo)::bigint
+        AS current_with_positive_initial_payment_amount,
+    COUNT(*) FILTER (WHERE monto_pago_ci_parse_error)::bigint
+        AS current_with_unparseable_initial_payment_amount
 FROM features.separation_fall_risk_current;
