@@ -21,6 +21,11 @@ select
     asesor,
     fecha_separacion,
     observed_at,
+    proforma_first_seen_at,
+    proforma_age_days,
+    eligibility_status,
+    eligibility_rule,
+    eligibility_window_months,
     days_since_separation,
     days_since_last_interaction,
     interaction_count_14d,
@@ -60,15 +65,20 @@ def load_candidates(conn: Connection) -> list[SeparationCandidate]:
                 separation_id=str(row["separation_id"]),
                 observed_at=row["observed_at"],
                 features={
-                    # Commercial identifiers are persisted in feature_snapshot so
-                    # the worklist remains operationally useful without joining
-                    # back to mutable RAW rows.
+                    # Commercial identifiers and eligibility evidence are persisted
+                    # in feature_snapshot so the worklist is auditable without
+                    # joining back to mutable RAW rows.
                     "codigo_proforma": row.get("codigo_proforma"),
                     "codigo_unidad": row.get("codigo_unidad"),
                     "codigo_proyecto": row.get("codigo_proyecto"),
                     "documento_cliente": row.get("documento_cliente"),
                     "asesor": row.get("asesor"),
                     "fecha_separacion": row.get("fecha_separacion"),
+                    "proforma_first_seen_at": row.get("proforma_first_seen_at"),
+                    "proforma_age_days": row.get("proforma_age_days"),
+                    "eligibility_status": row.get("eligibility_status"),
+                    "eligibility_rule": row.get("eligibility_rule"),
+                    "eligibility_window_months": row.get("eligibility_window_months"),
                     "last_interaction_at": row.get("last_interaction_at"),
                     "interaction_signal_mode": row.get("interaction_signal_mode"),
                     "admin_signal_mode": row.get("admin_signal_mode"),
