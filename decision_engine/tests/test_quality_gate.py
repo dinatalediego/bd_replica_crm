@@ -13,6 +13,7 @@ def healthy(**overrides):
         "excluded_proforma_older_than_3_months": 95,
         "excluded_missing_proforma_date": 5,
         "excluded_proforma_after_observed_at": 0,
+        "excluded_missing_observed_at": 0,
         "current_outside_proforma_recency_window": 0,
         "quality_blocked": 0,
         "missing_observed_at": 0,
@@ -35,6 +36,7 @@ def test_old_and_missing_date_exclusions_do_not_contaminate_current_candidates()
         "missing_observed_at",
         "current_outside_proforma_recency_window",
         "excluded_proforma_after_observed_at",
+        "excluded_missing_observed_at",
     ],
 )
 def test_hard_quality_failures_block_decisions(field: str) -> None:
@@ -44,3 +46,7 @@ def test_hard_quality_failures_block_decisions(field: str) -> None:
 def test_candidate_count_must_equal_eligible_and_distinct_count() -> None:
     assert _separation_risk_health_is_unsafe(healthy(eligible_candidates=21)) is True
     assert _separation_risk_health_is_unsafe(healthy(distinct_candidates=19)) is True
+
+
+def test_every_universe_row_must_land_in_exactly_one_eligibility_bucket() -> None:
+    assert _separation_risk_health_is_unsafe(healthy(universe_candidates=121)) is True
