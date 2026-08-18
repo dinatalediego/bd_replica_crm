@@ -7,9 +7,14 @@
 -- risk feature set unless a future point-in-time contract proves the value was
 -- already known before decision_observed_at.
 --
--- The supervised outcome of interest is FALL BEFORE CONVERSION. Confirmed
--- initial-payment evidence is therefore a successful-conversion outcome and has
--- precedence over a raw/legacy CAIDA state when both signals coexist.
+-- IMPORTANT OUTCOME RULE:
+-- CORE already resolves the competing event chronology with dated evidence:
+-- VENTA only wins when fecha_venta <= primera_fecha_caida; otherwise the cycle
+-- is CAIDA. Therefore the temporal supervised label follows resultado_ciclo.
+-- Payment marker/amount evidence without a date is still a strong
+-- conversion-interest signal and excludes a case from CURRENT fall-risk scoring,
+-- but it cannot safely rewrite a historical dated fall label or manufacture a
+-- time-to-conversion label. It is exposed separately as conversion_interest_sample.
 
 create schema if not exists decision_intelligence;
 
@@ -66,29 +71,37 @@ select
     c.monto_pago_ci_positivo,
     c.evidencia_pago_ci_confirmada,
 
-    -- Conversion takes precedence because the business target is whether an
-    -- opportunity falls BEFORE showing confirmed initial-payment interest.
+    -- This is the broader business signal the user wants as a sample of
+    -- conversion/interest. It also justifies excluding CURRENT cases from risk.
+    (
+        c.resultado_ciclo = 'VENTA'
+        or c.evidencia_pago_ci_confirmada
+    ) as conversion_interest_sample,
+
     case
-        when c.evidencia_pago_ci_confirmada or c.resultado_ciclo = 'VENTA'
+        when c.resultado_ciclo = 'VENTA'
             then 'CONVERTED'
         when c.resultado_ciclo = 'CAIDA'
             then 'FELL'
+        when c.resultado_ciclo = 'ABIERTA' and c.evidencia_pago_ci_confirmada
+            then 'CONVERSION_EVIDENCE_UNDATED_OR_NOT_IN_LIFECYCLE'
         when c.resultado_ciclo = 'ABIERTA'
             then 'CENSORED_OPEN'
         else 'UNKNOWN'
     end::text as outcome_class,
 
+    -- Temporal supervised target. CORE is authoritative because it already
+    -- compares dated conversion versus first fall. ABIERTA remains censored,
+    -- including cases with undated marker/amount evidence.
     case
-        when c.evidencia_pago_ci_confirmada or c.resultado_ciclo = 'VENTA'
-            then 0
-        when c.resultado_ciclo = 'CAIDA'
-            then 1
+        when c.resultado_ciclo = 'VENTA' then 0
+        when c.resultado_ciclo = 'CAIDA' then 1
         else null::integer
     end as target_fall_before_conversion,
 
     case
-        when c.evidencia_pago_ci_confirmada or c.resultado_ciclo = 'VENTA'
-            then coalesce(c.fecha_pago_ci, c.fecha_venta)
+        when c.resultado_ciclo = 'VENTA'
+            then c.fecha_venta
         when c.resultado_ciclo = 'CAIDA'
             then c.primera_fecha_caida
         else null
@@ -103,24 +116,27 @@ select
     end::text as conversion_evidence_mode,
 
     case
-        when (c.evidencia_pago_ci_confirmada or c.resultado_ciclo = 'VENTA')
-          and coalesce(c.fecha_pago_ci, c.fecha_venta) is null
-            then false
-        when c.resultado_ciclo = 'CAIDA' and c.primera_fecha_caida is null
-            then false
-        when c.resultado_ciclo in ('VENTA', 'CAIDA') or c.evidencia_pago_ci_confirmada
-            then true
+        when c.resultado_ciclo = 'VENTA' then c.fecha_venta is not null
+        when c.resultado_ciclo = 'CAIDA' then c.primera_fecha_caida is not null
         else null::boolean
     end as outcome_has_temporal_precision,
 
     case
         when c.fecha_separacion is null then null::integer
-        when c.evidencia_pago_ci_confirmada or c.resultado_ciclo = 'VENTA'
-            then greatest(0, coalesce(c.fecha_pago_ci, c.fecha_venta)::date - c.fecha_separacion::date)::integer
+        when c.resultado_ciclo = 'VENTA' and c.fecha_venta is not null
+            then greatest(0, c.fecha_venta::date - c.fecha_separacion::date)::integer
         when c.resultado_ciclo = 'CAIDA' and c.primera_fecha_caida is not null
             then greatest(0, c.primera_fecha_caida::date - c.fecha_separacion::date)::integer
         else null::integer
     end as days_to_outcome,
+
+    -- Useful diagnostic: a fall may later acquire payment evidence. It remains
+    -- a valid positive label for FALL-BEFORE-CONVERSION if CORE dated the fall
+    -- first; however it must never re-enter CURRENT risk once payment is known.
+    (
+        c.resultado_ciclo = 'CAIDA'
+        and c.evidencia_pago_ci_confirmada
+    ) as fall_with_any_payment_evidence_now,
 
     t.motivo_caida_segun_asesor,
     t.cambio_de_departamento,
@@ -177,9 +193,13 @@ where rn = 1;
 create or replace view decision_intelligence.v_separation_fall_outcome_health as
 select
     count(*)::bigint as lifecycle_rows,
-    count(*) filter (where target_fall_before_conversion is not null)::bigint as labeled_rows,
+    count(*) filter (where target_fall_before_conversion is not null)::bigint as temporally_labeled_rows,
     count(*) filter (where target_fall_before_conversion = 1)::bigint as fall_rows,
     count(*) filter (where target_fall_before_conversion = 0)::bigint as conversion_rows,
+    count(*) filter (where conversion_interest_sample)::bigint as conversion_interest_rows,
+    count(*) filter (
+        where outcome_class = 'CONVERSION_EVIDENCE_UNDATED_OR_NOT_IN_LIFECYCLE'
+    )::bigint as conversion_interest_without_temporal_label,
     count(*) filter (where outcome_class = 'CENSORED_OPEN')::bigint as censored_open_rows,
     count(*) filter (
         where target_fall_before_conversion is not null
@@ -197,14 +217,12 @@ select
         / nullif(count(*) filter (where target_fall_before_conversion = 1), 0),
         4
     ) as fall_reason_text_coverage,
-    count(*) filter (
-        where resultado_ciclo_raw = 'CAIDA'
-          and target_fall_before_conversion = 0
-    )::bigint as raw_fall_reclassified_as_conversion_due_payment_evidence
+    count(*) filter (where fall_with_any_payment_evidence_now)::bigint
+        as falls_with_payment_evidence_now_for_temporal_review
 from decision_intelligence.v_separation_fall_outcome_history;
 
 comment on view decision_intelligence.v_separation_fall_outcome_history is
-'Historical labels for fall-before-conversion. Initial-payment evidence is conversion; fall-reason text is post-outcome only and forbidden as a live risk feature.';
+'Historical fall-before-conversion labels follow dated CORE chronology. Payment evidence also defines a broader conversion-interest sample; fall-reason text is post-outcome only and forbidden as a live risk feature.';
 
 comment on view decision_intelligence.v_fall_reason_proforma_history is
 'One-row-per-proforma historical fall corpus for NLP/taxonomy analysis without unit-level duplication.';
