@@ -1,0 +1,38 @@
+version: 1
+
+contracts:
+  decision_intelligence.v_separation_fall_outcome_history:
+    owner: analytics
+    business_domain: decision_intelligence
+    grain:
+      - separation_id
+    target: target_fall_before_conversion
+    target_rules:
+      fall: 1
+      converted: 0
+      censored_open: null
+      confirmed_conversion_precedes_raw_fall: true
+    conversion_evidence:
+      - fecha_pago_ci
+      - pago_ci_marker_confirmado
+      - monto_pago_ci_positivo
+      - resultado_ciclo_venta
+    post_outcome_fields:
+      - motivo_caida_segun_asesor
+      - cambio_de_departamento
+      - depa_del_cambio
+    requirements:
+      post_outcome_fields_forbidden_in_live_features: true
+      payment_evidence_never_labeled_as_fall: true
+      censored_open_rows_have_null_target: true
+
+  decision_intelligence.v_fall_reason_proforma_history:
+    owner: analytics
+    business_domain: decision_intelligence
+    grain:
+      - codigo_proforma
+    purpose: historical_nlp_and_reason_taxonomy
+    requirements:
+      one_text_document_per_proforma: true
+      only_confirmed_fall_outcomes: true
+      live_feature_eligible: false
