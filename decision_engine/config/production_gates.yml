@@ -42,7 +42,7 @@ separation_fall_risk:
     recency_window_months: 3
 
   baseline:
-    policy_version: separation-fall-risk-baseline-v0.5
+    policy_version: separation-fall-risk-baseline-v0.1.0
     require_deterministic_ranking: true
     require_explanation: true
     require_feature_snapshot: true
