@@ -1,0 +1,104 @@
+version: 1
+
+contracts:
+  raw_cygnus.datos_extras:
+    owner: analytics
+    business_domain: crm
+    source: grupocygnus.datos_extras
+    criticality: critical
+    grain:
+      - id
+      - nombre
+    certified_at: 2026-08-18
+    certification_evidence:
+      duplicate_id_groups: 1648
+      duplicate_id_nombre_groups: 0
+      incomplete_id_nombre_keys: 0
+    requirements:
+      source_unique_grain: true
+      target_unique_grain: true
+      source_target_row_parity: true
+      source_target_grain_parity: true
+      incremental_watermark: fecha_actualizacion
+      replica_key_columns:
+        - id
+        - nombre
+    notes:
+      - id alone is not unique and must never be used as the replica key.
+      - multiple data-extra attributes can share the same id.
+
+  analytics.int_ciclo_comercial_unidad:
+    owner: analytics
+    business_domain: commercial_lifecycle
+    criticality: critical
+    grain:
+      - codigo_proforma
+      - codigo_unidad
+    certified_at: 2026-08-18
+    requirements:
+      duplicate_grain_rows: 0
+      expected_source_pair_reconciliation: true
+      valid_result_values:
+        - VENTA
+        - ABIERTA
+        - CAIDA
+    notes:
+      - Lifecycle state is authoritative here; downstream products must not reconstruct it from a single RAW row.
+
+  core.fact_ciclo_comercial_unidad:
+    owner: analytics
+    business_domain: commercial_lifecycle
+    criticality: critical
+    grain:
+      - codigo_proforma
+      - codigo_unidad
+    requirements:
+      duplicate_grain_rows: 0
+      unresolved_units: 0
+      unresolved_projects: 0
+      inconsistent_projects: 0
+      invalid_results: 0
+    conversion_evidence:
+      dated: fecha_pago_ci
+      marker: pago_ci_marker_confirmado
+      monetary: monto_pago_ci_positivo
+      consolidated: evidencia_pago_ci_confirmada
+
+  features.v_separation_fall_risk_candidate_universe:
+    owner: analytics
+    business_domain: decision_intelligence
+    criticality: critical
+    grain:
+      - separation_id
+    requirements:
+      every_entity_in_exactly_one_eligibility_bucket: true
+      future_dated_proforma: 0
+      missing_observed_at: 0
+    eligibility_exclusions:
+      - EXCLUDED_ACTIVE_ENTREGA_PROCESS
+      - EXCLUDED_PROFORMA_OLDER_THAN_3_MONTHS
+      - EXCLUDED_PAGO_CI_MARKER_CONFIRMED
+      - EXCLUDED_POSITIVE_INITIAL_PAYMENT_AMOUNT
+    blocking_states:
+      - BLOCKED_MISSING_OBSERVED_AT
+      - BLOCKED_MISSING_PROFORMA_DATE
+      - BLOCKED_PROFORMA_AFTER_OBSERVED_AT
+      - BLOCKED_UNKNOWN_PAGO_CI_MARKER
+      - BLOCKED_UNPARSEABLE_INITIAL_PAYMENT_AMOUNT
+
+  features.separation_fall_risk_current:
+    owner: analytics
+    business_domain: decision_intelligence
+    criticality: critical
+    grain:
+      - separation_id
+    point_in_time_column: observed_at
+    requirements:
+      duplicate_candidates: 0
+      blocked_candidates_reaching_scoring: 0
+      active_entrega_reaching_scoring: 0
+      payment_evidence_reaching_scoring: 0
+      candidates_outside_recency_window: 0
+    known_warnings:
+      - INTERACTION_COUNT_14D_BINARY_PROXY
+      - ADMIN_BLOCK_SIGNAL_NOT_CERTIFIED
