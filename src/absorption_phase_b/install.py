@@ -34,6 +34,7 @@ def main():
         "02_tables.sql",
         "04_qa.sql",
         "03_refresh_full.sql",
+        "03b_sale_date_pago_ci.sql",
         "05_incremental.sql",
     ]
     with conn() as c:
