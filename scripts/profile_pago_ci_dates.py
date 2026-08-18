@@ -9,7 +9,7 @@ from replica_cygnus.settings import load_settings
 
 def _write_csv(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = list(rows[0].keys()) if rows else ["codigo_proforma", "valor"]
+    fieldnames = list(rows[0].keys()) if rows else ["codigo_proforma"]
     with path.open("w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -18,47 +18,64 @@ def _write_csv(path: Path, rows: list[dict[str, object]]) -> None:
 
 def main() -> int:
     settings = load_settings()
-    report_path = settings.project_root / "reports" / "pago_ci_date_profile.csv"
+    report_path = settings.project_root / "reports" / "pago_ci_semantics_profile.csv"
 
     sql = """
-        WITH ranked AS (
+        WITH extras AS (
             SELECT
                 de.codigo::text AS codigo_proforma,
-                de.id,
+                lower(de.nombre) AS nombre,
                 de.valor,
+                de.id,
                 de.fecha_actualizacion,
                 row_number() OVER (
-                    PARTITION BY de.codigo
+                    PARTITION BY de.codigo, lower(de.nombre)
                     ORDER BY de.fecha_actualizacion DESC NULLS LAST, de.id DESC
                 ) AS rn
             FROM raw_cygnus.datos_extras de
             WHERE lower(de.entidad)='proforma'
-              AND lower(de.nombre)='pago_ci'
-        ), latest AS (
-            SELECT * FROM ranked WHERE rn=1
+              AND lower(de.nombre) IN ('pago_ci','fecha_de_minuta')
+        ), pivot AS (
+            SELECT
+                codigo_proforma,
+                max(valor) FILTER (WHERE nombre='pago_ci' AND rn=1) AS pago_ci_marker,
+                max(id) FILTER (WHERE nombre='pago_ci' AND rn=1) AS pago_ci_marker_id,
+                max(valor) FILTER (WHERE nombre='fecha_de_minuta' AND rn=1) AS fecha_pago_ci_raw,
+                max(id) FILTER (WHERE nombre='fecha_de_minuta' AND rn=1) AS fecha_pago_ci_id,
+                max(analytics.try_parse_business_date(valor))
+                    FILTER (WHERE nombre='fecha_de_minuta' AND rn=1) AS fecha_pago_ci
+            FROM extras
+            GROUP BY codigo_proforma
         )
         SELECT
             codigo_proforma,
-            id AS datos_extras_id,
-            valor,
-            fecha_actualizacion,
-            analytics.try_parse_business_date(valor) AS parsed_current,
+            pago_ci_marker,
+            pago_ci_marker_id,
+            fecha_pago_ci_raw,
+            fecha_pago_ci_id,
+            fecha_pago_ci,
             CASE
-                WHEN valor IS NULL OR btrim(valor)='' THEN 'EMPTY'
-                WHEN valor ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN 'YYYY-MM-DD'
-                WHEN valor ~ '^\\d{2}-\\d{2}-\\d{4}$' THEN 'DD-MM-YYYY'
-                WHEN valor ~ '^\\d{2}/\\d{2}/\\d{4}$' THEN 'DD/MM/YYYY'
-                WHEN valor ~ '^\\d{4}/\\d{2}/\\d{2}$' THEN 'YYYY/MM/DD'
-                WHEN valor ~ '^\\d{1,2}/\\d{1,2}/\\d{4}$' THEN 'D/M/YYYY'
-                WHEN valor ~ '^\\d{4}-\\d{2}-\\d{2}[ T].*$' THEN 'TIMESTAMP_ISO_PREFIX'
-                WHEN valor ~ '^\\d{2}-\\d{2}-\\d{4}[ T].*$' THEN 'TIMESTAMP_DMY_PREFIX'
-                ELSE 'OTHER'
-            END AS detected_pattern
-        FROM latest
-        WHERE valor IS NOT NULL
-          AND btrim(valor)<>''
-          AND analytics.try_parse_business_date(valor) IS NULL
-        ORDER BY detected_pattern, valor, codigo_proforma
+                WHEN pago_ci_marker IS NOT NULL
+                 AND btrim(pago_ci_marker)<>''
+                 AND lower(btrim(pago_ci_marker)) = lower('Pagó cuota inicial (Minuta)')
+                    THEN 'CONFIRMED_MARKER'
+                WHEN pago_ci_marker IS NOT NULL AND btrim(pago_ci_marker)<>''
+                    THEN 'UNKNOWN_MARKER'
+                ELSE 'NO_MARKER'
+            END AS marker_status,
+            CASE
+                WHEN pago_ci_marker IS NOT NULL AND btrim(pago_ci_marker)<>''
+                 AND fecha_pago_ci IS NOT NULL THEN 'MARKER_AND_DATE'
+                WHEN pago_ci_marker IS NOT NULL AND btrim(pago_ci_marker)<>''
+                 AND fecha_pago_ci IS NULL THEN 'MARKER_WITHOUT_DATE'
+                WHEN (pago_ci_marker IS NULL OR btrim(pago_ci_marker)='')
+                 AND fecha_pago_ci IS NOT NULL THEN 'DATE_WITHOUT_MARKER'
+                ELSE 'NO_EVIDENCE'
+            END AS pairing_status
+        FROM pivot
+        WHERE (pago_ci_marker IS NOT NULL AND btrim(pago_ci_marker)<>'')
+           OR fecha_pago_ci_raw IS NOT NULL
+        ORDER BY pairing_status, codigo_proforma
     """
 
     with connect_postgres(settings) as conn:
@@ -67,52 +84,28 @@ def main() -> int:
             names = [d.name for d in cur.description]
             rows = [dict(zip(names, row)) for row in cur.fetchall()]
 
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                WITH ranked AS (
-                    SELECT
-                        de.codigo,
-                        de.valor,
-                        row_number() OVER (
-                            PARTITION BY de.codigo
-                            ORDER BY de.fecha_actualizacion DESC NULLS LAST, de.id DESC
-                        ) AS rn
-                    FROM raw_cygnus.datos_extras de
-                    WHERE lower(de.entidad)='proforma'
-                      AND lower(de.nombre)='pago_ci'
-                )
-                SELECT
-                    count(*) FILTER (WHERE rn=1 AND valor IS NOT NULL AND btrim(valor)<>'') AS latest_nonempty,
-                    count(*) FILTER (
-                        WHERE rn=1 AND valor IS NOT NULL AND btrim(valor)<>''
-                          AND analytics.try_parse_business_date(valor) IS NULL
-                    ) AS latest_unparseable,
-                    count(*) FILTER (
-                        WHERE valor IS NOT NULL AND btrim(valor)<>''
-                          AND analytics.try_parse_business_date(valor) IS NULL
-                    ) AS historical_unparseable
-                FROM ranked
-                """
-            )
-            latest_nonempty, latest_unparseable, historical_unparseable = cur.fetchone()
-
     _write_csv(report_path, rows)
 
-    print("Perfil pago_ci completado")
-    print(f"  latest_nonempty: {latest_nonempty}")
-    print(f"  latest_unparseable: {latest_unparseable}")
-    print(f"  historical_unparseable: {historical_unparseable}")
-    print(f"  detalle latest no parseable: {report_path}")
-
-    pattern_counts: dict[str, int] = {}
+    pairing_counts: dict[str, int] = {}
+    marker_counts: dict[str, int] = {}
+    unparseable_dates = 0
     for row in rows:
-        pattern = str(row["detected_pattern"])
-        pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
-    if pattern_counts:
-        print("  patrones:")
-        for pattern, count in sorted(pattern_counts.items(), key=lambda item: (-item[1], item[0])):
-            print(f"    {pattern}: {count}")
+        pairing = str(row["pairing_status"])
+        marker = str(row["marker_status"])
+        pairing_counts[pairing] = pairing_counts.get(pairing, 0) + 1
+        marker_counts[marker] = marker_counts.get(marker, 0) + 1
+        if row.get("fecha_pago_ci_raw") not in (None, "") and row.get("fecha_pago_ci") is None:
+            unparseable_dates += 1
+
+    print("Perfil semántico pago_ci / fecha_de_minuta completado")
+    print(f"  detalle: {report_path}")
+    print("  pairing:")
+    for key, value in sorted(pairing_counts.items()):
+        print(f"    {key}: {value}")
+    print("  marker status:")
+    for key, value in sorted(marker_counts.items()):
+        print(f"    {key}: {value}")
+    print(f"  fecha_pago_ci_no_parseable: {unparseable_dates}")
 
     return 0
 
