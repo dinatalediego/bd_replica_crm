@@ -12,3 +12,5 @@ config/tables.yml
 .DS_Store
 
 config/decision_systems.yml
+config/lead_scoring.yml
+artifacts/
