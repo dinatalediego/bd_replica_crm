@@ -1,0 +1,53 @@
+# Lead Scoring v0.1 — primer loop ML productivo de priorización de leads.
+#
+# El score combina dos probabilidades:
+#   55% P(separación <= 14 días)
+#   45% P(minuta/venta validada <= 60 días)
+#
+# Los pesos son PROVISIONALES y no representan todavía valor económico causal.
+# Ajustarlos solo con validación de negocio y evidencia.
+
+source:
+  schema: raw_cygnus
+  table: clientes_proyectos
+  id_column: id
+  decision_time_column: fecha_asignacion
+  client_document_column: documento_cliente
+  project_code_column: codigo_proyecto
+
+  # Se toma la primera columna que realmente exista en PostgreSQL.
+  advisor_column_candidates:
+    - usuario_asignado
+    - nombres_usuario
+    - nombre_usuario
+    - username
+    - usuario
+    - asesor
+  channel_column_candidates:
+    - canal
+    - canal_origen
+    - canal_captacion
+  medium_column_candidates:
+    - medio
+    - medio_origen
+    - medio_captacion
+
+sep_horizon_days: 14
+minuta_horizon_days: 60
+score_window_days: 14
+training_min_rows: 250
+validation_days: 30
+test_days: 30
+weight_sep: 0.55
+weight_minuta: 0.45
+artifact_dir: artifacts/lead_scoring
+
+promotion:
+  top_fraction: 0.20
+  min_eval_rows: 150
+  min_positive_sep: 15
+  min_positive_minuta: 8
+  max_auc_drop: 0.01
+  max_brier_increase: 0.01
+  max_top_rate_drop: 0.01
+  min_material_improvement: 0.005
