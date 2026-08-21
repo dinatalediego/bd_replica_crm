@@ -20,5 +20,6 @@ with psycopg.connect(
     sslmode=os.getenv("POSTGRES_SSLMODE","prefer"),
 ) as c:
     c.execute("CALL analytics.refresh_absorption_phase_b_full()")
+    c.execute("CALL analytics.run_sale_date_pago_ci_qa()")
     c.commit()
-    print("Backfill Fase B completado.")
+    print("Backfill Fase B completado + QA de evidencia de conversión.")

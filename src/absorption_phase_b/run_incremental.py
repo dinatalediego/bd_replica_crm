@@ -23,5 +23,9 @@ with psycopg.connect(
     sslmode=os.getenv("POSTGRES_SSLMODE", "prefer"),
 ) as conn:
     conn.execute("CALL analytics.refresh_absorption_phase_b_incremental(%s)", (LOOKBACK_DAYS,))
+    conn.execute("CALL analytics.run_sale_date_pago_ci_qa()")
     conn.commit()
-    print(f"Absorption Phase B incremental completado. lookback_days={LOOKBACK_DAYS}")
+    print(
+        "Absorption Phase B incremental completado + QA de evidencia de conversión. "
+        f"lookback_days={LOOKBACK_DAYS}"
+    )
