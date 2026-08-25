@@ -1,0 +1,11 @@
+version: 1
+
+sources:
+  amma_torre_marsano:
+    empresa_fuente: Amma
+    codigo_proyecto: AMMA-TM
+    nombre_proyecto: Torre Marsano
+    sheet_name: Hoja1
+    header_row: 2
+    timezone: America/Lima
+
