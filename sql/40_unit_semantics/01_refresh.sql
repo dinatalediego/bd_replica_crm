@@ -50,19 +50,21 @@ BEGIN
         SELECT
             t.*,
             CASE
-                WHEN current_inventory_state='SOLD'
-                  OR estado_norm LIKE '%vendid%'
-                  OR estado_personalizado_norm LIKE '%vendid%'
-                    THEN 'VENDIDO'
-                WHEN current_inventory_state='SEPARATED'
-                  OR estado_norm LIKE '%separad%'
-                  OR estado_personalizado_norm LIKE '%separad%'
-                    THEN 'SEPARADO'
+                WHEN current_inventory_state='SOLD' THEN 'VENDIDO'
+                WHEN current_inventory_state='SEPARATED' THEN 'SEPARADO'
+                -- BLOCKED is a current commercial restriction not represented
+                -- by the inventory ledger, so it may refine AVAILABLE.
                 WHEN estado_norm LIKE '%bloque%'
                   OR estado_personalizado_norm LIKE '%bloque%'
                     THEN 'BLOQUEADO'
-                WHEN current_inventory_state='AVAILABLE'
-                  OR estado_norm LIKE '%dispon%'
+                WHEN current_inventory_state='AVAILABLE' THEN 'DISPONIBLE'
+                WHEN estado_norm LIKE '%vendid%'
+                  OR estado_personalizado_norm LIKE '%vendid%'
+                    THEN 'VENDIDO'
+                WHEN estado_norm LIKE '%separad%'
+                  OR estado_personalizado_norm LIKE '%separad%'
+                    THEN 'SEPARADO'
+                WHEN estado_norm LIKE '%dispon%'
                   OR estado_personalizado_norm LIKE '%dispon%'
                     THEN 'DISPONIBLE'
                 ELSE 'OTRO'
