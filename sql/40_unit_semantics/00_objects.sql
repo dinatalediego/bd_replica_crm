@@ -1,5 +1,44 @@
 CREATE SCHEMA IF NOT EXISTS analytics;
 
+-- Stable product semantics belong as early as CORE because they do not depend
+-- on commercial event history. Generated columns avoid changing the existing
+-- CORE refresh service and remain consistent after every rebuild.
+ALTER TABLE core.dim_unidad
+    ADD COLUMN IF NOT EXISTS tipo_unidad_consolidado text
+    GENERATED ALWAYS AS (
+        CASE
+            WHEN lower(coalesce(tipo_unidad,'')) LIKE '%departamento%' THEN 'DEPARTAMENTO'
+            WHEN lower(coalesce(tipo_unidad,'')) LIKE '%estacionamiento%'
+              OR lower(coalesce(tipo_unidad,'')) LIKE '%parking%' THEN 'ESTACIONAMIENTO'
+            WHEN lower(coalesce(tipo_unidad,'')) LIKE '%depósito%'
+              OR lower(coalesce(tipo_unidad,'')) LIKE '%deposito%' THEN 'DEPOSITO'
+            WHEN lower(coalesce(tipo_unidad,'')) LIKE '%local%' THEN 'LOCAL'
+            ELSE 'OTRO'
+        END
+    ) STORED;
+
+ALTER TABLE core.dim_unidad
+    ADD COLUMN IF NOT EXISTS flag_departamento boolean
+    GENERATED ALWAYS AS (lower(coalesce(tipo_unidad,'')) LIKE '%departamento%') STORED;
+ALTER TABLE core.dim_unidad
+    ADD COLUMN IF NOT EXISTS flag_estacionamiento boolean
+    GENERATED ALWAYS AS (
+        lower(coalesce(tipo_unidad,'')) LIKE '%estacionamiento%'
+        OR lower(coalesce(tipo_unidad,'')) LIKE '%parking%'
+    ) STORED;
+ALTER TABLE core.dim_unidad
+    ADD COLUMN IF NOT EXISTS flag_deposito boolean
+    GENERATED ALWAYS AS (
+        lower(coalesce(tipo_unidad,'')) LIKE '%depósito%'
+        OR lower(coalesce(tipo_unidad,'')) LIKE '%deposito%'
+    ) STORED;
+ALTER TABLE core.dim_unidad
+    ADD COLUMN IF NOT EXISTS flag_local boolean
+    GENERATED ALWAYS AS (lower(coalesce(tipo_unidad,'')) LIKE '%local%') STORED;
+
+CREATE INDEX IF NOT EXISTS ix_dim_unidad_tipo_consolidado
+    ON core.dim_unidad(codigo_proyecto,tipo_unidad_consolidado);
+
 CREATE TABLE IF NOT EXISTS analytics.dim_unidad_semantica (
     codigo_unidad text PRIMARY KEY,
     codigo_proyecto text,
