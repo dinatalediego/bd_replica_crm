@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -127,6 +128,7 @@ def load_raw_mercado(
         raise ValueError("Por ahora el loader acepta archivos CSV.")
 
     source_hash = _sha256(path)
+    source_run_id = uuid.uuid4()
     headers, rows = _read_csv(path, delimiter=delimiter, encoding=encoding)
     if not rows:
         raise ValueError("El archivo no contiene filas de datos.")
@@ -145,7 +147,20 @@ def load_raw_mercado(
                 VALUES (%s, %s, %s, %s, %s, %s::jsonb)
                 RETURNING run_id
                 """,
-                (str(path), source_hash, len(rows), schema_name, table_name, json.dumps({"delimiter": delimiter, "encoding": encoding})),
+                (
+                    str(path),
+                    source_hash,
+                    len(rows),
+                    schema_name,
+                    table_name,
+                    json.dumps(
+                        {
+                            "delimiter": delimiter,
+                            "encoding": encoding,
+                            "source_run_id": str(source_run_id),
+                        }
+                    ),
+                ),
             )
             run_id = int(cur.fetchone()[0])
 
@@ -169,7 +184,7 @@ def load_raw_mercado(
                     )
                 )
 
-            insert_columns = headers + ["etl_source_run_id", "_source_file", "_source_sha256"]
+            insert_columns = headers + ["_etl_source_run_id", "_source_file", "_source_sha256"]
             query = sql.SQL("INSERT INTO {}.{} ({}) VALUES ({})").format(
                 sql.Identifier(schema_name),
                 sql.Identifier(table_name),
@@ -177,7 +192,7 @@ def load_raw_mercado(
                 sql.SQL(", ").join(sql.Placeholder() * len(insert_columns)),
             )
             payload = [
-                tuple(row[h] for h in headers) + (run_id, str(path), source_hash)
+                tuple(row[h] for h in headers) + (source_run_id, str(path), source_hash)
                 for row in rows
             ]
             cur.executemany(query, payload)
