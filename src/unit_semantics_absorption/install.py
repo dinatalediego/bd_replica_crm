@@ -36,6 +36,7 @@ def main():
             "01_refresh.sql",
             "03_current_stock_snapshot.sql",
             "04_metric_semantics.sql",
+            "05_project_scope.sql",
         ]:
             print(f"[SQL] {f}")
             c.execute((SQL / f).read_text(encoding="utf-8"))
@@ -43,6 +44,10 @@ def main():
 
         print("[CALL] analytics.refresh_unit_semantics_absorption_v11()")
         c.execute("CALL analytics.refresh_unit_semantics_absorption_v11()")
+        c.commit()
+
+        print("[CALL] analytics.refresh_project_scope_v11()")
+        c.execute("CALL analytics.refresh_project_scope_v11()")
         c.commit()
 
         print("[CALL] analytics.refresh_stock_snapshot_actual_v11()")
