@@ -41,6 +41,18 @@ BEGIN
                 THEN 'Proyecto Campañas: contenedor CRM para captación de leads; no representa stock físico.'
         END
     FROM core.dim_proyecto p;
+
+    -- Defensive cleanup: even if a lead-only project ever receives CRM process
+    -- events, those rows must not survive in stock/absorption facts.
+    DELETE FROM analytics.fact_absorcion_proyecto_tipo_diario a
+    USING analytics.dim_proyecto_semantica p
+    WHERE a.codigo_proyecto=p.codigo_proyecto
+      AND NOT p.flag_absorcion;
+
+    DELETE FROM analytics.fact_stock_ofertado_diario_tipo s
+    USING analytics.dim_proyecto_semantica p
+    WHERE s.codigo_proyecto=p.codigo_proyecto
+      AND NOT p.flag_gestion_stock;
 END $$;
 
 CREATE OR REPLACE VIEW analytics.v_unidades_stock_elegibles AS
