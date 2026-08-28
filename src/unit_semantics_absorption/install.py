@@ -35,6 +35,7 @@ def main():
             "00_objects.sql",
             "01_refresh.sql",
             "03_current_stock_snapshot.sql",
+            "04_metric_semantics.sql",
         ]:
             print(f"[SQL] {f}")
             c.execute((SQL / f).read_text(encoding="utf-8"))
