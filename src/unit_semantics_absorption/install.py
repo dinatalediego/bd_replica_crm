@@ -31,14 +31,24 @@ def connect():
 def main():
     load_env()
     with connect() as c:
-        for f in ["00_objects.sql", "01_refresh.sql"]:
+        for f in [
+            "00_objects.sql",
+            "01_refresh.sql",
+            "03_current_stock_snapshot.sql",
+        ]:
             print(f"[SQL] {f}")
             c.execute((SQL / f).read_text(encoding="utf-8"))
             c.commit()
+
         print("[CALL] analytics.refresh_unit_semantics_absorption_v11()")
         c.execute("CALL analytics.refresh_unit_semantics_absorption_v11()")
         c.commit()
-    print("Unit semantics + absorption scope v1.1 instalado y refrescado.")
+
+        print("[CALL] analytics.refresh_stock_snapshot_actual_v11()")
+        c.execute("CALL analytics.refresh_stock_snapshot_actual_v11()")
+        c.commit()
+
+    print("Unit semantics + absorption scope v1.1 instalado, refrescado y conciliado contra stock actual.")
 
 
 if __name__ == "__main__":
