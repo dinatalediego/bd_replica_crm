@@ -36,6 +36,7 @@ GROUP BY estado_inventario_canonico,estado_comercial_origen,estado_personalizado
 ORDER BY unidades DESC;
 
 -- 5. Reconciliación: el total por tipo debe reconstruir el ledger efectivo.
+-- Debe devolver 0 filas.
 WITH ledger AS (
     SELECT
         date_trunc('month',m.fecha_evento)::date AS periodo_mes,
@@ -101,3 +102,63 @@ WHERE fecha >= DATE '2026-08-01'
   AND tipo_unidad_consolidado='DEPARTAMENTO'
 GROUP BY codigo_proyecto
 ORDER BY codigo_proyecto;
+
+-- 8. Gate de completitud del snapshot actual.
+-- Debe dar gap_unidades = 0.
+WITH core_count AS (
+    SELECT count(*)::bigint AS n FROM core.dim_unidad
+), snap_count AS (
+    SELECT count(*)::bigint AS n
+    FROM analytics.fact_stock_snapshot_diario_unidad
+    WHERE fecha_snapshot=(
+        SELECT max(fecha_snapshot)
+        FROM analytics.fact_stock_snapshot_diario_unidad
+    )
+)
+SELECT
+    c.n AS unidades_core,
+    s.n AS unidades_snapshot,
+    s.n-c.n AS gap_unidades
+FROM core_count c CROSS JOIN snap_count s;
+
+-- 9. Reconciliación estado actual completo vs ledger observado.
+-- Los gaps NO se fuerzan a cero: muestran cobertura histórica faltante.
+SELECT *
+FROM analytics.v_stock_coverage_actual_por_tipo
+WHERE gap_stock_disponible<>0
+   OR gap_separadas<>0
+   OR gap_vendidas<>0
+ORDER BY
+    abs(gap_stock_disponible) DESC,
+    codigo_proyecto,
+    tipo_unidad_consolidado;
+
+-- 10. Resumen ejecutivo de cobertura actual.
+SELECT
+    sum(stock_disponible_actual)::bigint AS stock_disponible_actual,
+    sum(stock_disponible_ledger)::bigint AS stock_disponible_ledger,
+    sum(gap_stock_disponible)::bigint AS gap_stock_disponible,
+    sum(separadas_actual)::bigint AS separadas_actual,
+    sum(separadas_ledger)::bigint AS separadas_ledger,
+    sum(gap_separadas)::bigint AS gap_separadas,
+    sum(vendidas_actual)::bigint AS vendidas_actual,
+    sum(vendidas_ledger)::bigint AS vendidas_ledger,
+    sum(gap_vendidas)::bigint AS gap_vendidas
+FROM analytics.v_stock_coverage_actual_por_tipo;
+
+-- 11. Calidad de absorción principal actual por proyecto.
+SELECT
+    codigo_proyecto,
+    fecha,
+    stock_fin AS stock_fin_ledger_absorcion,
+    stock_disponible_actual,
+    gap_stock_disponible,
+    cobertura_stock_disponible_ratio,
+    calidad_stock,
+    absorcion_bruta_30d,
+    absorcion_neta_30d
+FROM analytics.v_absorcion_principal_estado_actual
+ORDER BY
+    ledger_reconcilia_estado_actual,
+    abs(gap_stock_disponible) DESC,
+    codigo_proyecto;
