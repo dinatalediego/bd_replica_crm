@@ -169,14 +169,17 @@ def load_raw_mercado(
                     )
                 )
 
-            insert_columns = headers + ["_source_file", "_source_sha256"]
+            insert_columns = headers + ["etl_source_run_id", "_source_file", "_source_sha256"]
             query = sql.SQL("INSERT INTO {}.{} ({}) VALUES ({})").format(
                 sql.Identifier(schema_name),
                 sql.Identifier(table_name),
                 sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
                 sql.SQL(", ").join(sql.Placeholder() * len(insert_columns)),
             )
-            payload = [tuple(row[h] for h in headers) + (str(path), source_hash) for row in rows]
+            payload = [
+                tuple(row[h] for h in headers) + (run_id, str(path), source_hash)
+                for row in rows
+            ]
             cur.executemany(query, payload)
 
             cur.execute(
