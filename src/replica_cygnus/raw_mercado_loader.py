@@ -128,7 +128,7 @@ def load_raw_mercado(
         raise ValueError("Por ahora el loader acepta archivos CSV.")
 
     source_hash = _sha256(path)
-    source_run_id = uuid.uuid4()
+    source_run_id = str(uuid.uuid4())
     headers, rows = _read_csv(path, delimiter=delimiter, encoding=encoding)
     if not rows:
         raise ValueError("El archivo no contiene filas de datos.")
@@ -157,7 +157,7 @@ def load_raw_mercado(
                         {
                             "delimiter": delimiter,
                             "encoding": encoding,
-                            "source_run_id": str(source_run_id),
+                            "source_run_id": source_run_id,
                         }
                     ),
                 ),
