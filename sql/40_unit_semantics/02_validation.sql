@@ -1,41 +1,48 @@
--- 1. Cobertura de clasificación de tipo.
+-- 0. Proyectos fuera del universo de stock / absorción.
+SELECT *
+FROM analytics.v_proyectos_fuera_stock
+ORDER BY proyecto_id;
+
+-- 1. Cobertura de clasificación de tipo SOLO para unidades elegibles de stock.
 SELECT
     tipo_unidad_consolidado,
     count(*) AS unidades
-FROM analytics.dim_unidad_semantica
+FROM analytics.v_unidades_stock_elegibles
 GROUP BY tipo_unidad_consolidado
 ORDER BY unidades DESC;
 
--- 2. Cobertura de estado actual.
+-- 2. Cobertura de estado actual SOLO para unidades elegibles de stock.
 SELECT
     estado_comercial_consolidado,
     orden_estado,
     count(*) AS unidades
-FROM analytics.dim_unidad_semantica
+FROM analytics.v_unidades_stock_elegibles
 GROUP BY estado_comercial_consolidado,orden_estado
 ORDER BY orden_estado;
 
--- 3. Tipos origen que todavía caen en OTRO.
+-- 3. Tipos origen elegibles que todavía caen en OTRO.
+-- Debe devolver 0 filas una vez excluidos contenedores no-stock como Campañas.
 SELECT
     tipo_unidad_origen,
     count(*) AS unidades
-FROM analytics.dim_unidad_semantica
+FROM analytics.v_unidades_stock_elegibles
 WHERE flag_otro_tipo
 GROUP BY tipo_unidad_origen
 ORDER BY unidades DESC,tipo_unidad_origen;
 
--- 4. Estados origen que todavía caen en OTRO.
+-- 4. Estados origen elegibles que todavía caen en OTRO.
 SELECT
     estado_inventario_canonico,
     estado_comercial_origen,
     estado_personalizado_origen,
     count(*) AS unidades
-FROM analytics.dim_unidad_semantica
+FROM analytics.v_unidades_stock_elegibles
 WHERE flag_otro_estado
 GROUP BY estado_inventario_canonico,estado_comercial_origen,estado_personalizado_origen
 ORDER BY unidades DESC;
 
--- 5. Reconciliación: el total por tipo debe reconstruir el ledger efectivo.
+-- 5. Reconciliación: el total por tipo debe reconstruir el ledger efectivo
+-- únicamente para proyectos con gestión de stock.
 -- Debe devolver 0 filas.
 WITH ledger AS (
     SELECT
@@ -45,6 +52,9 @@ WITH ledger AS (
         count(*) FILTER (WHERE m.tipo_evento='CAIDA' AND m.transition_applied) AS caidas,
         count(*) FILTER (WHERE m.tipo_evento='VENTA' AND m.transition_applied) AS ventas
     FROM analytics.fact_movimientos_stock m
+    JOIN analytics.dim_proyecto_semantica p
+      ON p.codigo_proyecto=m.codigo_proyecto
+     AND p.flag_gestion_stock
     WHERE m.codigo_proyecto IS NOT NULL
     GROUP BY 1,2
 ), typed AS (
@@ -76,7 +86,7 @@ WHERE coalesce(t.separaciones,0)<>coalesce(l.separaciones,0)
    OR coalesce(t.ventas,0)<>coalesce(l.ventas,0)
 ORDER BY periodo_mes DESC,codigo_proyecto;
 
--- 6. Agosto 2026: composición que explicó la brecha observada.
+-- 6. Agosto 2026: composición de eventos por producto.
 SELECT
     codigo_proyecto,
     tipo_unidad_consolidado,
@@ -103,10 +113,15 @@ WHERE fecha >= DATE '2026-08-01'
 GROUP BY codigo_proyecto
 ORDER BY codigo_proyecto;
 
--- 8. Gate de completitud del snapshot actual.
+-- 8. Gate de completitud del snapshot actual para el UNIVERSO ELEGIBLE DE STOCK.
+-- Campañas (id=24) se conserva en CORE pero no entra al denominador.
 -- Debe dar gap_unidades = 0.
-WITH core_count AS (
-    SELECT count(*)::bigint AS n FROM core.dim_unidad
+WITH eligible_core AS (
+    SELECT count(*)::bigint AS n
+    FROM core.dim_unidad u
+    JOIN analytics.dim_proyecto_semantica p
+      ON p.codigo_proyecto=u.codigo_proyecto
+    WHERE p.flag_gestion_stock
 ), snap_count AS (
     SELECT count(*)::bigint AS n
     FROM analytics.fact_stock_snapshot_diario_unidad
@@ -116,10 +131,10 @@ WITH core_count AS (
     )
 )
 SELECT
-    c.n AS unidades_core,
+    c.n AS unidades_core_elegibles,
     s.n AS unidades_snapshot,
     s.n-c.n AS gap_unidades
-FROM core_count c CROSS JOIN snap_count s;
+FROM eligible_core c CROSS JOIN snap_count s;
 
 -- 9. Reconciliación estado actual completo vs ledger observado.
 -- Los gaps NO se fuerzan a cero: muestran cobertura histórica faltante.
@@ -133,7 +148,7 @@ ORDER BY
     codigo_proyecto,
     tipo_unidad_consolidado;
 
--- 10. Resumen ejecutivo de cobertura actual.
+-- 10. Resumen ejecutivo de cobertura actual, ya sin proyectos no-stock.
 SELECT
     sum(stock_disponible_actual)::bigint AS stock_disponible_actual,
     sum(stock_disponible_ledger)::bigint AS stock_disponible_ledger,
@@ -162,3 +177,24 @@ ORDER BY
     ledger_reconcilia_estado_actual,
     abs(gap_stock_disponible) DESC,
     codigo_proyecto;
+
+-- 12. Gate explícito: ningún proyecto fuera de stock debe aparecer en facts de stock/absorción.
+-- Debe devolver 0 filas.
+SELECT 'stock_tipo' AS objeto, s.codigo_proyecto, count(*) AS filas
+FROM analytics.fact_stock_ofertado_diario_tipo s
+JOIN analytics.dim_proyecto_semantica p USING(codigo_proyecto)
+WHERE NOT p.flag_gestion_stock
+GROUP BY s.codigo_proyecto
+UNION ALL
+SELECT 'absorcion_tipo', a.codigo_proyecto, count(*)
+FROM analytics.fact_absorcion_proyecto_tipo_diario a
+JOIN analytics.dim_proyecto_semantica p USING(codigo_proyecto)
+WHERE NOT p.flag_absorcion
+GROUP BY a.codigo_proyecto
+UNION ALL
+SELECT 'snapshot_actual', s.codigo_proyecto, count(*)
+FROM analytics.fact_stock_snapshot_diario_unidad s
+JOIN analytics.dim_proyecto_semantica p USING(codigo_proyecto)
+WHERE NOT p.flag_gestion_stock
+  AND s.fecha_snapshot=(SELECT max(fecha_snapshot) FROM analytics.fact_stock_snapshot_diario_unidad)
+GROUP BY s.codigo_proyecto;
