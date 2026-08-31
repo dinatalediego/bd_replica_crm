@@ -15,7 +15,7 @@ from psycopg2 import sql
 
 @dataclass
 class MercadoLoadResult:
-    run_id: int
+    run_id: int | None
     source_file: str
     source_sha256: str
     rows_read: int
@@ -80,34 +80,154 @@ def _ensure_control_tables(cur) -> None:
     )
 
 
+def _start_control_run(
+    database_url: str,
+    *,
+    source_file: str,
+    source_sha256: str,
+    source_row_count: int,
+    schema_name: str,
+    table_name: str,
+    delimiter: str,
+    encoding: str,
+    source_run_id: str,
+) -> int | None:
+    """Best-effort audit logging. A permission problem must not block the data load."""
+    control_conn = None
+    try:
+        control_conn = psycopg2.connect(database_url)
+        control_conn.autocommit = True
+        with control_conn.cursor() as cur:
+            _ensure_control_tables(cur)
+            cur.execute(
+                """
+                INSERT INTO etl_control.raw_mercado_load_runs
+                    (source_file, source_sha256, source_row_count, target_schema, target_table, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s::jsonb)
+                RETURNING run_id
+                """,
+                (
+                    source_file,
+                    source_sha256,
+                    source_row_count,
+                    schema_name,
+                    table_name,
+                    json.dumps(
+                        {
+                            "delimiter": delimiter,
+                            "encoding": encoding,
+                            "source_run_id": source_run_id,
+                        }
+                    ),
+                ),
+            )
+            return int(cur.fetchone()[0])
+    except psycopg2.Error:
+        return None
+    finally:
+        if control_conn is not None:
+            control_conn.close()
+
+
+def _finish_control_run(
+    database_url: str,
+    run_id: int | None,
+    *,
+    status: str,
+    loaded_row_count: int | None = None,
+    rejected_row_count: int | None = None,
+    snapshot_table: str | None = None,
+    error_message: str | None = None,
+) -> None:
+    if run_id is None:
+        return
+    control_conn = None
+    try:
+        control_conn = psycopg2.connect(database_url)
+        control_conn.autocommit = True
+        with control_conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE etl_control.raw_mercado_load_runs
+                   SET finished_at = now(),
+                       loaded_row_count = COALESCE(%s, loaded_row_count),
+                       rejected_row_count = COALESCE(%s, rejected_row_count),
+                       snapshot_table = COALESCE(%s, snapshot_table),
+                       status = %s,
+                       error_message = %s
+                 WHERE run_id = %s
+                """,
+                (
+                    loaded_row_count,
+                    rejected_row_count,
+                    snapshot_table,
+                    status,
+                    error_message,
+                    run_id,
+                ),
+            )
+    except psycopg2.Error:
+        pass
+    finally:
+        if control_conn is not None:
+            control_conn.close()
+
+
 def _ensure_target(cur, columns: Iterable[str], schema_name: str, table_name: str) -> None:
-    cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(schema_name)))
-    cur.execute(
-        sql.SQL("CREATE TABLE IF NOT EXISTS {}.{} ()").format(
-            sql.Identifier(schema_name), sql.Identifier(table_name)
-        )
-    )
-    for col in columns:
+    cur.execute("SELECT to_regclass(%s)", (f"{schema_name}.{table_name}",))
+    relation = cur.fetchone()[0]
+
+    if relation is None:
+        cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(schema_name)))
         cur.execute(
-            sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS {} TEXT").format(
-                sql.Identifier(schema_name), sql.Identifier(table_name), sql.Identifier(col)
+            sql.SQL("CREATE TABLE {}.{} ()").format(
+                sql.Identifier(schema_name), sql.Identifier(table_name)
             )
         )
-    cur.execute(
-        sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS _source_file TEXT").format(
-            sql.Identifier(schema_name), sql.Identifier(table_name)
+        for col in columns:
+            cur.execute(
+                sql.SQL("ALTER TABLE {}.{} ADD COLUMN {} TEXT").format(
+                    sql.Identifier(schema_name), sql.Identifier(table_name), sql.Identifier(col)
+                )
+            )
+        cur.execute(
+            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _etl_source_run_id UUID NOT NULL").format(
+                sql.Identifier(schema_name), sql.Identifier(table_name)
+            )
         )
-    )
-    cur.execute(
-        sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS _source_sha256 TEXT").format(
-            sql.Identifier(schema_name), sql.Identifier(table_name)
+        cur.execute(
+            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _source_file TEXT").format(
+                sql.Identifier(schema_name), sql.Identifier(table_name)
+            )
         )
-    )
-    cur.execute(
-        sql.SQL("ALTER TABLE {}.{} ADD COLUMN IF NOT EXISTS _loaded_at TIMESTAMPTZ DEFAULT now()").format(
-            sql.Identifier(schema_name), sql.Identifier(table_name)
+        cur.execute(
+            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _source_sha256 TEXT").format(
+                sql.Identifier(schema_name), sql.Identifier(table_name)
+            )
         )
+        cur.execute(
+            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _loaded_at TIMESTAMPTZ DEFAULT now()").format(
+                sql.Identifier(schema_name), sql.Identifier(table_name)
+            )
+        )
+        return
+
+    cur.execute(
+        """
+        SELECT column_name
+          FROM information_schema.columns
+         WHERE table_schema = %s
+           AND table_name = %s
+        """,
+        (schema_name, table_name),
     )
+    target_columns = {row[0] for row in cur.fetchall()}
+    required = set(columns) | {"_etl_source_run_id", "_source_file", "_source_sha256"}
+    missing = sorted(required - target_columns)
+    if missing:
+        raise RuntimeError(
+            f"La tabla {schema_name}.{table_name} existe pero faltan columnas requeridas: {', '.join(missing)}"
+        )
 
 
 def load_raw_mercado(
@@ -133,42 +253,30 @@ def load_raw_mercado(
     if not rows:
         raise ValueError("El archivo no contiene filas de datos.")
 
+    run_id = _start_control_run(
+        database_url,
+        source_file=str(path),
+        source_sha256=source_hash,
+        source_row_count=len(rows),
+        schema_name=schema_name,
+        table_name=table_name,
+        delimiter=delimiter,
+        encoding=encoding,
+        source_run_id=source_run_id,
+    )
+
     conn = psycopg2.connect(database_url)
     conn.autocommit = False
-    run_id: int | None = None
     snapshot_table: str | None = None
+    loaded = 0
     try:
         with conn.cursor() as cur:
-            _ensure_control_tables(cur)
-            cur.execute(
-                """
-                INSERT INTO etl_control.raw_mercado_load_runs
-                    (source_file, source_sha256, source_row_count, target_schema, target_table, metadata)
-                VALUES (%s, %s, %s, %s, %s, %s::jsonb)
-                RETURNING run_id
-                """,
-                (
-                    str(path),
-                    source_hash,
-                    len(rows),
-                    schema_name,
-                    table_name,
-                    json.dumps(
-                        {
-                            "delimiter": delimiter,
-                            "encoding": encoding,
-                            "source_run_id": source_run_id,
-                        }
-                    ),
-                ),
-            )
-            run_id = int(cur.fetchone()[0])
-
             _ensure_target(cur, headers, schema_name, table_name)
 
             if snapshot:
                 stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                snapshot_table = f"{table_name}_snapshot_{stamp}_{run_id}"
+                suffix = str(run_id) if run_id is not None else source_run_id.replace("-", "")[:12]
+                snapshot_table = f"{table_name}_snapshot_{stamp}_{suffix}"
                 cur.execute(
                     sql.SQL("CREATE TABLE {}.{} AS TABLE {}.{}")
                     .format(
@@ -207,16 +315,15 @@ def load_raw_mercado(
             if loaded != len(rows):
                 raise RuntimeError(f"QA falló: se leyeron {len(rows)} filas pero quedaron {loaded} filas de esta carga.")
 
-            cur.execute(
-                """
-                UPDATE etl_control.raw_mercado_load_runs
-                   SET finished_at = now(), loaded_row_count = %s, rejected_row_count = 0,
-                       snapshot_table = %s, status = 'success'
-                 WHERE run_id = %s
-                """,
-                (loaded, snapshot_table, run_id),
-            )
         conn.commit()
+        _finish_control_run(
+            database_url,
+            run_id,
+            status="success",
+            loaded_row_count=loaded,
+            rejected_row_count=0,
+            snapshot_table=snapshot_table,
+        )
         return MercadoLoadResult(
             run_id=run_id,
             source_file=str(path),
@@ -229,18 +336,13 @@ def load_raw_mercado(
         )
     except Exception as exc:
         conn.rollback()
-        if run_id is not None:
-            with conn.cursor() as cur:
-                _ensure_control_tables(cur)
-                cur.execute(
-                    """
-                    UPDATE etl_control.raw_mercado_load_runs
-                       SET finished_at = now(), status = 'failed', error_message = %s
-                     WHERE run_id = %s
-                    """,
-                    (str(exc), run_id),
-                )
-            conn.commit()
+        _finish_control_run(
+            database_url,
+            run_id,
+            status="failed",
+            loaded_row_count=0,
+            error_message=str(exc),
+        )
         raise
     finally:
         conn.close()
