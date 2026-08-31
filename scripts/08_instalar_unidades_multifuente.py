@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 import psycopg2
@@ -9,7 +8,7 @@ from dotenv import load_dotenv
 from psycopg2.extensions import make_dsn
 
 ROOT = Path(__file__).resolve().parents[1]
-SQL_FILE = ROOT / "sql" / "40_unidades_multifuente" / "01_v_unidades_fuentes.sql"
+SQL_DIR = ROOT / "sql" / "40_unidades_multifuente"
 
 
 def _database_dsn() -> str:
@@ -40,11 +39,17 @@ def _database_dsn() -> str:
 
 
 def main() -> int:
-    sql_text = SQL_FILE.read_text(encoding="utf-8")
+    sql_files = sorted(SQL_DIR.glob("*.sql"))
+    if not sql_files:
+        raise RuntimeError(f"No hay SQL de instalación en {SQL_DIR}")
+
     conn = psycopg2.connect(_database_dsn())
     try:
         with conn.cursor() as cur:
-            cur.execute(sql_text)
+            for sql_file in sql_files:
+                print(f"[RUN] {sql_file.name}")
+                cur.execute(sql_file.read_text(encoding="utf-8"))
+
             cur.execute(
                 """
                 SELECT esquema_fuente, count(*)
@@ -54,6 +59,17 @@ def main() -> int:
                 """
             )
             counts = cur.fetchall()
+
+            cur.execute(
+                """
+                SELECT
+                    (SELECT count(*) FROM analytics_market.v_unidad_lifecycle_inferido),
+                    (SELECT count(*) FROM analytics_market.v_movimientos_inventario_inferidos),
+                    (SELECT count(*) FROM analytics_compare.v_powerbi_proyecto_actual)
+                """
+            )
+            mercado_unidades, mercado_movimientos, proyectos_powerbi = cur.fetchone()
+
         conn.commit()
     except Exception:
         conn.rollback()
@@ -61,9 +77,12 @@ def main() -> int:
     finally:
         conn.close()
 
-    print("[OK] core.v_unidades_fuentes creada/actualizada")
+    print("[OK] capa multifuente + analítica comparativa creada/actualizada")
     for fuente, filas in counts:
-        print(f"  {fuente}: {filas}")
+        print(f"  core.v_unidades_fuentes {fuente}: {filas}")
+    print(f"  analytics_market lifecycle unidades: {mercado_unidades}")
+    print(f"  analytics_market movimientos inferidos: {mercado_movimientos}")
+    print(f"  analytics_compare proyectos Power BI: {proyectos_powerbi}")
     return 0
 
 
