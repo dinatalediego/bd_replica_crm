@@ -7,7 +7,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 import psycopg2
 from psycopg2 import sql
@@ -23,6 +22,26 @@ class MercadoLoadResult:
     rows_rejected: int
     snapshot_table: str | None
     status: str
+
+
+SOURCE_TO_TARGET = {
+    "codigo_unidad": "codigo",
+    "tipologia": "nombre_tipologia",
+    "dormitorios": "total_habitaciones",
+    "area_venta": "area_total",
+    "estado": "estado_comercial",
+    "precio_lista": "precio_lista",
+    "precio_venta": "precio_venta",
+    "pxm2": "precio_m2",
+    "fecha_separacion": "fecha_separacion",
+    "fecha_venta": "fecha_venta",
+    "area_techada": "area_techada",
+    "area_libre": "area_libre",
+    "piso": "piso",
+    "tipo_unidad": "tipo_unidad",
+}
+
+REQUIRED_TARGET_COLUMNS = {"codigo", "codigo_proyecto", "id", "_etl_source_run_id"}
 
 
 def _sha256(path: Path) -> str:
@@ -50,7 +69,10 @@ def _read_csv(path: Path, delimiter: str = ",", encoding: str = "utf-8-sig") -> 
             raise ValueError("La cabecera genera columnas duplicadas después de normalizar nombres.")
         rows: list[dict[str, str]] = []
         for raw in reader:
-            normalized = {headers[i]: (raw.get(reader.fieldnames[i]) or "").strip() for i in range(len(headers))}
+            normalized = {
+                headers[i]: (raw.get(reader.fieldnames[i]) or "").strip()
+                for i in range(len(headers))
+            }
             if any(v != "" for v in normalized.values()):
                 rows.append(normalized)
     return headers, rows
@@ -173,44 +195,13 @@ def _finish_control_run(
             control_conn.close()
 
 
-def _ensure_target(cur, columns: Iterable[str], schema_name: str, table_name: str) -> None:
+def _get_target_columns(cur, schema_name: str, table_name: str) -> list[str]:
     cur.execute("SELECT to_regclass(%s)", (f"{schema_name}.{table_name}",))
-    relation = cur.fetchone()[0]
-
-    if relation is None:
-        cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(schema_name)))
-        cur.execute(
-            sql.SQL("CREATE TABLE {}.{} ()").format(
-                sql.Identifier(schema_name), sql.Identifier(table_name)
-            )
+    if cur.fetchone()[0] is None:
+        raise RuntimeError(
+            f"La tabla destino {schema_name}.{table_name} no existe. "
+            "Este loader requiere el contrato canónico ya creado."
         )
-        for col in columns:
-            cur.execute(
-                sql.SQL("ALTER TABLE {}.{} ADD COLUMN {} TEXT").format(
-                    sql.Identifier(schema_name), sql.Identifier(table_name), sql.Identifier(col)
-                )
-            )
-        cur.execute(
-            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _etl_source_run_id UUID NOT NULL").format(
-                sql.Identifier(schema_name), sql.Identifier(table_name)
-            )
-        )
-        cur.execute(
-            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _source_file TEXT").format(
-                sql.Identifier(schema_name), sql.Identifier(table_name)
-            )
-        )
-        cur.execute(
-            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _source_sha256 TEXT").format(
-                sql.Identifier(schema_name), sql.Identifier(table_name)
-            )
-        )
-        cur.execute(
-            sql.SQL("ALTER TABLE {}.{} ADD COLUMN _loaded_at TIMESTAMPTZ DEFAULT now()").format(
-                sql.Identifier(schema_name), sql.Identifier(table_name)
-            )
-        )
-        return
 
     cur.execute(
         """
@@ -218,16 +209,94 @@ def _ensure_target(cur, columns: Iterable[str], schema_name: str, table_name: st
           FROM information_schema.columns
          WHERE table_schema = %s
            AND table_name = %s
+         ORDER BY ordinal_position
         """,
         (schema_name, table_name),
     )
-    target_columns = {row[0] for row in cur.fetchall()}
-    required = set(columns) | {"_etl_source_run_id", "_source_file", "_source_sha256"}
-    missing = sorted(required - target_columns)
+    columns = [row[0] for row in cur.fetchall()]
+    missing = sorted(REQUIRED_TARGET_COLUMNS - set(columns))
     if missing:
         raise RuntimeError(
-            f"La tabla {schema_name}.{table_name} existe pero faltan columnas requeridas: {', '.join(missing)}"
+            f"El contrato de {schema_name}.{table_name} no contiene columnas obligatorias: {', '.join(missing)}"
         )
+    return columns
+
+
+def _blank_to_none(value: str | None):
+    if value is None:
+        return None
+    value = value.strip()
+    return value if value != "" else None
+
+
+def _build_canonical_rows(
+    rows: list[dict[str, str]],
+    target_columns: list[str],
+    source_run_id: str,
+) -> tuple[list[str], list[tuple]]:
+    target_set = set(target_columns)
+
+    insert_columns: list[str] = []
+    for column in target_columns:
+        if column in {"_etl_loaded_at", "_etl_source_run_id"}:
+            continue
+        if any(column in row and row[column] != "" for row in rows):
+            insert_columns.append(column)
+            continue
+        if any(target == column and source in rows[0] for source, target in SOURCE_TO_TARGET.items()):
+            insert_columns.append(column)
+
+    for required in ("codigo", "codigo_proyecto", "id"):
+        if required not in insert_columns:
+            insert_columns.append(required)
+    insert_columns.append("_etl_source_run_id")
+
+    unknown = set(insert_columns) - target_set
+    if unknown:
+        raise RuntimeError(f"Columnas de inserción fuera del contrato: {', '.join(sorted(unknown))}")
+
+    payload: list[tuple] = []
+    seen_ids: set[str] = set()
+    seen_codes: set[str] = set()
+
+    for index, row in enumerate(rows, start=1):
+        canonical: dict[str, object] = {}
+
+        for column in target_columns:
+            if column in row:
+                canonical[column] = _blank_to_none(row[column])
+
+        for source, target in SOURCE_TO_TARGET.items():
+            if target not in canonical or canonical[target] is None:
+                if source in row:
+                    canonical[target] = _blank_to_none(row[source])
+
+        canonical["codigo"] = canonical.get("codigo") or _blank_to_none(row.get("codigo_unidad"))
+        canonical["codigo_proyecto"] = canonical.get("codigo_proyecto") or "Amma-TM"
+        canonical["id"] = canonical.get("id") or _blank_to_none(row.get("id"))
+        canonical["_etl_source_run_id"] = source_run_id
+
+        missing_required = [
+            col for col in ("codigo", "codigo_proyecto", "id")
+            if canonical.get(col) in (None, "")
+        ]
+        if missing_required:
+            raise ValueError(
+                f"Fila {index}: faltan campos obligatorios: {', '.join(missing_required)}"
+            )
+
+        code = str(canonical["codigo"])
+        row_id = str(canonical["id"])
+        if code in seen_codes:
+            raise ValueError(f"Fila {index}: codigo duplicado en el CSV: {code}")
+        if row_id in seen_ids:
+            raise ValueError(f"Fila {index}: id duplicado en el CSV: {row_id}")
+        seen_codes.add(code)
+        seen_ids.add(row_id)
+
+        payload.append(tuple(canonical.get(column) for column in insert_columns))
+
+    return insert_columns, payload
 
 
 def load_raw_mercado(
@@ -249,7 +318,7 @@ def load_raw_mercado(
 
     source_hash = _sha256(path)
     source_run_id = str(uuid.uuid4())
-    headers, rows = _read_csv(path, delimiter=delimiter, encoding=encoding)
+    _, rows = _read_csv(path, delimiter=delimiter, encoding=encoding)
     if not rows:
         raise ValueError("El archivo no contiene filas de datos.")
 
@@ -271,17 +340,19 @@ def load_raw_mercado(
     loaded = 0
     try:
         with conn.cursor() as cur:
-            _ensure_target(cur, headers, schema_name, table_name)
+            target_columns = _get_target_columns(cur, schema_name, table_name)
+            insert_columns, payload = _build_canonical_rows(rows, target_columns, source_run_id)
 
             if snapshot:
                 stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 suffix = str(run_id) if run_id is not None else source_run_id.replace("-", "")[:12]
                 snapshot_table = f"{table_name}_snapshot_{stamp}_{suffix}"
                 cur.execute(
-                    sql.SQL("CREATE TABLE {}.{} AS TABLE {}.{}")
-                    .format(
-                        sql.Identifier(schema_name), sql.Identifier(snapshot_table),
-                        sql.Identifier(schema_name), sql.Identifier(table_name),
+                    sql.SQL("CREATE TABLE {}.{} AS TABLE {}.{}").format(
+                        sql.Identifier(schema_name),
+                        sql.Identifier(snapshot_table),
+                        sql.Identifier(schema_name),
+                        sql.Identifier(table_name),
                     )
                 )
 
@@ -292,28 +363,32 @@ def load_raw_mercado(
                     )
                 )
 
-            insert_columns = headers + ["_etl_source_run_id", "_source_file", "_source_sha256"]
             query = sql.SQL("INSERT INTO {}.{} ({}) VALUES ({})").format(
                 sql.Identifier(schema_name),
                 sql.Identifier(table_name),
                 sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
                 sql.SQL(", ").join(sql.Placeholder() * len(insert_columns)),
             )
-            payload = [
-                tuple(row[h] for h in headers) + (source_run_id, str(path), source_hash)
-                for row in rows
-            ]
             cur.executemany(query, payload)
 
             cur.execute(
-                sql.SQL("SELECT count(*) FROM {}.{} WHERE _source_sha256 = %s").format(
-                    sql.Identifier(schema_name), sql.Identifier(table_name)
-                ),
-                (source_hash,),
+                sql.SQL(
+                    "SELECT count(*), count(DISTINCT codigo), count(DISTINCT _etl_source_run_id) "
+                    "FROM {}.{} WHERE _etl_source_run_id = %s::uuid"
+                ).format(sql.Identifier(schema_name), sql.Identifier(table_name)),
+                (source_run_id,),
             )
-            loaded = int(cur.fetchone()[0])
+            loaded, distinct_codes, distinct_runs = map(int, cur.fetchone())
             if loaded != len(rows):
-                raise RuntimeError(f"QA falló: se leyeron {len(rows)} filas pero quedaron {loaded} filas de esta carga.")
+                raise RuntimeError(
+                    f"QA falló: se leyeron {len(rows)} filas pero se cargaron {loaded}."
+                )
+            if distinct_codes != len(rows):
+                raise RuntimeError(
+                    f"QA falló: {loaded} filas cargadas pero solo {distinct_codes} códigos distintos."
+                )
+            if distinct_runs != 1:
+                raise RuntimeError("QA falló: la carga no quedó asociada a un único _etl_source_run_id.")
 
         conn.commit()
         _finish_control_run(
