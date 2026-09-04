@@ -2,6 +2,8 @@
 -- Mantiene provenance explícita y no mezcla historia de procesos.
 -- raw_cygnus: inventario/CRM propio.
 -- raw_mercado: inventario externo cargado por CSV.
+-- IMPORTANTE: columnas nuevas se agregan al final para mantener compatibilidad
+-- con CREATE OR REPLACE VIEW en PostgreSQL.
 
 CREATE SCHEMA IF NOT EXISTS core;
 
@@ -45,7 +47,8 @@ SELECT
     u.fecha_actualizacion::date AS fecha_actualizacion,
     u.fecha_estimada_entrega::date AS fecha_estimada_entrega,
     u._etl_loaded_at AS source_loaded_at,
-    u._etl_source_run_id AS source_run_id
+    u._etl_source_run_id AS source_run_id,
+    u.tipologia_ubicacion::text AS tipologia_ubicacion
 FROM raw_cygnus.unidades u
 
 UNION ALL
@@ -89,7 +92,8 @@ SELECT
     u.fecha_actualizacion::date AS fecha_actualizacion,
     u.fecha_estimada_entrega::date AS fecha_estimada_entrega,
     u._etl_loaded_at AS source_loaded_at,
-    u._etl_source_run_id AS source_run_id
+    u._etl_source_run_id AS source_run_id,
+    u.tipologia_ubicacion::text AS tipologia_ubicacion
 FROM raw_mercado.unidades u;
 
 COMMENT ON VIEW core.v_unidades_fuentes IS
