@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS core.dim_unidad (
     piso                              text,
     estado_construccion               text,
     nombre_tipologia                  text,
+    tipologia_ubicacion               text,
     total_habitaciones                numeric,
     total_banos                       integer,
     area_libre                        numeric,
@@ -98,9 +99,16 @@ CREATE TABLE IF NOT EXISTS core.dim_unidad (
         CHECK (area_total IS NULL OR area_total >= 0)
 );
 
+-- Upgrade idempotente para instalaciones de CORE creadas antes de
+-- tipologia_ubicacion. La derivación vive en CORE, no en Power Query.
+ALTER TABLE core.dim_unidad
+    ADD COLUMN IF NOT EXISTS tipologia_ubicacion text;
+
 CREATE INDEX IF NOT EXISTS ix_dim_unidad_proyecto
     ON core.dim_unidad (codigo_proyecto);
 CREATE INDEX IF NOT EXISTS ix_dim_unidad_estado_comercial
     ON core.dim_unidad (estado_comercial);
 CREATE INDEX IF NOT EXISTS ix_dim_unidad_tipo
     ON core.dim_unidad (tipo_unidad);
+CREATE INDEX IF NOT EXISTS ix_dim_unidad_tipologia_ubicacion
+    ON core.dim_unidad (tipologia_ubicacion);
