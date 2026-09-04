@@ -65,10 +65,32 @@ def main() -> int:
                 SELECT
                     (SELECT count(*) FROM analytics_market.v_unidad_lifecycle_inferido),
                     (SELECT count(*) FROM analytics_market.v_movimientos_inventario_inferidos),
-                    (SELECT count(*) FROM analytics_compare.v_powerbi_proyecto_actual)
+                    (SELECT count(*) FROM analytics_compare.v_powerbi_proyecto_actual),
+                    (SELECT count(*) FROM core.v_unidad_comercial_multifuente),
+                    (SELECT count(*) FROM analytics_compare.v_powerbi_unidad_actual),
+                    (SELECT count(*) FROM analytics_compare.v_powerbi_unidad_actual WHERE esquema_fuente = 'raw_mercado'),
+                    (SELECT count(*) FROM analytics_compare.v_powerbi_unidad_actual WHERE esquema_fuente = 'raw_mercado' AND tipologia_ubicacion IS NOT NULL)
                 """
             )
-            mercado_unidades, mercado_movimientos, proyectos_powerbi = cur.fetchone()
+            (
+                mercado_unidades,
+                mercado_movimientos,
+                proyectos_powerbi,
+                unidades_comercial,
+                unidades_powerbi,
+                unidades_mercado_powerbi,
+                mercado_con_tipologia_ubicacion,
+            ) = cur.fetchone()
+
+            total_fuentes = sum(int(filas) for _, filas in counts)
+            if int(unidades_comercial) != total_fuentes:
+                raise RuntimeError(
+                    f"Reconciliación multifuente fallida: fuentes={total_fuentes}, comercial={unidades_comercial}"
+                )
+            if int(unidades_powerbi) != int(unidades_comercial):
+                raise RuntimeError(
+                    f"Reconciliación Power BI fallida: comercial={unidades_comercial}, powerbi={unidades_powerbi}"
+                )
 
         conn.commit()
     except Exception:
@@ -77,9 +99,13 @@ def main() -> int:
     finally:
         conn.close()
 
-    print("[OK] capa multifuente + analítica comparativa creada/actualizada")
+    print("[OK] capa multifuente + comercial + analítica comparativa creada/actualizada")
     for fuente, filas in counts:
         print(f"  core.v_unidades_fuentes {fuente}: {filas}")
+    print(f"  core.v_unidad_comercial_multifuente total: {unidades_comercial}")
+    print(f"  analytics_compare unidades Power BI: {unidades_powerbi}")
+    print(f"  analytics_compare raw_mercado Power BI: {unidades_mercado_powerbi}")
+    print(f"  raw_mercado con tipologia_ubicacion: {mercado_con_tipologia_ubicacion}")
     print(f"  analytics_market lifecycle unidades: {mercado_unidades}")
     print(f"  analytics_market movimientos inferidos: {mercado_movimientos}")
     print(f"  analytics_compare proyectos Power BI: {proyectos_powerbi}")
