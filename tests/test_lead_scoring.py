@@ -7,6 +7,11 @@ from replica_cygnus.lead_scoring.config import LeadScoringConfig, PromotionConfi
 from replica_cygnus.lead_scoring.metrics import baseline_bundle_metrics, binary_metrics, priority_metrics, promotion_gate
 from replica_cygnus.lead_scoring.scoring import _priority_bands
 from replica_cygnus.lead_scoring.training import temporal_split
+from replica_cygnus.lead_scoring.feedback import (
+    outcome_id_for_evidence,
+    recommendation_id_for_score,
+    recommended_action_for_band,
+)
 
 
 def test_temporal_split_preserves_order():
@@ -52,3 +57,20 @@ def test_weights_must_sum_one():
         assert "sumar 1" in str(exc)
     else:
         raise AssertionError("Se esperaba ValueError")
+
+
+def test_priority_band_maps_to_operational_action():
+    assert recommended_action_for_band("A") == "CONTACTAR_PRIORIDAD_ALTA"
+    assert recommended_action_for_band("B") == "CONTACTAR"
+    assert recommended_action_for_band("C") == "NURTURE"
+    assert recommended_action_for_band("D") == "NURTURE"
+
+
+def test_feedback_identifiers_are_deterministic_and_distinct():
+    assert recommendation_id_for_score("score-1") == recommendation_id_for_score("score-1")
+    assert outcome_id_for_evidence("evidence-1", "separacion_14d") == outcome_id_for_evidence(
+        "evidence-1", "separacion_14d"
+    )
+    assert outcome_id_for_evidence("evidence-1", "separacion_14d") != outcome_id_for_evidence(
+        "evidence-1", "minuta_60d"
+    )

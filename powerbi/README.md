@@ -16,4 +16,9 @@ Contenido:
 - Página 03 Models & MLOps: estructura preparada; se poblará al registrar modelos/scoring.
 - Página 04 Decisions & Learning: estructura preparada; se poblará al registrar recomendaciones, acciones y outcomes.
 
+El loop Lead Scoring v0.2 agrega dos consultas listas para pegar en Power Query:
+
+- `M/qLeadActionOutcome.m`: trazabilidad individual score → acción → outcome.
+- `M/qLeadActionOutcomePerformance.m`: cohortes observacionales por banda y acción.
+
 El diseño evita falsos KPIs: una página futura puede estar vacía hasta que el proceso de negocio realmente genere esos eventos.
