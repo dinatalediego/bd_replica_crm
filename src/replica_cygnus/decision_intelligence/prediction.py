@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -17,12 +18,20 @@ class BinaryPredictionModel:
     numeric_features: list[str]
     categorical_features: list[str]
     target: str
+    prior_log_odds_offset: float = 0.0
     auc: float | None = None
     brier: float | None = None
 
     def predict_probability(self, data: pd.DataFrame) -> pd.Series:
         features = self.numeric_features + self.categorical_features
         probabilities = self.pipeline.predict_proba(data[features])[:, 1]
+        # ``class_weight=balanced`` changes the fitted class prior to 50/50.
+        # Restore the observed training prior while preserving the ranking.
+        eps = np.finfo(float).eps
+        clipped = np.clip(probabilities, eps, 1.0 - eps)
+        offset = float(getattr(self, "prior_log_odds_offset", 0.0))
+        log_odds = np.log(clipped / (1.0 - clipped)) + offset
+        probabilities = 1.0 / (1.0 + np.exp(-log_odds))
         return pd.Series(probabilities, index=data.index, name="predicted_probability")
 
 
@@ -63,11 +72,15 @@ def train_binary_logistic_model(
         ]
     )
     pipeline.fit(train[features], train[target].astype(int))
+    prevalence = float(train[target].astype(int).mean())
+    eps = np.finfo(float).eps
+    prevalence = float(np.clip(prevalence, eps, 1.0 - eps))
     result = BinaryPredictionModel(
         pipeline=pipeline,
         numeric_features=numeric_features,
         categorical_features=categorical_features,
         target=target,
+        prior_log_odds_offset=float(np.log(prevalence / (1.0 - prevalence))),
     )
 
     if validation is not None and len(validation) > 0:
