@@ -85,3 +85,58 @@ CREATE OR REPLACE VIEW model_control.v_lead_model_aliases AS
 SELECT a.decision_system,a.model_name,a.alias_name,a.model_run_id,mr.model_version,mr.trained_at,mr.status,a.updated_at
 FROM model_control.model_aliases a JOIN model_control.model_runs mr USING (model_run_id)
 WHERE a.decision_system='priorizacion_leads' AND a.model_name='lead_priority_bundle';
+
+INSERT INTO decision_intelligence.decision_contracts
+  (decision_system,objective,decision_unit,decision_owner,target,prediction_horizon_days,
+   causal_estimand,primary_value_metric,feedback_outcome,contract_json,is_active,updated_at)
+VALUES
+  ('priorizacion_leads','Priorizar atención comercial con evidencia point-in-time',
+   'asignacion de lead (evidence_key)','supervisor comercial','minuta_60d',60,
+   'No identificado en v0: propensión, no uplift','tasa de minuta y valor incremental futuro',
+   'separacion_14d + minuta_60d',
+   '{"human_in_the_loop":true,"automatic_contact":false,"semantics":"PROPENSITY_NOT_CAUSAL_UPLIFT"}'::jsonb,
+   true,now())
+ON CONFLICT (decision_system) DO UPDATE SET
+  objective=EXCLUDED.objective,decision_unit=EXCLUDED.decision_unit,
+  decision_owner=EXCLUDED.decision_owner,target=EXCLUDED.target,
+  prediction_horizon_days=EXCLUDED.prediction_horizon_days,
+  causal_estimand=EXCLUDED.causal_estimand,primary_value_metric=EXCLUDED.primary_value_metric,
+  feedback_outcome=EXCLUDED.feedback_outcome,contract_json=EXCLUDED.contract_json,
+  is_active=true,updated_at=now();
+
+CREATE OR REPLACE VIEW decision_intelligence.v_lead_action_outcome AS
+SELECT
+ r.recommendation_id,r.entity_id AS evidence_key,
+ r.context_json->>'lead_id' AS lead_id,
+ r.scored_at::date AS decision_date,r.scored_at,r.model_run_id,
+ r.context_json->>'priority_band' AS priority_band,
+ (r.context_json->>'priority_score')::double precision AS priority_score,
+ r.predicted_probability AS p_minuta_60d,r.recommended_action,
+ a.action_id,a.action_taken,a.action_owner,a.action_at,a.action_cost,
+ CASE WHEN a.action_id IS NULL THEN 'NOT_RECORDED' ELSE 'RECORDED' END AS action_status,
+ CASE WHEN a.action_id IS NULL THEN NULL ELSE a.action_taken=r.recommended_action END AS followed_recommendation,
+ sep.outcome_value AS separacion_14d,sep.outcome_at AS separacion_observed_at,
+ minuta.outcome_value AS minuta_60d,minuta.outcome_at AS minuta_observed_at
+FROM decision_intelligence.recommendations r
+LEFT JOIN LATERAL (
+ SELECT a1.* FROM decision_intelligence.actions a1
+ WHERE a1.recommendation_id=r.recommendation_id ORDER BY a1.action_at LIMIT 1
+) a ON true
+LEFT JOIN decision_intelligence.outcomes sep
+ ON sep.decision_system=r.decision_system AND sep.entity_id=r.entity_id AND sep.outcome_name='separacion_14d'
+LEFT JOIN decision_intelligence.outcomes minuta
+ ON minuta.decision_system=r.decision_system AND minuta.entity_id=r.entity_id AND minuta.outcome_name='minuta_60d'
+WHERE r.decision_system='priorizacion_leads';
+
+CREATE OR REPLACE VIEW decision_intelligence.v_lead_action_outcome_performance AS
+SELECT
+ decision_date,priority_band,action_status,COALESCE(action_taken,'SIN_ACCION_REGISTRADA') AS action_taken,
+ COUNT(*)::bigint AS recommendations,
+ COUNT(action_id)::bigint AS actions_recorded,
+ COUNT(separacion_14d)::bigint AS sep_matured,
+ AVG(separacion_14d) AS sep_rate,
+ COUNT(minuta_60d)::bigint AS minuta_matured,
+ AVG(minuta_60d) AS minuta_rate,
+ COALESCE(SUM(action_cost),0) AS total_action_cost
+FROM decision_intelligence.v_lead_action_outcome
+GROUP BY decision_date,priority_band,action_status,COALESCE(action_taken,'SIN_ACCION_REGISTRADA');

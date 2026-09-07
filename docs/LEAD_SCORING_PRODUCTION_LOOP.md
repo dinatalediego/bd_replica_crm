@@ -77,6 +77,12 @@ ORDER BY model_version, priority_band;
 
 La señal de negocio esperada es que la banda A madure con mayor tasa de separación y minuta que B/C/D. Eso complementa AUC/Brier con una métrica directamente interpretable para operación comercial.
 
+## De score a acción y outcome (v0.2)
+
+El ciclo diario también materializa recomendaciones y outcomes maduros. La acción
+humana se registra explícitamente y puede analizarse en Power BI. Ver
+`docs/LEAD_ACTION_OUTCOME_LOOP.md`.
+
 ## Definition of Done
 El loop se considera cerrado cuando PostgreSQL puede demostrar: evidencia de qué se sabía al llegar el lead, target posterior, features sin leakage, challenger reproducible, test temporal, gate auditado, alias serving, scores diarios versionados y performance real por banda cuando maduren outcomes.
 
