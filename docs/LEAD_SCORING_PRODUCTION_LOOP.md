@@ -24,6 +24,11 @@ se recalculan sobre toda la evidencia durante la operación diaria. El refresco
 solo prepara filas con outcomes disponibles para entrenamiento y filas recientes
 para scoring; el resto queda pendiente hasta que sea necesario.
 
+Como separación y minuta son eventos poco frecuentes, la regresión conserva
+pesos balanceados para aprender el ranking y luego restaura el prior observado
+en escala log-odds. Esto mantiene la capacidad discriminante sin presentar como
+probabilidades reales los scores artificialmente inflados por el balanceo.
+
 ## Evidencia
 `features.lead_evidence` conserva una fila por `lead_id + fecha_asignacion`. El documento del cliente se usa solo para vincular outcomes; no se usa como feature predictiva.
 
