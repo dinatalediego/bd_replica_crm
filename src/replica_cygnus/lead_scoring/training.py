@@ -16,10 +16,7 @@ from .config import LeadScoringConfig
 from .metrics import baseline_bundle_metrics, binary_metrics, priority_metrics
 
 NUMERIC_FEATURES = [
-    "hour_of_day","day_of_week","is_weekend","client_prior_assignments_90d",
-    "days_since_previous_assignment","project_leads_90d","project_sep_rate_90d",
-    "project_minuta_rate_180d","advisor_leads_90d","advisor_sep_rate_90d",
-    "advisor_minuta_rate_180d","global_sep_rate_90d","global_minuta_rate_180d",
+    "hour_of_day","day_of_week","is_weekend",
 ]
 CATEGORICAL_FEATURES = ["codigo_proyecto","asesor","canal","medio"]
 MODEL_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
@@ -139,7 +136,7 @@ def train_challenger(conn, cfg: LeadScoringConfig, project_root: Path) -> tuple[
     test_from, test_to = pd.to_datetime(evaluation["decision_at"],utc=True).min(), pd.to_datetime(evaluation["decision_at"],utc=True).max()
     metrics = {"candidate":candidate,"baseline":baseline,
                "common_test":{"from":test_from.isoformat(),"to":test_to.isoformat(),"rows":int(len(evaluation))}}
-    parameters = {"algorithm":"logistic_regression_bundle","sep_horizon_days":cfg.sep_horizon_days,
+    parameters = {"algorithm":"logistic_regression_bundle","feature_profile":"LEAN_V1","sep_horizon_days":cfg.sep_horizon_days,
                   "minuta_horizon_days":cfg.minuta_horizon_days,"weight_sep":cfg.weight_sep,"weight_minuta":cfg.weight_minuta,
                   "training_history_days":cfg.training_history_days,
                   "validation_days":cfg.validation_days,"test_days":cfg.test_days,"top_fraction":cfg.promotion.top_fraction,
