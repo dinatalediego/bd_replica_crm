@@ -111,6 +111,7 @@ def refresh_core_commercial(conn: Connection, project_root: Path) -> dict[str, i
                     piso,
                     estado_construccion,
                     nombre_tipologia,
+                    tipologia_ubicacion,
                     total_habitaciones,
                     total_banos,
                     area_libre,
@@ -157,6 +158,10 @@ def refresh_core_commercial(conn: Connection, project_root: Path) -> dict[str, i
                     piso,
                     estado_construccion,
                     nombre_tipologia,
+                    CASE
+                        WHEN NULLIF(TRIM(codigo), '') IS NULL THEN NULL
+                        ELSE RIGHT(TRIM(codigo), 2)
+                    END,
                     total_habitaciones,
                     total_banos,
                     area_libre,
@@ -231,6 +236,22 @@ def refresh_core_commercial(conn: Connection, project_root: Path) -> dict[str, i
             )
             proyectos_con_diferencia = int(cursor.fetchone()[0])
 
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM core.dim_unidad
+                WHERE NULLIF(TRIM(codigo_unidad), '') IS NOT NULL
+                  AND tipologia_ubicacion IS DISTINCT FROM RIGHT(TRIM(codigo_unidad), 2)
+                """
+            )
+            tipologia_ubicacion_inconsistente = int(cursor.fetchone()[0])
+
+            if tipologia_ubicacion_inconsistente:
+                raise RuntimeError(
+                    "Reconciliación fallida tipologia_ubicacion: "
+                    f"{tipologia_ubicacion_inconsistente} filas inconsistentes"
+                )
+
         conn.commit()
     except Exception:
         conn.rollback()
@@ -242,6 +263,7 @@ def refresh_core_commercial(conn: Connection, project_root: Path) -> dict[str, i
         "raw_unidades": int(raw_unidades),
         "core_unidades": int(core_unidades),
         "proyectos_con_diferencia": proyectos_con_diferencia,
+        "tipologia_ubicacion_inconsistente": tipologia_ubicacion_inconsistente,
     }
 
 
@@ -258,13 +280,20 @@ def core_status(conn: Connection) -> dict[str, int]:
                     FROM core.dim_unidad u
                     LEFT JOIN core.dim_proyecto p USING (codigo_proyecto)
                     WHERE p.proyecto_id IS NULL
+                ),
+                (
+                    SELECT COUNT(*)
+                    FROM core.dim_unidad
+                    WHERE NULLIF(TRIM(codigo_unidad), '') IS NOT NULL
+                      AND tipologia_ubicacion IS DISTINCT FROM RIGHT(TRIM(codigo_unidad), 2)
                 )
             """
         )
-        proyectos, unidades, huerfanas = cursor.fetchone()
+        proyectos, unidades, huerfanas, tipologia_inconsistente = cursor.fetchone()
 
     return {
         "proyectos": int(proyectos),
         "unidades": int(unidades),
         "unidades_huerfanas": int(huerfanas),
+        "tipologia_ubicacion_inconsistente": int(tipologia_inconsistente),
     }
