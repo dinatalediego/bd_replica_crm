@@ -105,6 +105,12 @@ def capture_evidence(conn, cfg: LeadScoringConfig, mode: str = "live") -> int:
             captured_at = EXCLUDED.captured_at,
             evidence_source = CASE WHEN EXCLUDED.evidence_source='LIVE' THEN 'LIVE'
                                    ELSE features.lead_evidence.evidence_source END,
+            features_refreshed_at = CASE
+                WHEN COALESCE(EXCLUDED.asesor, features.lead_evidence.asesor)
+                     IS DISTINCT FROM features.lead_evidence.asesor
+                  THEN NULL
+                ELSE features.lead_evidence.features_refreshed_at
+            END,
             asesor = COALESCE(EXCLUDED.asesor, features.lead_evidence.asesor),
             canal = COALESCE(EXCLUDED.canal, features.lead_evidence.canal),
             medio = COALESCE(EXCLUDED.medio, features.lead_evidence.medio),
@@ -157,6 +163,7 @@ def refresh_labels(conn, cfg: LeadScoringConfig) -> int:
                 label_status=CASE WHEN current_date>=e.decision_at::date+%s THEN 'MATURED'
                                   WHEN current_date>=e.decision_at::date+%s THEN 'SEP_MATURED'
                                   ELSE 'PENDING' END
+            WHERE e.labels_as_of IS NULL OR e.label_status <> 'MATURED'
             """,
             (cfg.sep_horizon_days, cfg.sep_horizon_days, cfg.minuta_horizon_days,
              cfg.minuta_horizon_days, cfg.minuta_horizon_days, cfg.sep_horizon_days),
@@ -166,47 +173,79 @@ def refresh_labels(conn, cfg: LeadScoringConfig) -> int:
     return affected
 
 
-def refresh_historical_features(conn, cfg: LeadScoringConfig) -> int:
-    """Calcula performance histórica point-in-time evitando leakage."""
+def historical_features_statement(cfg: LeadScoringConfig) -> str:
+    """SQL set-based para features point-in-time; evita subconsultas por fila."""
     sep_h, minuta_h = int(cfg.sep_horizon_days), int(cfg.minuta_horizon_days)
-    statement = f"""
+    return f"""
+        WITH calculated AS (
+          SELECT
+            evidence_key,
+            COUNT(*) OVER (
+              PARTITION BY documento_cliente ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '90 days' PRECEDING AND INTERVAL '0.000001 seconds' PRECEDING
+            )::integer AS client_prior_assignments_90d,
+            EXTRACT(EPOCH FROM (
+              decision_at - MAX(decision_at) OVER (
+                PARTITION BY documento_cliente ORDER BY decision_at
+                RANGE BETWEEN UNBOUNDED PRECEDING AND INTERVAL '0.000001 seconds' PRECEDING
+              )
+            )) / 86400.0 AS days_since_previous_assignment,
+            COUNT(*) OVER (
+              PARTITION BY codigo_proyecto ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '90 days' PRECEDING AND INTERVAL '0.000001 seconds' PRECEDING
+            )::integer AS project_leads_90d,
+            AVG(separacion_14d::double precision) OVER (
+              PARTITION BY codigo_proyecto ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '90 days' PRECEDING AND INTERVAL '{sep_h} days' PRECEDING
+            ) AS project_sep_rate_90d,
+            AVG(minuta_60d::double precision) OVER (
+              PARTITION BY codigo_proyecto ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '180 days' PRECEDING AND INTERVAL '{minuta_h} days' PRECEDING
+            ) AS project_minuta_rate_180d,
+            CASE WHEN asesor IS NULL THEN NULL ELSE COUNT(*) OVER (
+              PARTITION BY asesor ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '90 days' PRECEDING AND INTERVAL '0.000001 seconds' PRECEDING
+            )::integer END AS advisor_leads_90d,
+            CASE WHEN asesor IS NULL THEN NULL ELSE AVG(separacion_14d::double precision) OVER (
+              PARTITION BY asesor ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '90 days' PRECEDING AND INTERVAL '{sep_h} days' PRECEDING
+            ) END AS advisor_sep_rate_90d,
+            CASE WHEN asesor IS NULL THEN NULL ELSE AVG(minuta_60d::double precision) OVER (
+              PARTITION BY asesor ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '180 days' PRECEDING AND INTERVAL '{minuta_h} days' PRECEDING
+            ) END AS advisor_minuta_rate_180d,
+            AVG(separacion_14d::double precision) OVER (
+              ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '90 days' PRECEDING AND INTERVAL '{sep_h} days' PRECEDING
+            ) AS global_sep_rate_90d,
+            AVG(minuta_60d::double precision) OVER (
+              ORDER BY decision_at
+              RANGE BETWEEN INTERVAL '180 days' PRECEDING AND INTERVAL '{minuta_h} days' PRECEDING
+            ) AS global_minuta_rate_180d
+          FROM features.lead_evidence
+        )
         UPDATE features.lead_evidence e SET
-          client_prior_assignments_90d=COALESCE((SELECT COUNT(*) FROM features.lead_evidence p
-             WHERE p.documento_cliente=e.documento_cliente AND p.decision_at<e.decision_at
-               AND p.decision_at>=e.decision_at-interval '90 days'),0),
-          days_since_previous_assignment=(SELECT EXTRACT(EPOCH FROM (e.decision_at-MAX(p.decision_at)))/86400.0
-             FROM features.lead_evidence p WHERE p.documento_cliente=e.documento_cliente AND p.decision_at<e.decision_at),
-          project_leads_90d=COALESCE((SELECT COUNT(*) FROM features.lead_evidence p
-             WHERE p.codigo_proyecto=e.codigo_proyecto AND p.decision_at<e.decision_at
-               AND p.decision_at>=e.decision_at-interval '90 days'),0),
-          project_sep_rate_90d=(SELECT AVG(p.separacion_14d::double precision) FROM features.lead_evidence p
-             WHERE p.codigo_proyecto=e.codigo_proyecto AND p.decision_at<e.decision_at
-               AND p.decision_at>=e.decision_at-interval '90 days' AND p.separacion_14d IS NOT NULL
-               AND p.decision_at+interval '{sep_h} days'<=e.decision_at),
-          project_minuta_rate_180d=(SELECT AVG(p.minuta_60d::double precision) FROM features.lead_evidence p
-             WHERE p.codigo_proyecto=e.codigo_proyecto AND p.decision_at<e.decision_at
-               AND p.decision_at>=e.decision_at-interval '180 days' AND p.minuta_60d IS NOT NULL
-               AND p.decision_at+interval '{minuta_h} days'<=e.decision_at),
-          advisor_leads_90d=CASE WHEN e.asesor IS NULL THEN NULL ELSE COALESCE((SELECT COUNT(*) FROM features.lead_evidence p
-             WHERE p.asesor=e.asesor AND p.decision_at<e.decision_at AND p.decision_at>=e.decision_at-interval '90 days'),0) END,
-          advisor_sep_rate_90d=CASE WHEN e.asesor IS NULL THEN NULL ELSE (SELECT AVG(p.separacion_14d::double precision)
-             FROM features.lead_evidence p WHERE p.asesor=e.asesor AND p.decision_at<e.decision_at
-               AND p.decision_at>=e.decision_at-interval '90 days' AND p.separacion_14d IS NOT NULL
-               AND p.decision_at+interval '{sep_h} days'<=e.decision_at) END,
-          advisor_minuta_rate_180d=CASE WHEN e.asesor IS NULL THEN NULL ELSE (SELECT AVG(p.minuta_60d::double precision)
-             FROM features.lead_evidence p WHERE p.asesor=e.asesor AND p.decision_at<e.decision_at
-               AND p.decision_at>=e.decision_at-interval '180 days' AND p.minuta_60d IS NOT NULL
-               AND p.decision_at+interval '{minuta_h} days'<=e.decision_at) END,
-          global_sep_rate_90d=(SELECT AVG(p.separacion_14d::double precision) FROM features.lead_evidence p
-             WHERE p.decision_at<e.decision_at AND p.decision_at>=e.decision_at-interval '90 days'
-               AND p.separacion_14d IS NOT NULL AND p.decision_at+interval '{sep_h} days'<=e.decision_at),
-          global_minuta_rate_180d=(SELECT AVG(p.minuta_60d::double precision) FROM features.lead_evidence p
-             WHERE p.decision_at<e.decision_at AND p.decision_at>=e.decision_at-interval '180 days'
-               AND p.minuta_60d IS NOT NULL AND p.decision_at+interval '{minuta_h} days'<=e.decision_at),
+          client_prior_assignments_90d=c.client_prior_assignments_90d,
+          days_since_previous_assignment=c.days_since_previous_assignment,
+          project_leads_90d=c.project_leads_90d,
+          project_sep_rate_90d=c.project_sep_rate_90d,
+          project_minuta_rate_180d=c.project_minuta_rate_180d,
+          advisor_leads_90d=c.advisor_leads_90d,
+          advisor_sep_rate_90d=c.advisor_sep_rate_90d,
+          advisor_minuta_rate_180d=c.advisor_minuta_rate_180d,
+          global_sep_rate_90d=c.global_sep_rate_90d,
+          global_minuta_rate_180d=c.global_minuta_rate_180d,
           features_refreshed_at=now()
+        FROM calculated c
+        WHERE c.evidence_key=e.evidence_key
+          AND e.features_refreshed_at IS NULL
     """
+
+
+def refresh_historical_features(conn, cfg: LeadScoringConfig) -> int:
+    """Calcula solo filas pendientes mediante ventanas SQL reutilizables."""
     with conn.cursor() as cursor:
-        cursor.execute(statement)
+        cursor.execute(historical_features_statement(cfg))
         affected = int(cursor.rowcount or 0)
     conn.commit()
     return affected
