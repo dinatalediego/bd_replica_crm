@@ -1,0 +1,20 @@
+{
+  "pilot_id": "cygnus_contact_v1",
+  "model_run_id": null,
+  "seed": null,
+  "projects": [],
+  "min_priority_score": null,
+  "max_age_hours": 24,
+  "max_score_age_hours": 2,
+  "sla_minutes": 60,
+  "treatment_fraction": 0.5,
+  "target_per_arm": null,
+  "enrollment_end": null,
+  "primary_outcome": "separacion_14d",
+  "treatment_description": "PROPUESTA: primer intento dentro del SLA desde asignación; máximo 3 intentos en 24 h; calificar y proponer visita.",
+  "control_description": "Atención habitual documentada, sin retrasar ni negar atención.",
+  "business_rules_approved": false,
+  "eligibility_definition": "PENDIENTE: validar nuevos clientes sin compra/separación previa y elegibilidad de contacto.",
+  "outcome_definition": "PENDIENTE: confirmar separación y minuta, procesos/proforma y tratamiento de caídas.",
+  "analysis_plan": "PENDIENTE: tasa base, MDE, potencia, muestra, hipótesis primaria y costos incluidos."
+}

@@ -15,3 +15,6 @@ config/tables.yml
 config/decision_systems.yml
 config/lead_scoring.yml
 artifacts/
+config/lead_pilot.local.json
+data/pilot/
+notebooks/.ipynb_checkpoints/
