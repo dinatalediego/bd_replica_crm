@@ -14,6 +14,16 @@ El score es de **propensión**, no de persuadibilidad causal. Ordena atención c
 
 Los pesos son configurables y provisionales.
 
+## Feature profile del primer ciclo
+
+El primer ciclo usa `LEAN_V1`: hora, día de semana, fin de semana, proyecto,
+asesor, canal y medio. Su objetivo es establecer rápidamente un baseline
+reproducible y cerrar el loop operativo. Las tasas móviles históricas quedan
+reservadas para un challenger posterior basado en agregados incrementales; no
+se recalculan sobre toda la evidencia durante la operación diaria. El refresco
+solo prepara filas con outcomes disponibles para entrenamiento y filas recientes
+para scoring; el resto queda pendiente hasta que sea necesario.
+
 ## Evidencia
 `features.lead_evidence` conserva una fila por `lead_id + fecha_asignacion`. El documento del cliente se usa solo para vincular outcomes; no se usa como feature predictiva.
 
