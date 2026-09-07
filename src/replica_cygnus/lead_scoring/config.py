@@ -43,6 +43,7 @@ class LeadScoringConfig:
     sep_horizon_days: int = 14
     minuta_horizon_days: int = 60
     score_window_days: int = 14
+    training_history_days: int = 730
     training_min_rows: int = 250
     validation_days: int = 30
     test_days: int = 30
@@ -58,6 +59,11 @@ class LeadScoringConfig:
             raise ValueError("El horizonte de minuta no puede ser menor al de separación.")
         if self.training_min_rows < 50:
             raise ValueError("training_min_rows debe ser al menos 50.")
+        minimum_history = self.validation_days + self.test_days + self.minuta_horizon_days
+        if self.training_history_days < minimum_history:
+            raise ValueError(
+                "training_history_days debe cubrir validación, test y horizonte de minuta."
+            )
         if self.validation_days <= 0 or self.test_days <= 0:
             raise ValueError("validation_days y test_days deben ser positivos.")
         if abs((self.weight_sep + self.weight_minuta) - 1.0) > 1e-9:
@@ -150,6 +156,9 @@ def load_lead_scoring_config(path: Path) -> LeadScoringConfig:
             raw.get("minuta_horizon_days", defaults.minuta_horizon_days)
         ),
         score_window_days=int(raw.get("score_window_days", defaults.score_window_days)),
+        training_history_days=int(
+            raw.get("training_history_days", defaults.training_history_days)
+        ),
         training_min_rows=int(
             raw.get("training_min_rows", defaults.training_min_rows)
         ),
