@@ -136,7 +136,8 @@ def train_challenger(conn, cfg: LeadScoringConfig, project_root: Path) -> tuple[
     test_from, test_to = pd.to_datetime(evaluation["decision_at"],utc=True).min(), pd.to_datetime(evaluation["decision_at"],utc=True).max()
     metrics = {"candidate":candidate,"baseline":baseline,
                "common_test":{"from":test_from.isoformat(),"to":test_to.isoformat(),"rows":int(len(evaluation))}}
-    parameters = {"algorithm":"logistic_regression_bundle","feature_profile":"LEAN_V1","sep_horizon_days":cfg.sep_horizon_days,
+    parameters = {"algorithm":"logistic_regression_bundle","feature_profile":"LEAN_V1",
+                  "probability_calibration":"balanced_prior_log_odds_correction","sep_horizon_days":cfg.sep_horizon_days,
                   "minuta_horizon_days":cfg.minuta_horizon_days,"weight_sep":cfg.weight_sep,"weight_minuta":cfg.weight_minuta,
                   "training_history_days":cfg.training_history_days,
                   "validation_days":cfg.validation_days,"test_days":cfg.test_days,"top_fraction":cfg.promotion.top_fraction,
