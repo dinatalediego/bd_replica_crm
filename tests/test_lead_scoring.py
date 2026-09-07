@@ -78,7 +78,19 @@ def test_feedback_identifiers_are_deterministic_and_distinct():
 
 
 def test_historical_features_use_set_based_windows_and_are_resumable():
-    statement = historical_features_statement(LeadScoringConfig())
+    statement = historical_features_statement(LeadScoringConfig(training_history_days=730))
     assert " OVER (" in statement
     assert "e.features_refreshed_at IS NULL" in statement
+    assert "INTERVAL '730 days'" in statement
+    assert "INTERVAL '910 days'" in statement
     assert "SELECT COUNT(*) FROM features.lead_evidence" not in statement
+
+
+def test_training_history_must_cover_temporal_evaluation_and_target_horizon():
+    cfg = LeadScoringConfig(training_history_days=100)
+    try:
+        cfg.validate()
+    except ValueError as exc:
+        assert "training_history_days" in str(exc)
+    else:
+        raise AssertionError("Se esperaba ValueError por historia insuficiente")
