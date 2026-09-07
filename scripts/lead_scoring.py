@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import time
 from pathlib import Path
 
 from replica_cygnus.connections import connect_postgres
@@ -55,9 +56,19 @@ def _config_path(root: Path,value: str)->Path:
 
 
 def _refresh(conn,cfg,mode):
-    return {"captured_or_refreshed":capture_evidence(conn,cfg,mode),
-            "labels_refreshed":refresh_labels(conn,cfg),
-            "features_refreshed":refresh_historical_features(conn,cfg)}
+    results = {}
+    stages = (
+        ("captured_or_refreshed", lambda: capture_evidence(conn,cfg,mode)),
+        ("labels_refreshed", lambda: refresh_labels(conn,cfg)),
+        ("features_refreshed", lambda: refresh_historical_features(conn,cfg)),
+    )
+    for name, operation in stages:
+        started = time.monotonic()
+        print(f"[{name}] iniciando...", flush=True)
+        results[name] = operation()
+        elapsed = time.monotonic() - started
+        print(f"[{name}] filas={results[name]} | segundos={elapsed:.1f}", flush=True)
+    return results
 
 
 def _print_eval(r):
