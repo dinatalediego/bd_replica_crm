@@ -77,12 +77,17 @@ def test_feedback_identifiers_are_deterministic_and_distinct():
     )
 
 
-def test_historical_features_use_set_based_windows_and_are_resumable():
-    statement = historical_features_statement(LeadScoringConfig(training_history_days=730))
-    assert " OVER (" in statement
-    assert "e.features_refreshed_at IS NULL" in statement
+def test_lean_features_are_bounded_and_only_prepare_train_or_scoring_rows():
+    statement = historical_features_statement(
+        LeadScoringConfig(training_history_days=730, score_window_days=14)
+    )
+    assert "features_refreshed_at IS NULL" in statement
     assert "INTERVAL '730 days'" in statement
-    assert "INTERVAL '910 days'" in statement
+    assert "INTERVAL '14 days'" in statement
+    assert "separacion_14d IS NOT NULL" in statement
+    assert "minuta_60d IS NOT NULL" in statement
+    assert '"feature_profile":"LEAN_V1"' in statement
+    assert " OVER (" not in statement
     assert "SELECT COUNT(*) FROM features.lead_evidence" not in statement
 
 
