@@ -12,6 +12,7 @@ from replica_cygnus.lead_scoring.feedback import (
     recommendation_id_for_score,
     recommended_action_for_band,
 )
+from replica_cygnus.lead_scoring.evidence import historical_features_statement
 
 
 def test_temporal_split_preserves_order():
@@ -74,3 +75,10 @@ def test_feedback_identifiers_are_deterministic_and_distinct():
     assert outcome_id_for_evidence("evidence-1", "separacion_14d") != outcome_id_for_evidence(
         "evidence-1", "minuta_60d"
     )
+
+
+def test_historical_features_use_set_based_windows_and_are_resumable():
+    statement = historical_features_statement(LeadScoringConfig())
+    assert " OVER (" in statement
+    assert "e.features_refreshed_at IS NULL" in statement
+    assert "SELECT COUNT(*) FROM features.lead_evidence" not in statement
