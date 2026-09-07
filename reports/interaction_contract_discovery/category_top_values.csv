@@ -1,0 +1,107 @@
+﻿column_name,value,rows
+nombres_usuario,Nelly Román Villavicencio,210008
+nombres_usuario,Joceline Arizabal Corimanya,105344
+nombres_usuario,Ornella Muñoz Alfaro,64882
+nombres_usuario,Ivan La Riva,49563
+nombres_usuario,Luis Peñaloza,49168
+nombres_usuario,Yomira  Pacheco,47423
+nombres_usuario,Jackeline Espichan Medina,42828
+nombres_usuario,Cinthia Román Villavicencio,32035
+nombres_usuario,Ana Lucia DelSolar,21113
+nombres_usuario,Luis Enrique Del Solar Cáceres,18395
+nombres_usuario,Fernando Chamochumbi,16855
+nombres_usuario,Edwing Soller,11717
+nombres_usuario,Antonio Martinez,10084
+nombres_usuario,Percy Soto,9358
+nombres_usuario,Silvia Orellana,8149
+canal_entrada,contacto web,151208
+canal_entrada,visita presencial,18395
+canal_entrada,llamada telefónica,14566
+canal_entrada,por email,13771
+canal_entrada,landing,8013
+canal_entrada,whatsapp ,6089
+canal_entrada,portal inmobiliario,5872
+canal_entrada,feria-nexo,1007
+canal_entrada,base de datos externa,199
+canal_entrada,nexo,153
+canal_entrada,tiktok,75
+canal_entrada,instagram,34
+canal_entrada,corredor inmobiliario,5
+medio_captacion,facebook,149208
+medio_captacion,instagram,13539
+medio_captacion,caseta de ventas,10435
+medio_captacion,paso por la zona,9428
+medio_captacion,nexo,9051
+medio_captacion,verdancy,7208
+medio_captacion,contacto web,5469
+medio_captacion,feria inmobiliaria,4118
+medio_captacion,tik tok,3925
+medio_captacion,página web,3338
+medio_captacion,urbania,2029
+medio_captacion,3 días de locura inmobiliaria,1610
+medio_captacion,referido,1365
+medio_captacion,base de datos externa,480
+medio_captacion,expourbania,196
+tipo_interaccion,correo electrónico,183914
+tipo_interaccion,whatsapp,175893
+tipo_interaccion,facebook,146190
+tipo_interaccion,creación de cliente,140015
+tipo_interaccion,sperant chat,39581
+tipo_interaccion,creación de proforma,23388
+tipo_interaccion,llamada por teléfono,22991
+tipo_interaccion,api,20898
+tipo_interaccion,portal inmobiliario,14895
+tipo_interaccion,creación de proforma web,13829
+tipo_interaccion,visita al proyecto,10569
+tipo_interaccion,creacion de evento,501
+tipo_interaccion,visita a feria,390
+tipo_interaccion,coordinación con el banco,246
+tipo_interaccion,reunión,232
+nombre_proyecto,Edificio Mariategui,80091
+nombre_proyecto,Edificio Cuba Connect,63257
+nombre_proyecto,Edificio Santa Cruz Infinite,60091
+nombre_proyecto,Alicanto,52365
+nombre_proyecto,Tizón y Bueno,48935
+nombre_proyecto,Edificio Urbanzen,44323
+nombre_proyecto,Fenix,39284
+nombre_proyecto,Sialia,38541
+nombre_proyecto,Tradiciones Prime,38232
+nombre_proyecto,Torre Nápoles,37298
+nombre_proyecto,Capadocia,34654
+nombre_proyecto,Edificio Saenz,31095
+nombre_proyecto,Los Jardines de Urteaga,28824
+nombre_proyecto,Modena,23377
+nombre_proyecto,Matera,18358
+estado,realizado,793664
+estado,no realizado,385
+origen,manual,299281
+origen,fblead,166609
+origen,fblead_ads,67812
+origen,api,42857
+origen,sperant_chat,39600
+origen,portalinmobiliario,21913
+origen,importación,4254
+origen,zapier,3203
+origen,app_comercial,15
+origen,tiktoklead_ads,1
+tipo,ACTIVIDAD,793548
+tipo,EVENTO,501
+tipo_evento,llamada,373
+tipo_evento,cita,84
+tipo_evento,entrega programada,38
+tipo_evento,whatsapp,6
+origen_manual,si,417782
+origen_manual,no,375754
+canal_entrada_rastro,contacto web,116028
+canal_entrada_rastro,visita presencial,25311
+canal_entrada_rastro,whatsapp ,9587
+canal_entrada_rastro,portal inmobiliario,6981
+canal_entrada_rastro,llamada telefónica,1871
+canal_entrada_rastro,landing,1711
+canal_entrada_rastro,feria-nexo,1582
+canal_entrada_rastro,por email,637
+canal_entrada_rastro,nexo,313
+canal_entrada_rastro,tiktok,170
+canal_entrada_rastro,base de datos externa,154
+canal_entrada_rastro,instagram,65
+canal_entrada_rastro,corredor inmobiliario,8

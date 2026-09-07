@@ -1,0 +1,2 @@
+[console_scripts]
+cygnus-decision-engine = cygnus_decision_engine.cli:main

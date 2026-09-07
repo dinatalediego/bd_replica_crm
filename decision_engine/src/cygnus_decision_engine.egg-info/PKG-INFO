@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: cygnus-decision-engine
+Version: 0.2.0
+Summary: Decision intelligence layer for Cygnus commercial analytics
+Requires-Python: >=3.11
+Requires-Dist: pydantic<3,>=2.7
+Requires-Dist: PyYAML<7,>=6.0
+Requires-Dist: psycopg[binary]<4,>=3.2
+Requires-Dist: python-dotenv<2,>=1.0
+Provides-Extra: dev
+Requires-Dist: pytest<9,>=8; extra == "dev"

@@ -1,0 +1,50 @@
+{
+  "status": "STAGE2_PROFILED_NOT_CERTIFIED",
+  "source": "raw_cygnus.interacciones",
+  "identity_health": {
+    "status": "PROFILED_NOT_CERTIFIED",
+    "row_count": 794049,
+    "null_id_rows": 0,
+    "distinct_ids": 793655,
+    "duplicate_id_groups": 394,
+    "duplicate_id_excess_rows": 394,
+    "duplicate_id_proforma_groups": 351
+  },
+  "proforma_linkage_health": {
+    "interaction_rows_with_proforma": 37217,
+    "distinct_interaction_proformas": 37217,
+    "interaction_rows_matching_core_proforma": 1975,
+    "interaction_rows_unmatched_to_core_proforma": 792074,
+    "distinct_interaction_proformas_matching_core": 1975,
+    "distinct_interaction_proformas_unmatched_core": 35242,
+    "interaction_proformas_with_multiple_training_lifecycles": 0,
+    "interaction_row_core_match_rate": 0.053067146734019396,
+    "status": "PROFILED_NOT_CERTIFIED"
+  },
+  "proforma_interaction_distribution": {
+    "proformas": 37217,
+    "avg_interactions_per_proforma": "1.00000000000000000000",
+    "p50_interactions_per_proforma": 1.0,
+    "p90_interactions_per_proforma": 1.0,
+    "p99_interactions_per_proforma": 1.0,
+    "max_interactions_per_proforma": 1
+  },
+  "timestamp_candidates_native_temporal": {
+    "fecha_programada": true,
+    "fecha_creacion": true,
+    "fecha_actualizacion": true,
+    "_etl_loaded_at": true
+  },
+  "event_time_decision": "REVIEW_REQUIRED_DO_NOT_AUTO_CERTIFY",
+  "event_time_semantic_question": "Choose the timestamp that means the business interaction happened. fecha_actualizacion and _etl_loaded_at are not eligible merely because they are complete.",
+  "linkage_policy_candidate": "Prefer direct codigo_proforma attribution. Aggregate interaction events by codigo_proforma before joining to lifecycle snapshots to prevent unit-grain row multiplication.",
+  "next_gate": "Review timestamp semantics + identity duplicates + direct proforma coverage. Only after approval build as-of features with interaction_event_at <= snapshot_at.",
+  "outputs": [
+    "timestamp_profiles.csv",
+    "timestamp_relationships.csv",
+    "timestamp_year_coverage.csv",
+    "identity_health.csv",
+    "proforma_linkage_health.csv",
+    "proforma_interaction_distribution.csv"
+  ]
+}

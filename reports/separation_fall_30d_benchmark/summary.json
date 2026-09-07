@@ -1,0 +1,84 @@
+{
+  "status": "OK",
+  "source_health": {
+    "labeled_snapshot_rows": 5932,
+    "labeled_lifecycles": 1316,
+    "fall_within_30d_rows": 559,
+    "no_fall_within_30d_rows": 5373,
+    "lifecycles_with_fall_within_30d": 233,
+    "snapshot_fall_within_30d_rate": "0.0942",
+    "oldest_snapshot_at": "2019-10-02",
+    "newest_snapshot_at": "2026-08-15",
+    "latest_horizon_end_at": "2026-09-14",
+    "prediction_horizon_days": 30,
+    "invalid_snapshot_weight_rows": 0,
+    "missing_lifecycle_weight_rows": 0,
+    "rows_with_certified_interaction_features": 0,
+    "observed_through": "2026-08-18",
+    "censored_incomplete_30d_followup": 138,
+    "excluded_transfer_competing_event_within_30d": 32,
+    "excluded_undated_payment_evidence_timing_ambiguous": 5,
+    "blocked_missing_proforma_first_seen": 0,
+    "blocked_missing_observation_cutoff": 0
+  },
+  "feature_scope": "STRUCTURAL_TEMPORAL_30D_V1",
+  "numeric_features": [
+    "days_since_separation",
+    "proforma_age_days_at_snapshot",
+    "proforma_age_days_at_separation",
+    "snapshot_iso_weekday",
+    "snapshot_month"
+  ],
+  "categorical_features": [
+    "codigo_proyecto",
+    "tipo_unidad_principal"
+  ],
+  "advisor_included": false,
+  "interaction_features_certified": false,
+  "group_leakage_policy": "test separation_id is removed from train",
+  "models": [
+    "prevalence_baseline",
+    "landmark_prevalence_baseline",
+    "logistic_regression",
+    "random_forest",
+    "hist_gradient_boosting"
+  ],
+  "splits": [
+    {
+      "split": "cross_regime_pre2026_to_post2026",
+      "train_rows": 3991,
+      "test_rows": 1267,
+      "train_lifecycles": 868,
+      "test_lifecycles": 379,
+      "group_overlap": 0,
+      "train_min_snapshot": "2022-01-01 00:00:00",
+      "train_max_snapshot": "2025-12-31 00:00:00",
+      "test_min_snapshot": "2026-01-02 00:00:00",
+      "test_max_snapshot": "2026-08-15 00:00:00",
+      "train_positive_rows": 413,
+      "test_positive_rows": 140,
+      "status": "OK"
+    },
+    {
+      "split": "current_regime_2026_early_to_recent",
+      "train_rows": 579,
+      "test_rows": 519,
+      "train_lifecycles": 201,
+      "test_lifecycles": 178,
+      "group_overlap": 0,
+      "train_min_snapshot": "2026-01-02 00:00:00",
+      "train_max_snapshot": "2026-04-29 00:00:00",
+      "test_min_snapshot": "2026-05-01 00:00:00",
+      "test_max_snapshot": "2026-08-15 00:00:00",
+      "train_positive_rows": 87,
+      "test_positive_rows": 49,
+      "status": "OK"
+    }
+  ],
+  "outputs": [
+    "metrics.csv",
+    "split_health.csv",
+    "predictions.csv"
+  ],
+  "interpretation": "Research benchmark only. Promotion requires out-of-time lift over baselines, calibration review, subgroup stability and shadow-mode evidence."
+}

@@ -1,0 +1,51 @@
+{
+  "status": "DISCOVERY_ONLY_NOT_CERTIFIED",
+  "source": "raw_cygnus.interacciones",
+  "row_count": 794049,
+  "column_count": 44,
+  "date_candidates": [
+    "fecha_programada",
+    "fecha_creacion",
+    "fecha_actualizacion",
+    "_etl_loaded_at"
+  ],
+  "key_candidates": [
+    "nombres_cliente",
+    "apellidos_cliente",
+    "documento_cliente",
+    "codigo_proyecto",
+    "codigo_unidad",
+    "nombre_unidad",
+    "id",
+    "clientes_invitados",
+    "cliente_id",
+    "codigo_proforma",
+    "_etl_source_run_id"
+  ],
+  "direct_codigo_proforma_available": true,
+  "direct_documento_cliente_available": true,
+  "certification_gates": [
+    "choose source event timestamp; ETL/update timestamp is not accepted as behavioral event time",
+    "choose entity join key and prove row-level linkage to separation/proforma without many-to-many inflation",
+    "prove interaction identity/deduplication key",
+    "prove historical coverage and freshness by period",
+    "build as-of features using only events <= snapshot_at",
+    "re-run mature out-of-time benchmark before any promotion"
+  ],
+  "candidate_features_after_certification": [
+    "days_since_last_interaction",
+    "interaction_count_7d",
+    "interaction_count_14d",
+    "interaction_count_30d",
+    "active_days_with_interaction_30d",
+    "interaction_channel_diversity_30d",
+    "interaction_velocity_7d_vs_30d"
+  ],
+  "outputs": [
+    "columns.csv",
+    "column_profiles.csv",
+    "date_candidates.csv",
+    "key_candidates.csv",
+    "category_top_values.csv"
+  ]
+}

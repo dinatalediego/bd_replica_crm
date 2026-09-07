@@ -1,0 +1,184 @@
+﻿column_name,value,rows,column_non_null_rows,column_distinct_count
+nombres_usuario,Nelly Román Villavicencio,210011,728587,28
+nombres_usuario,Joceline Arizabal Corimanya,105344,728587,28
+nombres_usuario,Ornella Muñoz Alfaro,64882,728587,28
+nombres_usuario,Ivan La Riva,49563,728587,28
+nombres_usuario,Luis Peñaloza,49169,728587,28
+nombres_usuario,Yomira  Pacheco,47423,728587,28
+nombres_usuario,Jackeline Espichan Medina,42828,728587,28
+nombres_usuario,Cinthia Román Villavicencio,32035,728587,28
+nombres_usuario,Ana Lucia DelSolar,21113,728587,28
+nombres_usuario,Luis Enrique Del Solar Cáceres,18395,728587,28
+nombres_usuario,Fernando Chamochumbi,16855,728587,28
+nombres_usuario,Edwing Soller,11717,728587,28
+nombres_usuario,Antonio Martinez,10085,728587,28
+nombres_usuario,Percy Soto,9358,728587,28
+nombres_usuario,Silvia Orellana,8174,728587,28
+nombres_usuario,Kenyi Arotinco,5964,728587,28
+nombres_usuario,Karlo  Vargas,5874,728587,28
+nombres_usuario,Sonia Paredes,4855,728587,28
+nombres_usuario,Andres Vargas,4109,728587,28
+nombres_usuario,Mayra Nahui,3605,728587,28
+nombres_usuario,Juan calle  Calle,2325,728587,28
+nombres_usuario,Enzo Villanueva,1731,728587,28
+nombres_usuario,Victor Salazar,1707,728587,28
+nombres_usuario,Ingrid Valencia,1068,728587,28
+nombres_usuario,Fabricio Jean Pierre Torres Orellana,309,728587,28
+canal_entrada,contacto web,151217,219396,13
+canal_entrada,visita presencial,18395,219396,13
+canal_entrada,llamada telefónica,14566,219396,13
+canal_entrada,por email,13771,219396,13
+canal_entrada,landing,8013,219396,13
+canal_entrada,whatsapp ,6089,219396,13
+canal_entrada,portal inmobiliario,5872,219396,13
+canal_entrada,feria-nexo,1007,219396,13
+canal_entrada,base de datos externa,199,219396,13
+canal_entrada,nexo,153,219396,13
+canal_entrada,tiktok,75,219396,13
+canal_entrada,instagram,34,219396,13
+canal_entrada,corredor inmobiliario,5,219396,13
+medio_captacion,facebook,149215,221801,23
+medio_captacion,instagram,13539,221801,23
+medio_captacion,caseta de ventas,10435,221801,23
+medio_captacion,paso por la zona,9428,221801,23
+medio_captacion,nexo,9051,221801,23
+medio_captacion,verdancy,7208,221801,23
+medio_captacion,contacto web,5469,221801,23
+medio_captacion,feria inmobiliaria,4118,221801,23
+medio_captacion,tik tok,3925,221801,23
+medio_captacion,página web,3338,221801,23
+medio_captacion,urbania,2031,221801,23
+medio_captacion,3 días de locura inmobiliaria,1610,221801,23
+medio_captacion,referido,1365,221801,23
+medio_captacion,base de datos externa,480,221801,23
+medio_captacion,expourbania,196,221801,23
+medio_captacion,la encontre,170,221801,23
+medio_captacion,volante,69,221801,23
+medio_captacion,meta,48,221801,23
+medio_captacion,el chico de las fechas,41,221801,23
+medio_captacion,a donde vivir,23,221801,23
+medio_captacion,destacado premium,16,221801,23
+medio_captacion,corredor inmobiliario,13,221801,23
+medio_captacion,google,13,221801,23
+tipo_interaccion,correo electrónico,183917,794088,23
+tipo_interaccion,whatsapp,175905,794088,23
+tipo_interaccion,facebook,146194,794088,23
+tipo_interaccion,creación de cliente,140019,794088,23
+tipo_interaccion,sperant chat,39595,794088,23
+tipo_interaccion,creación de proforma,23388,794088,23
+tipo_interaccion,llamada por teléfono,22991,794088,23
+tipo_interaccion,api,20898,794088,23
+tipo_interaccion,portal inmobiliario,14896,794088,23
+tipo_interaccion,creación de proforma web,13829,794088,23
+tipo_interaccion,visita al proyecto,10569,794088,23
+tipo_interaccion,creacion de evento,501,794088,23
+tipo_interaccion,visita a feria,390,794088,23
+tipo_interaccion,coordinación con el banco,246,794088,23
+tipo_interaccion,reunión,233,794088,23
+tipo_interaccion,visita a oficinas,212,794088,23
+tipo_interaccion,mensaje de texto,93,794088,23
+tipo_interaccion,sendpulse whatsapp,86,794088,23
+tipo_interaccion,se agenda visita,67,794088,23
+tipo_interaccion,otros,51,794088,23
+tipo_interaccion,app comercial,6,794088,23
+tipo_interaccion,contacto web,1,794088,23
+tipo_interaccion,tiktok,1,794088,23
+nombre,correo electrónico,183917,794088,146
+nombre,whatsapp,175906,794088,146
+nombre,facebook,146194,794088,146
+nombre,creación de cliente,140019,794088,146
+nombre,sperant chat,39595,794088,146
+nombre,creación de proforma,23388,794088,146
+nombre,llamada por teléfono,22991,794088,146
+nombre,api,20898,794088,146
+nombre,portal inmobiliario,14896,794088,146
+nombre,creación de proforma web,13829,794088,146
+nombre,visita al proyecto,10569,794088,146
+nombre,visita a feria,390,794088,146
+nombre,coordinación con el banco,246,794088,146
+nombre,reunión,233,794088,146
+nombre,Rellamada,227,794088,146
+nombre,visita a oficinas,212,794088,146
+nombre,mensaje de texto,93,794088,146
+nombre,sendpulse whatsapp,86,794088,146
+nombre,se agenda visita,67,794088,146
+nombre,llamada,56,794088,146
+nombre,otros,51,794088,146
+nombre,llamar para definir separación,22,794088,146
+nombre,llamar para definir compra.,12,794088,146
+nombre,llamar,10,794088,146
+nombre,rellamada,9,794088,146
+nombre_proyecto,Edificio Mariategui,80091,668872,18
+nombre_proyecto,Edificio Cuba Connect,63257,668872,18
+nombre_proyecto,Edificio Santa Cruz Infinite,60091,668872,18
+nombre_proyecto,Alicanto,52366,668872,18
+nombre_proyecto,Tizón y Bueno,48935,668872,18
+nombre_proyecto,Edificio Urbanzen,44328,668872,18
+nombre_proyecto,Fenix,39284,668872,18
+nombre_proyecto,Sialia,38546,668872,18
+nombre_proyecto,Tradiciones Prime,38232,668872,18
+nombre_proyecto,Torre Nápoles,37311,668872,18
+nombre_proyecto,Capadocia,34660,668872,18
+nombre_proyecto,Edificio Saenz,31095,668872,18
+nombre_proyecto,Los Jardines de Urteaga,28824,668872,18
+nombre_proyecto,Modena,23378,668872,18
+nombre_proyecto,Matera,18363,668872,18
+nombre_proyecto,Edificio Unique,16439,668872,18
+nombre_proyecto,Edificio Valdizan,12074,668872,18
+nombre_proyecto,Campañas,1598,668872,18
+estado,realizado,793703,794088,2
+estado,no realizado,385,794088,2
+origen,manual,299294,645581,10
+origen,fblead,166609,645581,10
+origen,fblead_ads,67819,645581,10
+origen,api,42857,645581,10
+origen,sperant_chat,39614,645581,10
+origen,portalinmobiliario,21915,645581,10
+origen,importación,4254,645581,10
+origen,zapier,3203,645581,10
+origen,app_comercial,15,645581,10
+origen,tiktoklead_ads,1,645581,10
+tipo,ACTIVIDAD,793587,794088,2
+tipo,EVENTO,501,794088,2
+tipo_evento,llamada,373,501,4
+tipo_evento,cita,84,501,4
+tipo_evento,entrega programada,38,501,4
+tipo_evento,whatsapp,6,501,4
+origen_manual,si,417812,793575,2
+origen_manual,no,375763,793575,2
+canal_entrada_rastro,contacto web,116059,164453,13
+canal_entrada_rastro,visita presencial,25312,164453,13
+canal_entrada_rastro,whatsapp ,9590,164453,13
+canal_entrada_rastro,portal inmobiliario,6981,164453,13
+canal_entrada_rastro,llamada telefónica,1871,164453,13
+canal_entrada_rastro,landing,1711,164453,13
+canal_entrada_rastro,feria-nexo,1582,164453,13
+canal_entrada_rastro,por email,637,164453,13
+canal_entrada_rastro,nexo,313,164453,13
+canal_entrada_rastro,tiktok,170,164453,13
+canal_entrada_rastro,base de datos externa,154,164453,13
+canal_entrada_rastro,instagram,65,164453,13
+canal_entrada_rastro,corredor inmobiliario,8,164453,13
+medio_captacion_rastro,facebook,100955,166175,23
+medio_captacion_rastro,caseta de ventas,16201,166175,23
+medio_captacion_rastro,paso por la zona,13075,166175,23
+medio_captacion_rastro,instagram,9079,166175,23
+medio_captacion_rastro,nexo,8711,166175,23
+medio_captacion_rastro,página web,5241,166175,23
+medio_captacion_rastro,feria inmobiliaria,4895,166175,23
+medio_captacion_rastro,urbania,2223,166175,23
+medio_captacion_rastro,tik tok,2140,166175,23
+medio_captacion_rastro,referido,1781,166175,23
+medio_captacion_rastro,contacto web,766,166175,23
+medio_captacion_rastro,base de datos externa,236,166175,23
+medio_captacion_rastro,expourbania,199,166175,23
+medio_captacion_rastro,verdancy,185,166175,23
+medio_captacion_rastro,3 días de locura inmobiliaria,139,166175,23
+medio_captacion_rastro,meta,92,166175,23
+medio_captacion_rastro,volante,80,166175,23
+medio_captacion_rastro,el chico de las fechas,74,166175,23
+medio_captacion_rastro,a donde vivir,39,166175,23
+medio_captacion_rastro,destacado premium,22,166175,23
+medio_captacion_rastro,corredor inmobiliario,16,166175,23
+medio_captacion_rastro,google,14,166175,23
+medio_captacion_rastro,la encontre,12,166175,23

@@ -1,0 +1,28 @@
+{
+  "status": "OK",
+  "source_health": {
+    "v1_labeled_snapshot_rows": 5932,
+    "mature_labeled_snapshot_rows": 5900,
+    "mature_labeled_lifecycles": 1298,
+    "mature_fall_rows": 550,
+    "mature_no_fall_rows": 5350,
+    "labeled_rows_removed_for_incomplete_horizon": 32,
+    "positive_rows_removed_for_incomplete_horizon": 9,
+    "observed_through": "2026-08-18",
+    "latest_mature_horizon_end_at": "2026-08-18"
+  },
+  "feature_scope": "STRUCTURAL_TEMPORAL_30D_V1_MATURE_BINARY_BENCHMARK",
+  "horizon_maturity_gate": "horizon_end_at <= observed_through",
+  "advisor_included": false,
+  "interaction_features_certified": false,
+  "group_leakage_policy": "test separation_id is removed from train",
+  "ranking_policy": "Global snapshot Top-K is prohibited because repeated snapshots can place the same separation multiple times in the ranking. Use first_touch_metrics for unique-lifecycle research ranking; daily operational ranking requires a separate daily risk-set backtest.",
+  "outputs": [
+    "snapshot_metrics.csv",
+    "first_touch_metrics.csv",
+    "landmark_metrics.csv",
+    "split_health.csv",
+    "predictions.csv"
+  ],
+  "interpretation": "Research benchmark only. Promotion requires mature-horizon out-of-time lift, subgroup stability, daily operational risk-set backtesting and shadow-mode evidence."
+}

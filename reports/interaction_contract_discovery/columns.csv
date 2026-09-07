@@ -1,0 +1,45 @@
+﻿ordinal_position,column_name,data_type,is_nullable
+1,nombres_usuario,character varying,YES
+2,username,character varying,YES
+3,nombres_cliente,character varying,YES
+4,apellidos_cliente,character varying,YES
+5,documento_cliente,character varying,YES
+6,canal_entrada,character varying,YES
+7,medio_captacion,character varying,YES
+8,tipo_interaccion,character varying,YES
+9,nombre,character varying,YES
+10,codigo_proyecto,character varying,YES
+11,nombre_proyecto,character varying,YES
+12,codigo_unidad,character varying,YES
+13,nombre_unidad,character varying,YES
+14,fecha_programada,date,YES
+15,estado,character varying,YES
+16,observacion,character varying,YES
+17,utm_source,character varying,YES
+18,utm_medium,character varying,YES
+19,utm_campaign,character varying,YES
+20,utm_term,character varying,YES
+21,utm_content,character varying,YES
+22,origen,character varying,YES
+23,id,integer,YES
+24,tipo,character varying,YES
+25,fecha_creacion,timestamp without time zone,YES
+26,satisfactorio,character varying,YES
+27,clientes_invitados,character varying,YES
+28,contactos_invitados,character varying,YES
+29,usuarios_invitados,character varying,YES
+30,cliente_id,integer,YES
+31,tipo_evento,character varying,YES
+32,nivel_interes,character varying,YES
+33,categorias_tipo_interaccion,character varying,YES
+34,fecha_actualizacion,date,YES
+35,razon_desistimiento,character varying,YES
+36,hora_actualizacion,character varying,YES
+37,codigo_proforma,character varying,YES
+38,origen_manual,character varying,YES
+39,segmento,character varying,YES
+40,vendedor_asignado,character varying,YES
+41,canal_entrada_rastro,character varying,YES
+42,medio_captacion_rastro,character varying,YES
+43,_etl_loaded_at,timestamp with time zone,NO
+44,_etl_source_run_id,uuid,YES

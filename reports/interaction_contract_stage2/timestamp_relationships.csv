@@ -1,0 +1,5 @@
+﻿left_timestamp,right_timestamp,comparable,both_non_null_rows,left_le_right_rows,left_gt_right_rows,median_right_minus_left_days,p90_right_minus_left_days
+fecha_creacion,fecha_programada,True,501,456,45,8.540874207233797,24.23874240173611
+fecha_creacion,fecha_actualizacion,True,794049,30401,763648,-0.6397745295949074,-0.32045680787037034
+fecha_actualizacion,_etl_loaded_at,True,794049,794049,0,750.8781449396412,1778.8777366154281
+fecha_creacion,_etl_loaded_at,True,794049,794049,0,752.0841024698263,1778.2360185206737

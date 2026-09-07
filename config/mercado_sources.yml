@@ -6,6 +6,6 @@ sources:
     codigo_proyecto: AMMA-TM
     nombre_proyecto: Torre Marsano
     sheet_name: Hoja1
-    header_row: 2
+    header_row: 1
     timezone: America/Lima
 

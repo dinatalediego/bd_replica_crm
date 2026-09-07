@@ -1,0 +1,4 @@
+﻿left_timestamp,right_timestamp,both_non_null_rows,equal_rows,left_before_right_rows,left_after_right_rows,median_right_minus_left_hours,p90_right_minus_left_hours
+fecha_creacion,fecha_programada,501,0,456,45,204.9809809736111,581.7298176416666
+fecha_creacion,fecha_actualizacion,794088,27,30374,763687,-15.354420635833332,-7.691183498
+fecha_programada,fecha_actualizacion,501,66,97,338,-168.0,144.0

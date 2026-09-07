@@ -1,0 +1,5 @@
+﻿column_name,data_type,total_rows,non_null_rows,null_rows,non_null_rate,distinct_count,min_value,max_value
+fecha_programada,date,794049,501,793548,0.000631,190,2019-10-17,2026-08-03
+fecha_creacion,timestamp without time zone,794049,794049,0,1.0,777070,2019-10-02 13:22:55.896895,2026-08-18 13:32:16.723319
+fecha_actualizacion,date,794049,794049,0,1.0,2463,2019-10-02,2026-08-18
+_etl_loaded_at,timestamp with time zone,794049,794049,0,1.0,165,2026-08-08 20:41:58.971144-05:00,2026-08-18 15:50:14.925234-05:00

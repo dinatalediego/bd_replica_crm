@@ -1,0 +1,42 @@
+{
+  "status": "STAGE3_PROFILED_NOT_CERTIFIED",
+  "source": "raw_cygnus.interacciones",
+  "linkage_decomposition": {
+    "rows_with_proforma": 37217,
+    "rows_without_proforma": 756871,
+    "distinct_proformas": 37217,
+    "rows_with_proforma_matching_core": 1975,
+    "rows_with_proforma_unmatched_core": 35242,
+    "distinct_proformas_matching_core": 1975,
+    "distinct_proformas_unmatched_core": 35242,
+    "rows_with_documento_cliente": 794088,
+    "rows_without_proforma_with_documento_cliente": 756871,
+    "rows_with_cliente_id": 794088,
+    "total_rows": 794088,
+    "no_proforma_rows_matching_training_client": 11958,
+    "no_proforma_rows_unambiguous_single_lifecycle_client": 7911,
+    "no_proforma_rows_ambiguous_multi_lifecycle_client": 4047,
+    "distinct_no_proforma_clients_matching_training": 1425,
+    "distinct_ambiguous_multi_lifecycle_clients": 421,
+    "core_proformas_total": 1975,
+    "core_proformas_with_direct_interaction": 1975,
+    "row_direct_proforma_rate": 0.046867601575644006,
+    "direct_proforma_core_match_rate": 0.053067146734019396,
+    "core_proforma_direct_interaction_coverage": 1.0,
+    "status": "PROFILED_NOT_CERTIFIED"
+  },
+  "interpretation_guards": [
+    "Stage2 interaction_rows_unmatched_to_core_proforma included the NULL codigo_proforma bucket and must not be read as 792k bad proforma codes; stage3 separates rows_without_proforma from genuinely unmatched non-null proformas.",
+    "One direct codigo_proforma row per proforma strongly suggests codigo_proforma is populated only for a subset/event family; do not treat direct-proforma rows as the complete interaction history without category/timestamp review.",
+    "Customer-level linkage by documento_cliente is discovery only. Multi-lifecycle customers require temporal attribution after event-time certification; never fan one customer interaction out to every proforma.",
+    "Duplicate id groups block id-only interaction identity certification until duplicate samples explain whether a composite key is required."
+  ],
+  "event_time_status": "NOT_CERTIFIED",
+  "next_decision": "Review category_top_values + timestamp_pair_semantics + duplicate_id_samples. If fecha_creacion is certified as event occurrence/record time and customer-level event attribution is safe, build a canonical interaction_event view before point-in-time features.",
+  "outputs": [
+    "linkage_decomposition.csv",
+    "duplicate_id_samples.csv",
+    "category_top_values.csv",
+    "timestamp_pair_semantics.csv"
+  ]
+}

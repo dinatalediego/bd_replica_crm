@@ -1,0 +1,12 @@
+﻿column_name,data_type,total_rows,non_null_rows,null_rows,non_null_rate,distinct_count,min_value,max_value
+nombres_cliente,character varying,794049,794049,0,1.0,51069,,
+apellidos_cliente,character varying,794049,785573,8476,0.989326,65110,,
+documento_cliente,character varying,794049,794049,0,1.0,140029,,
+codigo_proyecto,character varying,794049,668836,125213,0.842311,18,,
+codigo_unidad,character varying,794049,52605,741444,0.066249,2146,,
+nombre_unidad,character varying,794049,52605,741444,0.066249,796,,
+id,integer,794049,794049,0,1.0,793655,,
+clientes_invitados,character varying,794049,0,794049,0.0,0,,
+cliente_id,integer,794049,794049,0,1.0,140017,,
+codigo_proforma,character varying,794049,37217,756832,0.04687,37217,,
+_etl_source_run_id,uuid,794049,794049,0,1.0,8,,

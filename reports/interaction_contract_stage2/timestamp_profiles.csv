@@ -1,0 +1,5 @@
+﻿column_name,data_type,native_temporal,non_null_rows,null_rows,non_null_rate,min_value,max_value,future_rows_gt_now_plus_1d,pre_2000_rows
+fecha_programada,date,True,501,793548,0.00063094343044320942,2019-10-17,2026-08-03,0,0
+fecha_creacion,timestamp without time zone,True,794049,0,1.00000000000000000000,2019-10-02 13:22:55.896895,2026-08-18 13:32:16.723319,0,0
+fecha_actualizacion,date,True,794049,0,1.00000000000000000000,2019-10-02,2026-08-18,0,0
+_etl_loaded_at,timestamp with time zone,True,794049,0,1.00000000000000000000,2026-08-08 20:41:58.971144-05:00,2026-08-18 15:50:14.925234-05:00,0,0

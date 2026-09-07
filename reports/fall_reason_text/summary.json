@@ -1,0 +1,71 @@
+{
+  "status": "OK",
+  "reason_evidence_records_analyzed": 57,
+  "free_text_documents_analyzed": 34,
+  "primary_taxonomy_distribution": {
+    "CAMBIO_UNIDAD": 26,
+    "PERSONAL_FAMILIAR_SALUD_LABORAL": 10,
+    "CAPACIDAD_PAGO": 4,
+    "DOCUMENTACION_LEGAL": 1,
+    "FINANCIAMIENTO_CREDITO": 12,
+    "PRODUCTO_UNIDAD": 1,
+    "PROYECTO_EJECUCION": 1,
+    "CONTACTABILIDAD": 1,
+    "DESISTIMIENTO_SIN_DETALLE": 1
+  },
+  "multi_label_tag_distribution": {
+    "CAMBIO_UNIDAD": 26,
+    "PERSONAL_FAMILIAR_SALUD_LABORAL": 12,
+    "CAPACIDAD_PAGO": 5,
+    "DOCUMENTACION_LEGAL": 2,
+    "FINANCIAMIENTO_CREDITO": 12,
+    "PRODUCTO_UNIDAD": 3,
+    "DESISTIMIENTO_SIN_DETALLE": 2,
+    "PROYECTO_EJECUCION": 1,
+    "CONTACTABILIDAD": 2
+  },
+  "evidence_mode_distribution": {
+    "STRUCTURED_CHANGE_ONLY": 22,
+    "TEXT_ONLY": 30,
+    "TEXT_PLUS_STRUCTURED_CHANGE": 4,
+    "STRUCTURED_OTHER_ONLY": 1
+  },
+  "nmf_topics_built": 6,
+  "health": {
+    "fall_proformas": 355,
+    "with_free_text": 34,
+    "with_confirmed_department_change": 26,
+    "with_any_reason_evidence": 57,
+    "text_plus_structured_change": 4,
+    "text_only": 30,
+    "structured_change_only": 22,
+    "structured_other_only": 1,
+    "without_reason_evidence": 298,
+    "free_text_coverage": "0.0958",
+    "any_reason_evidence_coverage": "0.1606"
+  },
+  "outcome_health": {
+    "lifecycle_rows": 1972,
+    "temporally_labeled_rows": 1686,
+    "fall_rows": 355,
+    "conversion_rows": 1331,
+    "conversion_interest_rows": 1331,
+    "conversion_interest_without_temporal_label": 0,
+    "censored_open_rows": 286,
+    "labeled_without_temporal_precision": 0,
+    "falls_with_reason_text": 34,
+    "fall_reason_text_coverage": "0.0958",
+    "falls_with_payment_evidence_now_for_temporal_review": 0
+  },
+  "outputs": [
+    "fall_reason_records.csv",
+    "taxonomy_counts.csv",
+    "reason_tag_counts.csv",
+    "taxonomy_by_project.csv",
+    "taxonomy_by_advisor.csv",
+    "evidence_mode_counts.csv",
+    "nmf_topics.csv"
+  ],
+  "interpretation": "Taxonomy uses free text plus structured department-change evidence. NMF uses free text only. All reason evidence remains post-outcome and is not eligible as a live risk feature.",
+  "leakage_rule": "fall reason evidence is POST_OUTCOME_ONLY"
+}
