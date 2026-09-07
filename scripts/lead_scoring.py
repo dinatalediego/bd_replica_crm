@@ -16,7 +16,7 @@ from replica_cygnus.lead_scoring.feedback import (
     sync_recommendations,
 )
 from replica_cygnus.lead_scoring.registry import approve_promotion, evaluate_challenger, model_status
-from replica_cygnus.lead_scoring.schema import ensure_lead_scoring
+from replica_cygnus.lead_scoring.schema import assert_lead_scoring_ready, ensure_lead_scoring
 from replica_cygnus.lead_scoring.scoring import score_current_leads
 from replica_cygnus.lead_scoring.training import train_challenger
 from replica_cygnus.settings import load_settings
@@ -42,6 +42,7 @@ def _parser():
     action.add_argument("--notes")
     sub.add_parser("outcomes")
     sub.add_parser("measure")
+    sub.add_parser("diagnose")
     cyc=sub.add_parser("cycle"); cyc.add_argument("--capture-mode",choices=["live","backfill"],default="live")
     sub.add_parser("status")
     return p
@@ -96,9 +97,36 @@ def _close_feedback_loop(conn,cfg):
 def main(argv=None):
     args=_parser().parse_args(argv); settings=load_settings(); root=settings.project_root
     cfg=load_lead_scoring_config(_config_path(root,args.config))
+    print(f"[startup] comando={args.command} | configuración cargada", flush=True)
     with connect_postgres(settings) as conn:
-        ensure_lead_scoring(conn,root)
-        if args.command=="init": print("Lead Scoring inicializado."); return 0
+        print("[database] conexión PostgreSQL lista", flush=True)
+        if args.command=="init":
+            print("[schema] aplicando DDL idempotente...", flush=True)
+            ensure_lead_scoring(conn,root)
+            print("Lead Scoring inicializado.")
+            return 0
+        if args.command=="diagnose":
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT pid,state,wait_event_type,wait_event,
+                           now()-query_start AS duration,
+                           pg_blocking_pids(pid) AS blocking_pids,
+                           left(regexp_replace(query,E'[\\n\\r\\t]+',' ','g'),180) AS query
+                    FROM pg_stat_activity
+                    WHERE datname=current_database()
+                      AND pid<>pg_backend_pid()
+                      AND state<>'idle'
+                    ORDER BY query_start
+                """)
+                rows=cur.fetchall()
+            if not rows:
+                print("Diagnóstico: no hay sesiones activas adicionales.")
+            for pid,state,wait_type,wait_event,duration,blockers,query in rows:
+                print(f"pid={pid} state={state} wait={wait_type}/{wait_event} duration={duration} blockers={blockers}")
+                print(f"  SQL: {query}")
+            return 0
+        assert_lead_scoring_ready(conn)
+        print("[schema] contrato existente verificado; DDL omitido", flush=True)
         if args.command=="capture": print(json.dumps(_refresh(conn,cfg,args.mode),ensure_ascii=False)); return 0
         if args.command=="live":
             print(json.dumps(_refresh(conn,cfg,"live"),ensure_ascii=False)); _score(conn,cfg,root); _close_feedback_loop(conn,cfg); return 0
