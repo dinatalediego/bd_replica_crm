@@ -35,6 +35,9 @@ source:
 sep_horizon_days: 14
 minuta_horizon_days: 60
 score_window_days: 14
+# Ventana provisional de régimen comercial: 24 meses. El SQL añade 180 días
+# previos solo como contexto para construir tasas point-in-time.
+training_history_days: 730
 training_min_rows: 250
 validation_days: 30
 test_days: 30
