@@ -176,8 +176,15 @@ def refresh_labels(conn, cfg: LeadScoringConfig) -> int:
 def historical_features_statement(cfg: LeadScoringConfig) -> str:
     """SQL set-based para features point-in-time; evita subconsultas por fila."""
     sep_h, minuta_h = int(cfg.sep_horizon_days), int(cfg.minuta_horizon_days)
+    history_days = int(cfg.training_history_days)
+    context_days = max(180, minuta_h)
+    source_days = history_days + context_days
     return f"""
-        WITH calculated AS (
+        WITH scoped AS (
+          SELECT *
+          FROM features.lead_evidence
+          WHERE decision_at >= current_date - INTERVAL '{source_days} days'
+        ), calculated AS (
           SELECT
             evidence_key,
             COUNT(*) OVER (
@@ -222,7 +229,7 @@ def historical_features_statement(cfg: LeadScoringConfig) -> str:
               ORDER BY decision_at
               RANGE BETWEEN INTERVAL '180 days' PRECEDING AND INTERVAL '{minuta_h} days' PRECEDING
             ) AS global_minuta_rate_180d
-          FROM features.lead_evidence
+          FROM scoped
         )
         UPDATE features.lead_evidence e SET
           client_prior_assignments_90d=c.client_prior_assignments_90d,
@@ -239,6 +246,7 @@ def historical_features_statement(cfg: LeadScoringConfig) -> str:
         FROM calculated c
         WHERE c.evidence_key=e.evidence_key
           AND e.features_refreshed_at IS NULL
+          AND e.decision_at >= current_date - INTERVAL '{history_days} days'
     """
 
 
