@@ -40,20 +40,23 @@ def _read_frame(conn, query: str, params: tuple[object, ...] = ()) -> pd.DataFra
     return pd.DataFrame(rows, columns=columns)
 
 
-def _load_target_frame(conn, target: str) -> pd.DataFrame:
+def _load_target_frame(conn, target: str, cfg: LeadScoringConfig) -> pd.DataFrame:
     if target not in {"separacion_14d","minuta_60d"}:
         raise ValueError(f"Target no soportado: {target}")
     columns = ", ".join(["evidence_key","decision_at",*MODEL_FEATURES,target])
     return _read_frame(conn, f"""SELECT {columns} FROM features.lead_evidence
         WHERE {target} IS NOT NULL AND features_refreshed_at IS NOT NULL
-        ORDER BY decision_at,evidence_key""")
+          AND decision_at >= current_date - (%s * interval '1 day')
+        ORDER BY decision_at,evidence_key""", (cfg.training_history_days,))
 
 
-def _load_common_frame(conn) -> pd.DataFrame:
+def _load_common_frame(conn, cfg: LeadScoringConfig) -> pd.DataFrame:
     columns = ", ".join(["evidence_key","decision_at",*MODEL_FEATURES,"separacion_14d","minuta_60d"])
     return _read_frame(conn, f"""SELECT {columns} FROM features.lead_evidence
         WHERE separacion_14d IS NOT NULL AND minuta_60d IS NOT NULL
-          AND features_refreshed_at IS NOT NULL ORDER BY decision_at,evidence_key""")
+          AND features_refreshed_at IS NOT NULL
+          AND decision_at >= current_date - (%s * interval '1 day')
+        ORDER BY decision_at,evidence_key""", (cfg.training_history_days,))
 
 
 def temporal_split(frame: pd.DataFrame, validation_days: int, test_days: int) -> TemporalSplit:
@@ -104,7 +107,9 @@ def _artifact_uri(project_root: Path, path: Path) -> str:
 
 
 def train_challenger(conn, cfg: LeadScoringConfig, project_root: Path) -> tuple[str, dict[str, Any]]:
-    sep_frame, minuta_frame, common_frame = _load_target_frame(conn,"separacion_14d"), _load_target_frame(conn,"minuta_60d"), _load_common_frame(conn)
+    sep_frame = _load_target_frame(conn,"separacion_14d",cfg)
+    minuta_frame = _load_target_frame(conn,"minuta_60d",cfg)
+    common_frame = _load_common_frame(conn,cfg)
     for name, frame in (("separacion_14d",sep_frame),("minuta_60d",minuta_frame),("common_eval",common_frame)):
         if len(frame) < cfg.training_min_rows:
             raise RuntimeError(f"Evidencia insuficiente para {name}: {len(frame)} < {cfg.training_min_rows}.")
