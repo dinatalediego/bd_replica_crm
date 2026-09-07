@@ -181,7 +181,8 @@ def historical_features_statement(cfg: LeadScoringConfig) -> str:
     source_days = history_days + context_days
     return f"""
         WITH scoped AS (
-          SELECT *
+          SELECT evidence_key,documento_cliente,codigo_proyecto,asesor,
+                 decision_at,separacion_14d,minuta_60d
           FROM features.lead_evidence
           WHERE decision_at >= current_date - INTERVAL '{source_days} days'
         ), calculated AS (
