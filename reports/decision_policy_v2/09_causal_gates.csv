@@ -1,0 +1,6 @@
+gate,passed,detail,status
+assignments_treatment,True,n=143,PASS
+assignments_control,True,n=39,PASS
+actions_recorded,False,n=0,PENDING
+matured_sep,False,n=0,PENDING
+matured_minuta,False,n=0,PENDING
