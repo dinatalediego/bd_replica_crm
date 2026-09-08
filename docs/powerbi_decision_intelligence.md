@@ -8,9 +8,10 @@ Desde la raíz del repositorio:
 
 ```powershell
 python scripts/install_powerbi_decision_intelligence.py
+python scripts/install_decision_policy_v21.py
 ```
 
-El instalador crea/actualiza vistas y funciones de `analytics` y valida que el catálogo quede completo.
+El primer instalador crea/actualiza las vistas generales de `analytics`. El segundo agrega el contrato Policy V2.1 y las vistas de run/cohort.
 
 ## Objetos de Power BI
 
@@ -26,8 +27,10 @@ El instalador crea/actualiza vistas y funciones de `analytics` y valida que el c
 | 8 | `analytics.v_pbi_economic_value` | experimento | Economic Value |
 | 9 | `analytics.v_pbi_policy_journey` | recomendación | Drillthrough / auditoría |
 | 10 | `analytics.v_pbi_policy_registry` | experimento/policy | Dimensión policy |
+| 11 | `analytics.v_pbi_policy_runs` | policy run | Frozen cohort / run identity |
+| 12 | `analytics.v_pbi_policy_run_assignments` | entity × policy run | Treatment/Control frozen assignment |
 
-`analytics.v_pbi_di_catalog` documenta el catálogo desde SQL.
+`analytics.v_pbi_di_catalog` documenta el catálogo general desde SQL. Policy V2.1 agrega los dos últimos bloques mediante `install_decision_policy_v21.py`.
 
 ## Página 1 — Executive Decision Intelligence
 
@@ -55,6 +58,8 @@ Fuentes:
 
 - `analytics.v_pbi_policy_funnel`
 - `analytics.v_pbi_policy_capacity`
+- `analytics.v_pbi_policy_runs`
+- `analytics.v_pbi_policy_run_assignments`
 
 Visuales sugeridos:
 
@@ -63,13 +68,17 @@ Visuales sugeridos:
 3. Treatment vs Control por proyecto.
 4. Distribución por `priority_band`.
 5. Utilización diaria: `capacity_utilization_day`.
+6. Run card: `run_key`, `status`, `cohort_n`, `treatment_n`, `control_n`.
+7. Governance cards: `exact_allocation_ok`, `control_clean`, `action_ready`.
 
-La vista default usa `lead_priority_v2` y lookback de 7 días. Para otros parámetros existe:
+La vista general del funnel sigue siendo parametrizable:
 
 ```sql
 SELECT *
 FROM analytics.fn_pbi_policy_funnel('lead_priority_v2', 14);
 ```
+
+Para Policy V2.1, el control serio del piloto está en `v_pbi_policy_runs`: una corrida no está lista para acciones hasta que el cohort esté congelado, la allocation sea exacta y Control esté limpio.
 
 ## Página 3 — Experiment / Causal Impact
 
@@ -146,6 +155,15 @@ evidence_key
 → realized_value
 ```
 
+Policy V2.1 agrega antes de la recomendación:
+
+```text
+experiment_id
+→ policy_run_id / run_key
+→ frozen assignment
+→ treatment_group
+```
+
 Para imports incrementales o parámetros de fecha/proyecto se puede usar:
 
 ```sql
@@ -164,12 +182,13 @@ Evitar relacionar entre sí todas las vistas agregadas como si fueran dimensione
 
 - Fecha
 - Policy
+- Policy Run
 - Proyecto
 - Asesor
 - Modelo
 - Experimento
 
-`v_pbi_policy_registry` puede funcionar como dimensión de Policy/Experimento. La tabla calendario puede mantenerse como dimensión DAX o migrarse más adelante al DW si se desea estandarizarla.
+`v_pbi_policy_registry` puede funcionar como dimensión de Policy/Experimento. `v_pbi_policy_runs` funciona como dimensión de run/cohort. La tabla calendario puede mantenerse como dimensión DAX o migrarse más adelante al DW si se desea estandarizarla.
 
 ## Regla de arquitectura
 
@@ -177,6 +196,7 @@ Evitar relacionar entre sí todas las vistas agregadas como si fueran dimensione
 PostgreSQL / medallio_dw
     lógica de negocio
     policy
+    run/cohort governance
     causal readiness
     agregaciones
     lineage
