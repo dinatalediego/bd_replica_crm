@@ -18,8 +18,17 @@ def _read_scoring_frame(conn, score_window_days: int) -> pd.DataFrame:
     columns = ", ".join(["evidence_key","lead_id","decision_at","documento_cliente","codigo_proyecto","asesor","canal","medio",
                          *[f for f in MODEL_FEATURES if f not in {"codigo_proyecto","asesor","canal","medio"}]])
     with conn.cursor() as cursor:
-        cursor.execute(f"""SELECT {columns} FROM features.lead_evidence
+        cursor.execute(f"""SELECT {columns} FROM features.lead_evidence e
           WHERE decision_at >= current_date - (%s * interval '1 day') AND features_refreshed_at IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM core.fact_ciclo_comercial_unidad c
+              WHERE c.documento_cliente=e.documento_cliente
+                AND COALESCE(c.codigo_proyecto_ciclo,c.codigo_proyecto_unidad)=e.codigo_proyecto
+                AND (
+                  c.fecha_separacion BETWEEN e.decision_at::date AND current_date
+                  OR c.fecha_venta BETWEEN e.decision_at::date AND current_date
+                )
+            )
           ORDER BY decision_at,evidence_key""",(score_window_days,))
         rows=cursor.fetchall(); names=[item.name for item in cursor.description or []]
     return pd.DataFrame(rows,columns=names)
