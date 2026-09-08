@@ -18,3 +18,4 @@ artifacts/
 config/lead_pilot.local.json
 data/pilot/
 notebooks/.ipynb_checkpoints/
+reports/pilot_history/
