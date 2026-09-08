@@ -1,0 +1,14 @@
+schema,object,exists
+features,lead_evidence,True
+model_control,model_runs,True
+model_control,model_aliases,True
+decision_intelligence,decision_contracts,True
+decision_intelligence,lead_scores,True
+decision_intelligence,recommendations,True
+decision_intelligence,actions,True
+decision_intelligence,outcomes,True
+decision_intelligence,v_lead_priority_current,True
+decision_intelligence,v_lead_action_outcome,True
+decision_intelligence,v_lead_action_outcome_performance,True
+experiments,experiments,True
+experiments,assignments,True

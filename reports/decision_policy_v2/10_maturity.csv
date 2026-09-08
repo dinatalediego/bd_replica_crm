@@ -1,0 +1,4 @@
+level,closed,meaning
+Policy ready,True,band + rank + capacity + treatment/control
+Operational closed loop,False,recommendation + action + outcome
+Experimental closed loop,False,assignment + mature outcome + ITT
