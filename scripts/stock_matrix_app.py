@@ -321,7 +321,7 @@ stock_tab, units_tab = st.tabs(["Stock", "Unidades · departamentos"])
 with stock_tab:
     st.subheader("Stock · disponible + no disponible / bloqueado")
     st.caption(
-        "Por defecto se muestran Disponible + No disponible/Bloqueado. Puedes sumar o quitar estados con los botones. El Excel continúa exportando sólo Disponibles."
+        "Por defecto se muestran Disponible + No disponible/Bloqueado. Puedes sumar o quitar estados con los botones. El Excel descarga exactamente los estados que mantengas seleccionados."
     )
 
     stock_projects = sorted(stock_df["proyecto"].dropna().astype(str).unique(), key=natural_key)
@@ -415,17 +415,25 @@ with stock_tab:
         },
     )
 
-    st.caption("La tabla puede combinar estados. El botón de Excel mantiene el contrato original de unidades Disponibles.")
-    if st.button("Generar Excel de DISPONIBLES para estos proyectos", type="primary"):
-        with st.spinner("Generando Excel de stock disponible..."):
-            output = export_stock_excel(projects=selected_projects or None)
+    selected_state_text = " + ".join(selected_states) if selected_states else "ninguno"
+    st.caption(f"Excel: proyectos seleccionados + estados [{selected_state_text}].")
+    if st.button(
+        "Generar Excel con estados seleccionados",
+        type="primary",
+        disabled=stock_view.empty,
+    ):
+        with st.spinner("Generando Excel con la selección visible..."):
+            output = export_stock_excel(
+                projects=selected_projects or None,
+                dataframe=stock_view,
+            )
             st.session_state["excel_path"] = str(output)
 
     excel_path = st.session_state.get("excel_path")
     if excel_path and Path(excel_path).exists():
         path = Path(excel_path)
         st.download_button(
-            "Descargar Excel de disponibles",
+            "Descargar Excel de selección",
             data=path.read_bytes(),
             file_name=path.name,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
