@@ -41,6 +41,7 @@ def install_stock_export_sql(sql_path: Path = DEFAULT_SQL_PATH) -> None:
 
 
 def _fetch_dataframe(projects: Iterable[str] | None = None) -> pd.DataFrame:
+    """Contrato histórico del .bat 50: sólo stock Disponible."""
     where = ""
     params: list[str] = []
     if projects:
@@ -55,7 +56,6 @@ def _fetch_dataframe(projects: Iterable[str] | None = None) -> pd.DataFrame:
             proyecto,
             tipo_unidad,
             unidad,
-            nombre_tipologia,
             piso,
             area_total,
             precio_lista,
@@ -79,6 +79,32 @@ def _fetch_dataframe(projects: Iterable[str] | None = None) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=columns)
 
 
+def _prepare_export_dataframe(df: pd.DataFrame, projects: Iterable[str] | None = None) -> pd.DataFrame:
+    """Normaliza tanto el contrato Disponible como la selección de la UI.
+
+    La UI entrega `estado_grupo`; el .bat 50 no lo tiene porque su vista ya
+    representa únicamente Disponible. En ambos casos el Excel recibe una
+    columna canónica `estado`.
+    """
+    out = df.copy()
+
+    if projects and "proyecto" in out.columns:
+        selected = {str(p).strip() for p in projects if str(p).strip()}
+        if selected:
+            out = out[out["proyecto"].astype(str).isin(selected)].copy()
+
+    if "estado" not in out.columns:
+        if "estado_grupo" in out.columns:
+            out["estado"] = out["estado_grupo"].fillna("Sin clasificar")
+        else:
+            out["estado"] = "Disponible"
+
+    if "moneda" not in out.columns:
+        out["moneda"] = "PEN"
+
+    return out.reset_index(drop=True)
+
+
 def _safe_sheet_name(name: str) -> str:
     forbidden = "[]:*?/\\"
     clean = "".join("_" if c in forbidden else c for c in name)
@@ -86,8 +112,16 @@ def _safe_sheet_name(name: str) -> str:
 
 
 def _money_format(currency: str) -> str:
-    # Texto literal para que Excel muestre siempre el símbolo/abreviatura.
     return '"S/ "#,##0.00' if str(currency).upper() in {"PEN", "SOLES", "S/"} else '"$ "#,##0.00'
+
+
+def _scope_label(df: pd.DataFrame) -> str:
+    states = {
+        str(v).strip()
+        for v in df.get("estado", pd.Series(dtype="object")).dropna().tolist()
+        if str(v).strip()
+    }
+    return "STOCK DISPONIBLE" if states == {"Disponible"} else "STOCK SELECCIONADO"
 
 
 def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame, generated_at: datetime) -> None:
@@ -116,12 +150,13 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
         "num_format": _money_format(df["moneda"].mode().iat[0] if not df.empty else "PEN"),
     })
 
-    worksheet.merge_range("A1:G1", f"STOCK DISPONIBLE · {project}", title_fmt)
+    worksheet.merge_range("A1:H1", f"{_scope_label(df)} · {project}", title_fmt)
     worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y')}", subtitle_fmt)
     # Fila 3 se deja intencionalmente vacía.
 
     export_cols = [
         ("tipo_unidad", "TIPO"),
+        ("estado", "ESTADO"),
         ("unidad", "UNIDAD"),
         ("piso", "PISO"),
         ("area_total", "ÁREA M²"),
@@ -136,10 +171,10 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
 
     for row_idx, (_, row) in enumerate(df.iterrows(), start=start_row + 1):
         for col_idx, (field, _) in enumerate(export_cols):
-            value = row[field]
+            value = row.get(field, "")
             if pd.isna(value):
                 value = ""
-            if field in {"tipo_unidad", "unidad"}:
+            if field in {"tipo_unidad", "estado", "unidad"}:
                 fmt = text_fmt
             elif field == "piso":
                 fmt = center_fmt
@@ -153,15 +188,16 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
 
     last_row = start_row + max(len(df), 1)
     worksheet.autofilter(start_row, 0, last_row, len(export_cols) - 1)
-    worksheet.freeze_panes(start_row + 1, 2)
+    worksheet.freeze_panes(start_row + 1, 3)
     worksheet.set_row(0, 28)
     worksheet.set_column("A:A", 18)
-    worksheet.set_column("B:B", 15)
-    worksheet.set_column("C:C", 10)
-    worksheet.set_column("D:D", 12)
-    worksheet.set_column("E:E", 18)
-    worksheet.set_column("F:F", 11)
-    worksheet.set_column("G:G", 22)
+    worksheet.set_column("B:B", 18)
+    worksheet.set_column("C:C", 15)
+    worksheet.set_column("D:D", 10)
+    worksheet.set_column("E:E", 12)
+    worksheet.set_column("F:F", 18)
+    worksheet.set_column("G:G", 11)
+    worksheet.set_column("H:H", 22)
     worksheet.hide_gridlines(2)
 
 
@@ -187,7 +223,7 @@ def _write_summary_sheet(writer: pd.ExcelWriter, df: pd.DataFrame, generated_at:
         "num_format": '"S/ "#,##0.00',
     })
 
-    worksheet.merge_range("A1:G1", "STOCK DISPONIBLE · RESUMEN EJECUTIVO", title_fmt)
+    worksheet.merge_range("A1:G1", f"{_scope_label(df)} · RESUMEN EJECUTIVO", title_fmt)
     worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y')}", subtitle_fmt)
     # Fila 3 se deja intencionalmente vacía.
 
@@ -233,11 +269,21 @@ def _write_summary_sheet(writer: pd.ExcelWriter, df: pd.DataFrame, generated_at:
 def export_stock_excel(
     projects: Iterable[str] | None = None,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
+    dataframe: pd.DataFrame | None = None,
 ) -> Path:
-    df = _fetch_dataframe(projects)
+    """Genera Excel desde Disponibles (default) o desde la selección visible de la UI.
+
+    - `dataframe=None`: conserva el comportamiento del .bat 50 (sólo Disponible).
+    - `dataframe=<stock_view>`: exporta exactamente los proyectos/estados visibles.
+    """
+    source_df = _fetch_dataframe(projects) if dataframe is None else dataframe
+    df = _prepare_export_dataframe(source_df, projects=projects)
+
     generated_at = datetime.now()
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"Stock_Disponible_{generated_at:%Y_%m_%d}.xlsx"
+    only_available = set(df["estado"].dropna().astype(str).unique()) == {"Disponible"}
+    prefix = "Stock_Disponible" if only_available else "Stock_Seleccion"
+    output_path = output_dir / f"{prefix}_{generated_at:%Y_%m_%d}.xlsx"
 
     with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
         _write_summary_sheet(writer, df, generated_at)
