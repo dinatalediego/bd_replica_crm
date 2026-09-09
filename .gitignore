@@ -15,7 +15,11 @@ config/tables.yml
 config/decision_systems.yml
 config/lead_scoring.yml
 artifacts/
+<<<<<<< HEAD
 config/lead_pilot.local.json
 data/pilot/
 notebooks/.ipynb_checkpoints/
 reports/pilot_history/
+=======
+output/stock_disponible/*.xlsx
+>>>>>>> 8aac300d3b4dcbb57e5cf7d5a82d2ca56041dcee

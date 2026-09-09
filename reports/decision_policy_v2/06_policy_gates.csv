@@ -1,0 +1,9 @@
+gate,passed,detail,status
+contracts,True,13/13,PASS
+decision_contract,True,n=1,PASS
+serving_alias,True,n=1,PASS
+serving_scores,True,"n=2,017",PASS
+eligible_pool,True,n=488,PASS
+capacity_selection,True,n=100,PASS
+treatment,True,n=61,PASS
+control,True,n=39,PASS
