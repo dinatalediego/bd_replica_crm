@@ -18,7 +18,7 @@ if str(SRC) not in sys.path:
 from replica_cygnus.stock_export import export_stock_excel
 from replica_cygnus.stock_export.matrix_service import (
     fetch_apartment_units,
-    fetch_stock_matrix_data,
+    fetch_stock_status_data,
 )
 
 
@@ -30,8 +30,16 @@ STATE_COLORS = {
     "Entregado": "#8E63D9",
     "Sin clasificar": "#ECEFF1",
 }
-
+STATE_ICONS = {
+    "Disponible": "🟨",
+    "No disponible": "⬜",
+    "Separado": "🟧",
+    "Vendido": "🟩",
+    "Entregado": "🟪",
+    "Sin clasificar": "▫️",
+}
 STATE_ORDER = ["Disponible", "No disponible", "Separado", "Vendido", "Entregado", "Sin clasificar"]
+STOCK_BUTTON_STATES = ["Disponible", "No disponible", "Separado", "Vendido", "Entregado"]
 
 
 def _norm(value: object) -> str:
@@ -131,12 +139,10 @@ def prepare_units(df: pd.DataFrame, exchange_rate: float) -> pd.DataFrame:
     out["precio_m2_soles"] = out["precio_lista_soles"] / area
     out["precio_m2_usd"] = out["precio_lista_usd"] / area
 
-    # Fallback al precio_m2 de origen cuando no hay área/precio suficientes.
     raw_m2_soles = np.where(is_usd, out["precio_m2_origen"] * exchange_rate, out["precio_m2_origen"])
     raw_m2_usd = np.where(is_usd, out["precio_m2_origen"], out["precio_m2_origen"] / exchange_rate)
     out["precio_m2_soles"] = out["precio_m2_soles"].fillna(pd.Series(raw_m2_soles, index=out.index))
     out["precio_m2_usd"] = out["precio_m2_usd"].fillna(pd.Series(raw_m2_usd, index=out.index))
-
     return out
 
 
@@ -161,21 +167,12 @@ def matrix_html(
     work[row_dim] = work[row_dim].astype(str).str.strip()
     work[col_dim] = work[col_dim].astype(str).str.strip()
     work = work[(work[row_dim] != "") & (work[col_dim] != "")]
-
     if work.empty:
         return "<div class='empty-matrix'>No hay datos para construir la matriz con estos filtros.</div>"
 
-    if row_dim == "piso":
-        rows = sorted(work[row_dim].unique(), key=floor_key)
-    else:
-        rows = sorted(work[row_dim].unique(), key=natural_key)
-
-    if col_dim == "piso":
-        cols = sorted(work[col_dim].unique(), key=lambda x: floor_key(x))
-    else:
-        cols = sorted(work[col_dim].unique(), key=natural_key)
-
-    grouped: dict[tuple[str, str], pd.DataFrame] = {
+    rows = sorted(work[row_dim].unique(), key=floor_key if row_dim == "piso" else natural_key)
+    cols = sorted(work[col_dim].unique(), key=floor_key if col_dim == "piso" else natural_key)
+    grouped = {
         (str(r), str(c)): g
         for (r, c), g in work.groupby([row_dim, col_dim], dropna=False)
     }
@@ -202,9 +199,7 @@ def matrix_html(
             if cell is None or cell.empty:
                 pieces.append("<td class='matrix-empty'></td>")
                 continue
-
-            values = pd.to_numeric(cell[metric], errors="coerce")
-            value = values.mean()
+            value = pd.to_numeric(cell[metric], errors="coerce").mean()
             states = cell["estado_matriz"].value_counts()
             state = states.index[0] if not states.empty else "Sin clasificar"
             color = STATE_COLORS.get(state, STATE_COLORS["Sin clasificar"])
@@ -212,12 +207,10 @@ def matrix_html(
             if len(cell) > 4:
                 unit_label += f" +{len(cell) - 4}"
             tooltip = f"{state} · Unidad: {unit_label}"
-            label = metric_formatter(metric, value)
             pieces.append(
                 f"<td class='matrix-cell' style='background:{color}' title='{html.escape(tooltip)}'>"
-                f"{html.escape(label)}</td>"
+                f"{html.escape(metric_formatter(metric, value))}</td>"
             )
-
         pieces.append(f"<td class='matrix-total-value'>{html.escape(metric_formatter(metric, row_avg))}</td></tr>")
 
     pieces.append("<tr><th class='matrix-bottom'>Prom.</th>")
@@ -241,9 +234,19 @@ def legend_html(states: list[str]) -> str:
     return "<div class='legend'>" + "".join(chips) + "</div>"
 
 
+def render_cards(cards: list[tuple[object, str, str]]) -> None:
+    for col, label, value in cards:
+        with col:
+            st.markdown(
+                f"<div class='metric-card'><div class='metric-label'>{html.escape(label)}</div>"
+                f"<div class='metric-value'>{html.escape(value)}</div></div>",
+                unsafe_allow_html=True,
+            )
+
+
 @st.cache_data(ttl=60, show_spinner=False)
-def cached_stock() -> pd.DataFrame:
-    return fetch_stock_matrix_data()
+def cached_stock_status() -> pd.DataFrame:
+    return fetch_stock_status_data()
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -252,11 +255,10 @@ def cached_units() -> pd.DataFrame:
 
 
 st.set_page_config(page_title="Medallio · Matrices Stock & Unidades", page_icon="▦", layout="wide")
-
 st.markdown(
     """
     <style>
-    :root { --navy:#062C43; --green:#1F4E3D; --soft:#F5F7F8; --border:#D9E0E4; }
+    :root { --navy:#062C43; --soft:#F5F7F8; --border:#D9E0E4; }
     .block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1500px; }
     .hero { background:linear-gradient(115deg,#062C43,#174D5A); padding:22px 26px; border-radius:18px; color:white; margin-bottom:18px; }
     .hero h1 { margin:0; font-size:28px; letter-spacing:-0.4px; }
@@ -274,8 +276,7 @@ st.markdown(
     .matrix-table .matrix-row { background:#F0F2F3; color:#17242A; text-align:left; font-weight:800; position:sticky; left:0; z-index:2; }
     .matrix-table .matrix-axis { text-align:left; position:sticky; left:0; z-index:3; }
     .matrix-table .matrix-empty { background:#FAFBFB; }
-    .matrix-table .matrix-total, .matrix-table .matrix-total-value, .matrix-table .matrix-grand { font-weight:900; }
-    .matrix-table .matrix-total-value, .matrix-table .matrix-bottom-value, .matrix-table .matrix-grand { background:white; color:#243239; }
+    .matrix-table .matrix-total-value, .matrix-table .matrix-bottom-value, .matrix-table .matrix-grand { background:white; color:#243239; font-weight:900; }
     .matrix-table .matrix-bottom { background:white; color:#243239; text-align:left; font-weight:900; }
     .legend { display:flex; flex-wrap:wrap; gap:18px; align-items:center; padding:13px 4px 4px; font-weight:750; color:#062C43; }
     .legend-item { display:inline-flex; align-items:center; gap:7px; }
@@ -291,7 +292,7 @@ st.markdown(
     """
     <div class='hero'>
       <h1>Medallio · Matrices de Stock & Unidades</h1>
-      <p>Una misma fuente de verdad: stock exportable a Excel + exploración visual de departamentos por piso, tipología y estado comercial.</p>
+      <p>Inventario por estado comercial + Excel de disponibles + matrices de departamentos por piso y tipología.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -306,18 +307,20 @@ with status_col:
     st.caption("Fuente: PostgreSQL local · medallio_dw · caché de 60 segundos")
 
 try:
-    stock_df = cached_stock()
+    stock_df = cached_stock_status()
     units_df = cached_units()
 except Exception as exc:
     st.error("No se pudo leer Medallio DW. Ejecuta primero scripts\\50_exportar_stock_disponible.bat y vuelve a abrir la interfaz.")
     st.exception(exc)
     st.stop()
 
-stock_tab, units_tab = st.tabs(["Stock disponible", "Unidades · departamentos"])
+stock_tab, units_tab = st.tabs(["Stock por estado", "Unidades · departamentos"])
 
 with stock_tab:
-    st.subheader("Stock disponible · mismo contrato del Excel")
-    st.caption("Esta rama lee analytics.v_stock_disponible_export: lo que ves aquí es la misma base que se exporta.")
+    st.subheader("Stock por estado comercial")
+    st.caption(
+        "Disponible conserva el mismo contrato del Excel. No disponible, Separado, Vendido y Entregado son vistas adicionales de la interfaz y no se exportan por ahora."
+    )
 
     stock_projects = sorted(stock_df["proyecto"].dropna().astype(str).unique(), key=natural_key)
     selected_stock = st.multiselect(
@@ -326,47 +329,81 @@ with stock_tab:
         default=stock_projects,
         key="stock_projects",
     )
-    stock_view = stock_df[stock_df["proyecto"].isin(selected_stock)].copy() if selected_stock else stock_df.iloc[0:0].copy()
+    project_view = (
+        stock_df[stock_df["proyecto"].isin(selected_stock)].copy()
+        if selected_stock else stock_df.iloc[0:0].copy()
+    )
+
+    if "stock_state_filter" not in st.session_state:
+        st.session_state["stock_state_filter"] = "Disponible"
+
+    counts = project_view["estado_grupo"].value_counts()
+    button_states = [s for s in STOCK_BUTTON_STATES if int(counts.get(s, 0)) > 0]
+    button_labels = button_states + ["Todos"]
+    button_cols = st.columns(max(len(button_labels), 1))
+    for col, state in zip(button_cols, button_labels):
+        count = len(project_view) if state == "Todos" else int(counts.get(state, 0))
+        icon = "◼" if state == "Todos" else STATE_ICONS.get(state, "▫️")
+        active = st.session_state["stock_state_filter"] == state
+        with col:
+            if st.button(
+                f"{icon} {state} · {count}",
+                key=f"stock_state_{state}",
+                type="primary" if active else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["stock_state_filter"] = state
+                st.rerun()
+
+    selected_state = st.session_state["stock_state_filter"]
+    if selected_state not in button_labels:
+        selected_state = "Disponible" if "Disponible" in button_labels else "Todos"
+        st.session_state["stock_state_filter"] = selected_state
+
+    stock_view = (
+        project_view.copy()
+        if selected_state == "Todos"
+        else project_view[project_view["estado_grupo"] == selected_state].copy()
+    )
     stock_view = _to_numeric(stock_view, ["precio_lista", "precio_con_descuento", "discount_pct"])
 
     c1, c2, c3, c4 = st.columns(4)
-    cards = [
-        (c1, "Stock total", f"{len(stock_view):,}"),
+    render_cards([
+        (c1, "Unidades visibles", f"{len(stock_view):,}"),
         (c2, "Departamentos", f"{(stock_view['tipo_unidad'] == 'Departamento').sum():,}"),
-        (c3, "Valor lista", f"S/ {stock_view['precio_lista'].sum(skipna=True):,.0f}"),
-        (c4, "Valor con descuento", f"S/ {stock_view['precio_con_descuento'].sum(skipna=True):,.0f}"),
-    ]
-    for col, label, value in cards:
-        with col:
-            st.markdown(
-                f"<div class='metric-card'><div class='metric-label'>{html.escape(label)}</div>"
-                f"<div class='metric-value'>{html.escape(value)}</div></div>",
-                unsafe_allow_html=True,
-            )
+        (c3, "Valor lista actual", f"S/ {stock_view['precio_lista'].sum(skipna=True):,.0f}"),
+        (c4, "Valor c/ descuento actual", f"S/ {stock_view['precio_con_descuento'].sum(skipna=True):,.0f}"),
+    ])
 
     st.dataframe(
         stock_view[[
-            "proyecto", "tipo_unidad", "unidad", "nombre_tipologia", "piso", "area_total",
-            "precio_lista", "discount_pct", "precio_con_descuento", "fecha_actualizacion_dato"
+            "proyecto", "estado_grupo", "estado_comercial", "tipo_unidad", "unidad",
+            "nombre_tipologia", "piso", "area_total", "precio_lista", "discount_pct",
+            "precio_con_descuento", "fecha_actualizacion_dato"
         ]],
         use_container_width=True,
         hide_index=True,
         column_config={
             "proyecto": "Proyecto",
+            "estado_grupo": "Estado",
+            "estado_comercial": "Estado origen",
             "tipo_unidad": "Tipo",
             "unidad": "Unidad",
             "nombre_tipologia": "Tipología",
             "piso": "Piso",
             "area_total": st.column_config.NumberColumn("Área m²", format="%.2f"),
             "precio_lista": st.column_config.NumberColumn("Precio lista", format="S/ %.0f"),
-            "discount_pct": st.column_config.NumberColumn("Dscto.", format="%.1f%%"),
+            "discount_pct": st.column_config.NumberColumn("Dscto.", format="percent"),
             "precio_con_descuento": st.column_config.NumberColumn("Precio con descuento", format="S/ %.0f"),
             "fecha_actualizacion_dato": "Actualización dato",
         },
     )
 
-    if st.button("Generar Excel con esta selección", type="primary"):
-        with st.spinner("Generando Excel desde la misma vista..."):
+    st.caption(
+        "El selector de estado sólo cambia la visualización. El Excel mantiene el contrato original: únicamente unidades Disponibles."
+    )
+    if st.button("Generar Excel de DISPONIBLES para estos proyectos", type="primary"):
+        with st.spinner("Generando Excel de stock disponible..."):
             output = export_stock_excel(projects=selected_stock or None)
             st.session_state["excel_path"] = str(output)
 
@@ -374,7 +411,7 @@ with stock_tab:
     if excel_path and Path(excel_path).exists():
         path = Path(excel_path)
         st.download_button(
-            "Descargar Excel generado",
+            "Descargar Excel de disponibles",
             data=path.read_bytes(),
             file_name=path.name,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -404,9 +441,7 @@ with units_tab:
     with top3:
         total_currency = st.radio("Precios totales", ["Soles (S/)", "Dólares (US$)"], horizontal=True)
 
-    project_df = units_df[units_df["proyecto"] == project].copy()
-    project_df = prepare_units(project_df, tc)
-
+    project_df = prepare_units(units_df[units_df["proyecto"] == project].copy(), tc)
     state_counts = project_df["estado_matriz"].value_counts()
     available_states = [s for s in STATE_ORDER if s in state_counts.index]
     selected_states = st.multiselect(
@@ -414,7 +449,10 @@ with units_tab:
         available_states,
         default=available_states,
     )
-    view = project_df[project_df["estado_matriz"].isin(selected_states)].copy() if selected_states else project_df.iloc[0:0].copy()
+    view = (
+        project_df[project_df["estado_matriz"].isin(selected_states)].copy()
+        if selected_states else project_df.iloc[0:0].copy()
+    )
 
     if total_currency.startswith("Soles"):
         total_list_metric = "precio_lista_soles"
@@ -439,30 +477,23 @@ with units_tab:
         metric_label = st.selectbox("Métrica de la matriz", list(metric_options.keys()))
         metric = metric_options[metric_label]
     with f2:
-        orientation = st.radio(
-            "Orientación",
-            ["Piso en filas", "Piso en columnas"],
-            horizontal=False,
-        )
+        orientation = st.radio("Orientación", ["Piso en filas", "Piso en columnas"], horizontal=False)
     with f3:
         show_raw = st.checkbox("Mostrar detalle debajo", value=False)
 
-    row_dim, col_dim = ("piso", "tipologia_ubicacion") if orientation == "Piso en filas" else ("tipologia_ubicacion", "piso")
+    row_dim, col_dim = (
+        ("piso", "tipologia_ubicacion")
+        if orientation == "Piso en filas"
+        else ("tipologia_ubicacion", "piso")
+    )
 
     k1, k2, k3, k4 = st.columns(4)
-    unit_cards = [
+    render_cards([
         (k1, "Departamentos", f"{len(view):,}"),
         (k2, "Disponible", f"{(view['estado_matriz'] == 'Disponible').sum():,}"),
         (k3, "Precio m² promedio", metric_formatter("precio_m2_usd", view["precio_m2_usd"].mean())),
         (k4, "Descuento configurado", f"{view['discount_pct'].max(skipna=True) * 100:.0f}%" if not view.empty else "—"),
-    ]
-    for col, label, value in unit_cards:
-        with col:
-            st.markdown(
-                f"<div class='metric-card'><div class='metric-label'>{html.escape(label)}</div>"
-                f"<div class='metric-value'>{html.escape(value)}</div></div>",
-                unsafe_allow_html=True,
-            )
+    ])
 
     subtitle = f"{metric_label} · TC: {tc:.2f} · color = estado_comercial · flag_departamento = true"
     st.markdown(
@@ -477,9 +508,9 @@ with units_tab:
         unsafe_allow_html=True,
     )
 
-    legend_states = [s for s in ["Disponible", "No disponible", "Separado", "Vendido", "Entregado"] if s in available_states or s != "No disponible"]
+    legend_states = [s for s in ["Disponible", "No disponible", "Separado", "Vendido", "Entregado"] if s in available_states]
     st.markdown(legend_html(legend_states), unsafe_allow_html=True)
-    st.caption("Disponible = amarillo · Separado = naranja · Vendido = verde · Entregado = morado · No disponible = gris.")
+    st.caption("Disponible = amarillo · No disponible = gris · Separado = naranja · Vendido = verde · Entregado = morado.")
 
     duplicates = (
         view.groupby(["piso", "tipologia_ubicacion"], dropna=False)
@@ -488,7 +519,10 @@ with units_tab:
         .query("n > 1")
     )
     if not duplicates.empty:
-        st.info(f"Hay {len(duplicates)} celdas piso × tipología con más de una unidad. La matriz muestra el promedio de la métrica y el estado más frecuente en esas celdas.")
+        st.info(
+            f"Hay {len(duplicates)} celdas piso × tipología con más de una unidad. "
+            "La matriz muestra el promedio de la métrica y el estado más frecuente en esas celdas."
+        )
 
     if show_raw:
         detail_cols = [
