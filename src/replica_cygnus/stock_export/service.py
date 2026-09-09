@@ -116,14 +116,13 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
         "num_format": _money_format(df["moneda"].mode().iat[0] if not df.empty else "PEN"),
     })
 
-    worksheet.merge_range("A1:H1", f"STOCK DISPONIBLE · {project}", title_fmt)
+    worksheet.merge_range("A1:G1", f"STOCK DISPONIBLE · {project}", title_fmt)
     worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y')}", subtitle_fmt)
     # Fila 3 se deja intencionalmente vacía.
 
     export_cols = [
         ("tipo_unidad", "TIPO"),
         ("unidad", "UNIDAD"),
-        ("nombre_tipologia", "TIPOLOGÍA"),
         ("piso", "PISO"),
         ("area_total", "ÁREA M²"),
         ("precio_lista", "PRECIO LISTA"),
@@ -140,7 +139,7 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
             value = row[field]
             if pd.isna(value):
                 value = ""
-            if field in {"tipo_unidad", "unidad", "nombre_tipologia"}:
+            if field in {"tipo_unidad", "unidad"}:
                 fmt = text_fmt
             elif field == "piso":
                 fmt = center_fmt
@@ -158,12 +157,11 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
     worksheet.set_row(0, 28)
     worksheet.set_column("A:A", 18)
     worksheet.set_column("B:B", 15)
-    worksheet.set_column("C:C", 18)
-    worksheet.set_column("D:D", 10)
-    worksheet.set_column("E:E", 12)
-    worksheet.set_column("F:F", 18)
-    worksheet.set_column("G:G", 11)
-    worksheet.set_column("H:H", 22)
+    worksheet.set_column("C:C", 10)
+    worksheet.set_column("D:D", 12)
+    worksheet.set_column("E:E", 18)
+    worksheet.set_column("F:F", 11)
+    worksheet.set_column("G:G", 22)
     worksheet.hide_gridlines(2)
 
 
