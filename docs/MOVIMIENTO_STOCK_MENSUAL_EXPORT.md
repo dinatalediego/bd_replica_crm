@@ -18,7 +18,7 @@ Generar un Excel ejecutivo mensual parecido al formato comercial usado por Cygnu
 
 ## Contrato semántico preservado
 
-Este módulo **no redefine absorción**. Consume el contrato existente `ABSORPTION_SCOPE_CONTRACT_V11.md`.
+Este módulo **no redefine absorción**. Respeta `ABSORPTION_SCOPE_CONTRACT_V11.md`, pero puede ejecutarse aunque las tablas materializadas de Phase C / v1.1 todavía no estén instaladas en PostgreSQL local.
 
 ### Scope principal
 
@@ -28,23 +28,30 @@ Estacionamientos, depósitos, locales y otros productos no se mezclan con la abs
 
 ### Stock histórico
 
-Fuente:
+La vista mensual se deriva directamente de:
 
-- `analytics.fact_stock_ofertado_diario_tipo`
-- reconstruida desde `analytics.fact_movimientos_stock`
+- `analytics.fact_movimientos_stock`
+- `core.dim_unidad`
 
-Por contrato, es **histórico observado por ledger**. No se fabrican fechas de entrada de stock para unidades sin evidencia histórica.
+Sólo se aplican eventos con `transition_applied=true`.
 
-### Stock actual
+El stock diario observado se reconstruye como suma acumulada de `delta_stock` por proyecto, sin persistir ni truncar hechos intermedios. Esto es equivalente conceptualmente a la capa `fact_stock_ofertado_diario_tipo` para el scope DEPARTAMENTO, pero permite que el reporte funcione cuando esa materialización no existe localmente.
 
-La certificación actual continúa en:
+Por contrato, sigue siendo **histórico observado por ledger**. No se fabrican fechas de entrada de stock para unidades sin evidencia histórica.
 
-- `analytics.fact_stock_snapshot_diario_unidad`
-- `analytics.v_stock_consolidado_actual_por_tipo`
+### Stock actual y cobertura
 
-La cobertura entre estado actual certificado e histórico observado se conserva en:
+Si existe `analytics.v_stock_coverage_actual_por_tipo`, el Excel incorpora en `CONTROL`:
 
-- `analytics.v_stock_coverage_actual_por_tipo`
+- cobertura del stock actual;
+- gap de stock disponible;
+- calidad de reconciliación.
+
+Si esa vista no existe, el reporte **no falla**. La cobertura queda vacía y la calidad se etiqueta como:
+
+`HISTORICO_LEDGER_OBSERVADO_SIN_SNAPSHOT_CERTIFICADO`
+
+La ausencia de snapshot certificado no se oculta ni se reemplaza por una reconstrucción inventada.
 
 ### Movimiento neto
 
@@ -56,7 +63,7 @@ Este es el numerador de la absorción neta gobernada.
 
 Las ventas/minutas se muestran **separadas** del movimiento neto. No se sustituyen entre sí.
 
-En el vocabulario físico actual de Phase C, `ventas` corresponde a la medida reconciliada que debe leerse comercialmente como `minutas_canonicas` hasta una migración versionada del nombre físico.
+En el vocabulario físico actual, `VENTA` corresponde al evento efectivo que comercialmente debe interpretarse como venta/minuta reconciliada según el contrato vigente.
 
 ### Absorción mensual
 
@@ -91,7 +98,7 @@ Crea:
 
 `src/replica_cygnus/monthly_stock_export/`
 
-Genera el workbook y valida dependencias sin reconstruir ni truncar la capa de absorción.
+Genera el workbook, valida sólo dependencias mínimas y consulta cobertura actual únicamente cuando está disponible.
 
 ### CLI
 
@@ -157,25 +164,32 @@ Movimientos coloreados:
 
 Expone:
 
-- cobertura de stock actual vs ledger;
-- gap de stock disponible;
+- cobertura de stock actual vs ledger, cuando existe;
+- gap de stock disponible, cuando existe;
 - calidad del histórico;
 - método del stock histórico;
 - método del movimiento.
 
 ## Dependencias
 
-El módulo no ejecuta automáticamente procedimientos que reconstruyen o truncan hechos de absorción. Antes de instalar sus vistas valida la existencia de:
+Dependencias mínimas obligatorias:
 
 - `core.dim_unidad`
 - `core.dim_proyecto`
 - `analytics.fact_movimientos_stock`
-- `analytics.fact_stock_ofertado_diario_tipo`
-- `analytics.dim_unidad_semantica`
-- `analytics.v_stock_coverage_actual_por_tipo`
 - `analytics.stock_discount_rules`
 
-Si falta una dependencia, el proceso se detiene con un mensaje explícito. Esto evita modificar el DW silenciosamente.
+Dependencia opcional de calidad:
+
+- `analytics.v_stock_coverage_actual_por_tipo`
+
+El módulo **no requiere** para ejecutarse:
+
+- `analytics.fact_stock_ofertado_diario_tipo`
+- `analytics.dim_unidad_semantica`
+- `analytics.fact_stock_snapshot_diario_unidad`
+
+Tampoco ejecuta procedimientos que hagan `TRUNCATE` o reconstruyan Phase C. Esto mantiene el reporte como consumidor de Medallio, no como dueño de la capa histórica.
 
 ## Gate de validación recomendado
 
@@ -183,6 +197,6 @@ Antes de compartir un reporte mensual:
 
 1. comparar `ventas_minutas_mes` con el total comercial certificado del mes;
 2. comparar separaciones y caídas efectivas con el reporte comercial;
-3. revisar `CONTROL.calidad_stock_historico` y cobertura;
+3. revisar `CONTROL.calidad_stock_historico` y cobertura si existe;
 4. confirmar que el periodo solicitado tiene evidencia suficiente;
 5. no alterar `transition_applied` sólo para forzar coincidencias.
