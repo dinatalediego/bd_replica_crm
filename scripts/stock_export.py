@@ -30,20 +30,28 @@ def main() -> int:
         help="Instala/actualiza dependencias, reglas y la vista SQL antes de exportar.",
     )
     parser.add_argument(
+        "--install-only",
+        action="store_true",
+        help="Instala/actualiza la capa SQL y termina sin generar Excel.",
+    )
+    parser.add_argument(
         "--all",
         action="store_true",
         help="Exporta todos los proyectos configurados en analytics.stock_discount_rules.",
     )
     args = parser.parse_args()
 
-    if args.install_view:
-        print("[1/3] Validando dependencia canónica de unidades...")
+    if args.install_view or args.install_only:
+        print("[1/2] Validando dependencia canónica de unidades...")
         ensure_unidades_view()
-        print("[2/3] Instalando capa SQL de stock exportable...")
+        print("[2/2] Instalando capa SQL de stock exportable...")
         install_stock_export_sql()
+        if args.install_only:
+            print("OK: capa SQL lista para consumo.")
+            return 0
 
     projects = None if args.all else args.projects
-    print("[3/3] Leyendo Medallio DW y generando Excel...")
+    print("Leyendo Medallio DW y generando Excel...")
     output = export_stock_excel(projects=projects)
     print(f"OK: {output}")
     return 0
