@@ -62,11 +62,17 @@ WITH daily AS (
             ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
         ) AS meses_en_ventana_6m
     FROM monthly m
+), active_rules AS (
+    SELECT *
+    FROM analytics.stock_discount_rules
+    WHERE active
+      AND valid_from <= CURRENT_DATE
+      AND (valid_to IS NULL OR valid_to >= CURRENT_DATE)
 )
 SELECT
     e.periodo_mes,
     e.codigo_proyecto,
-    coalesce(p.nombre_proyecto, e.codigo_proyecto) AS proyecto,
+    coalesce(r.project_display_name, p.nombre_proyecto, e.codigo_proyecto) AS proyecto,
     e.tipo_unidad_consolidado,
     e.primera_fecha_observada,
     e.ultima_fecha_observada,
@@ -100,6 +106,14 @@ SELECT
 FROM enriched e
 LEFT JOIN core.dim_proyecto p
   ON p.codigo_proyecto = e.codigo_proyecto
+LEFT JOIN active_rules r
+  ON position(
+        r.project_key in translate(
+            upper(coalesce(p.nombre_proyecto, e.codigo_proyecto, '')),
+            'ÁÉÍÓÚÜÑ',
+            'AEIOUUN'
+        )
+     ) > 0
 LEFT JOIN analytics.v_stock_coverage_actual_por_tipo c
   ON c.codigo_proyecto = e.codigo_proyecto
  AND c.tipo_unidad_consolidado = e.tipo_unidad_consolidado;
@@ -150,7 +164,7 @@ WITH events AS (
         u.precio_venta_actual,
         coalesce(u.moneda_precio_lista, 'PEN') AS moneda,
         translate(upper(coalesce(p.nombre_proyecto, u.nombre_proyecto_origen, '')), 'ÁÉÍÓÚÜÑ', 'AEIOUUN') AS proyecto_norm,
-        coalesce(p.nombre_proyecto, u.nombre_proyecto_origen, u.codigo_proyecto) AS proyecto
+        coalesce(p.nombre_proyecto, u.nombre_proyecto_origen, u.codigo_proyecto) AS proyecto_origen
     FROM core.dim_unidad u
     LEFT JOIN core.dim_proyecto p
       ON p.codigo_proyecto = u.codigo_proyecto
@@ -158,7 +172,7 @@ WITH events AS (
 SELECT
     e.periodo_mes,
     e.codigo_proyecto,
-    u.proyecto,
+    coalesce(r.project_display_name, u.proyecto_origen) AS proyecto,
     e.codigo_unidad AS unidad,
     u.tipo_unidad,
     u.piso,
