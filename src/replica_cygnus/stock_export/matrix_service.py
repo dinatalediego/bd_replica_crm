@@ -8,9 +8,19 @@ from .service import _connect
 
 
 def _query_df(sql: str, params: Iterable[object] | None = None) -> pd.DataFrame:
+    """Ejecuta SQL y devuelve DataFrame sin forzar placeholders vacíos.
+
+    Psycopg interpreta cualquier `%...` del SQL como placeholder cuando se le
+    pasa una secuencia de parámetros, incluso si esa secuencia está vacía.
+    Varias consultas de matrices contienen LIKE '%...%'; por eso, cuando no
+    hay parámetros reales, debemos llamar `execute(sql)` sin segundo argumento.
+    """
     with _connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, list(params or []))
+            if params is None:
+                cur.execute(sql)
+            else:
+                cur.execute(sql, list(params))
             rows = cur.fetchall()
             columns = [d.name for d in cur.description]
     return pd.DataFrame(rows, columns=columns)
@@ -54,9 +64,10 @@ def fetch_stock_status_data() -> pd.DataFrame:
     """Inventario UI por estado comercial para los proyectos configurados.
 
     Conserva el contrato de precio/descuento del exportador, pero NO limita el
-    universo a Disponible. La exportación a Excel continúa usando
-    analytics.v_stock_disponible_export y, por tanto, sigue siendo sólo stock
-    disponible.
+    universo a Disponible. La interfaz puede mostrar Disponible, No disponible
+    o Bloqueado, Separado, Vendido y Entregado. La exportación a Excel continúa
+    usando analytics.v_stock_disponible_export y por tanto sigue siendo sólo
+    stock disponible.
     """
     sql = """
         WITH ranked AS (
@@ -104,7 +115,9 @@ def fetch_stock_status_data() -> pd.DataFrame:
             u.estado_comercial,
             CASE
                 WHEN u.estado_norm = 'DISPONIBLE' THEN 'Disponible'
-                WHEN u.estado_norm = 'NO DISPONIBLE' THEN 'No disponible'
+                WHEN u.estado_norm = 'NO DISPONIBLE'
+                  OR u.estado_norm LIKE 'BLOQUE%'
+                    THEN 'No disponible'
                 WHEN u.estado_norm IN ('PROCESO DE SEPARACION', 'SEPARADO') THEN 'Separado'
                 WHEN u.estado_norm IN ('PROCESO DE APROBACION', 'PROCESO DE VENTA', 'VENDIDO') THEN 'Vendido'
                 WHEN u.estado_norm IN ('PROCESO DE ENTREGA', 'ENTREGADO') THEN 'Entregado'
