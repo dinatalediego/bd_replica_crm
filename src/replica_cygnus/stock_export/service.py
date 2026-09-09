@@ -80,12 +80,7 @@ def _fetch_dataframe(projects: Iterable[str] | None = None) -> pd.DataFrame:
 
 
 def _prepare_export_dataframe(df: pd.DataFrame, projects: Iterable[str] | None = None) -> pd.DataFrame:
-    """Normaliza tanto el contrato Disponible como la selección de la UI.
-
-    La UI entrega `estado_grupo`; el .bat 50 no lo tiene porque su vista ya
-    representa únicamente Disponible. En ambos casos el Excel recibe una
-    columna canónica `estado`.
-    """
+    """Normaliza tanto el contrato Disponible como la selección de la UI."""
     out = df.copy()
 
     if projects and "proyecto" in out.columns:
@@ -103,6 +98,37 @@ def _prepare_export_dataframe(df: pd.DataFrame, projects: Iterable[str] | None =
         out["moneda"] = "PEN"
 
     return out.reset_index(drop=True)
+
+
+def _streamlit_selected_dataframe(projects: Iterable[str] | None = None) -> pd.DataFrame | None:
+    """Si el export se invoca desde la app, usa exactamente los estados marcados.
+
+    Fuera de Streamlit devuelve None y el .bat 50 conserva su contrato histórico
+    de sólo Disponibles.
+    """
+    try:
+        import streamlit as st
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+
+        if get_script_run_ctx() is None:
+            return None
+        states = list(st.session_state.get("stock_selected_states", []))
+        if not states:
+            return pd.DataFrame()
+
+        # Import diferido para evitar dependencia circular durante el arranque.
+        from .matrix_service import fetch_stock_status_data
+
+        df = fetch_stock_status_data()
+        if projects and "proyecto" in df.columns:
+            selected_projects = {str(p).strip() for p in projects if str(p).strip()}
+            if selected_projects:
+                df = df[df["proyecto"].astype(str).isin(selected_projects)].copy()
+        if "estado_grupo" in df.columns:
+            df = df[df["estado_grupo"].isin(states)].copy()
+        return df
+    except Exception:
+        return None
 
 
 def _safe_sheet_name(name: str) -> str:
@@ -152,7 +178,6 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
 
     worksheet.merge_range("A1:H1", f"{_scope_label(df)} · {project}", title_fmt)
     worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y')}", subtitle_fmt)
-    # Fila 3 se deja intencionalmente vacía.
 
     export_cols = [
         ("tipo_unidad", "TIPO"),
@@ -225,7 +250,6 @@ def _write_summary_sheet(writer: pd.ExcelWriter, df: pd.DataFrame, generated_at:
 
     worksheet.merge_range("A1:G1", f"{_scope_label(df)} · RESUMEN EJECUTIVO", title_fmt)
     worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y')}", subtitle_fmt)
-    # Fila 3 se deja intencionalmente vacía.
 
     summary = (
         df.assign(
@@ -271,14 +295,14 @@ def export_stock_excel(
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     dataframe: pd.DataFrame | None = None,
 ) -> Path:
-    """Genera Excel desde Disponibles (default) o desde la selección visible de la UI.
+    """Genera Excel desde Disponibles o desde la selección visible de la UI."""
+    if dataframe is not None:
+        source_df = dataframe
+    else:
+        ui_df = _streamlit_selected_dataframe(projects)
+        source_df = ui_df if ui_df is not None else _fetch_dataframe(projects)
 
-    - `dataframe=None`: conserva el comportamiento del .bat 50 (sólo Disponible).
-    - `dataframe=<stock_view>`: exporta exactamente los proyectos/estados visibles.
-    """
-    source_df = _fetch_dataframe(projects) if dataframe is None else dataframe
     df = _prepare_export_dataframe(source_df, projects=projects)
-
     generated_at = datetime.now()
     output_dir.mkdir(parents=True, exist_ok=True)
     only_available = set(df["estado"].dropna().astype(str).unique()) == {"Disponible"}
