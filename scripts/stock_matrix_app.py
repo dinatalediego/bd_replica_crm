@@ -40,12 +40,14 @@ STATE_ICONS = {
 }
 STATE_ORDER = ["Disponible", "No disponible", "Separado", "Vendido", "Entregado", "Sin clasificar"]
 STOCK_BUTTON_STATES = ["Disponible", "No disponible", "Separado", "Vendido", "Entregado"]
+DEFAULT_STOCK_STATES = ["Disponible", "No disponible"]
 
 
 def _norm(value: object) -> str:
     text = str(value or "").strip().lower()
     text = "".join(
-        ch for ch in unicodedata.normalize("NFKD", text)
+        ch
+        for ch in unicodedata.normalize("NFKD", text)
         if not unicodedata.combining(ch)
     )
     return " ".join(text.split())
@@ -167,6 +169,7 @@ def matrix_html(
     work[row_dim] = work[row_dim].astype(str).str.strip()
     work[col_dim] = work[col_dim].astype(str).str.strip()
     work = work[(work[row_dim] != "") & (work[col_dim] != "")]
+
     if work.empty:
         return "<div class='empty-matrix'>No hay datos para construir la matriz con estos filtros.</div>"
 
@@ -188,7 +191,7 @@ def matrix_html(
     ]
     for col in cols:
         pieces.append(f"<th>{html.escape(str(col))}</th>")
-    pieces.append("<th class='matrix-total'>Prom.</th></tr></thead><tbody>")
+    pieces.append("<th>Prom.</th></tr></thead><tbody>")
 
     for row in rows:
         row_df = work[work[row_dim] == row]
@@ -203,12 +206,12 @@ def matrix_html(
             states = cell["estado_matriz"].value_counts()
             state = states.index[0] if not states.empty else "Sin clasificar"
             color = STATE_COLORS.get(state, STATE_COLORS["Sin clasificar"])
-            unit_label = ", ".join(cell["unidad"].astype(str).head(4).tolist())
+            units = ", ".join(cell["unidad"].astype(str).head(4).tolist())
             if len(cell) > 4:
-                unit_label += f" +{len(cell) - 4}"
-            tooltip = f"{state} · Unidad: {unit_label}"
+                units += f" +{len(cell) - 4}"
+            tooltip = f"{state} · Unidad: {units}"
             pieces.append(
-                f"<td class='matrix-cell' style='background:{color}' title='{html.escape(tooltip)}'>"
+                f"<td style='background:{color}' title='{html.escape(tooltip)}'>"
                 f"{html.escape(metric_formatter(metric, value))}</td>"
             )
         pieces.append(f"<td class='matrix-total-value'>{html.escape(metric_formatter(metric, row_avg))}</td></tr>")
@@ -226,9 +229,8 @@ def matrix_html(
 def legend_html(states: list[str]) -> str:
     chips = []
     for state in states:
-        color = STATE_COLORS[state]
         chips.append(
-            f"<span class='legend-item'><span class='legend-dot' style='background:{color}'></span>"
+            f"<span class='legend-item'><span class='legend-dot' style='background:{STATE_COLORS[state]}'></span>"
             f"{html.escape(state)}</span>"
         )
     return "<div class='legend'>" + "".join(chips) + "</div>"
@@ -292,7 +294,7 @@ st.markdown(
     """
     <div class='hero'>
       <h1>Medallio · Matrices de Stock & Unidades</h1>
-      <p>Inventario por estado comercial + Excel de disponibles + matrices de departamentos por piso y tipología.</p>
+      <p>Stock operativo (disponible + bloqueado), inventario por estado comercial y matrices de departamentos.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -310,69 +312,83 @@ try:
     stock_df = cached_stock_status()
     units_df = cached_units()
 except Exception as exc:
-    st.error("No se pudo leer Medallio DW. Ejecuta primero scripts\\50_exportar_stock_disponible.bat y vuelve a abrir la interfaz.")
+    st.error("No se pudo leer Medallio DW. Ejecuta scripts\\50_exportar_stock_disponible.bat y vuelve a abrir la interfaz.")
     st.exception(exc)
     st.stop()
 
-stock_tab, units_tab = st.tabs(["Stock por estado", "Unidades · departamentos"])
+stock_tab, units_tab = st.tabs(["Stock", "Unidades · departamentos"])
 
 with stock_tab:
-    st.subheader("Stock por estado comercial")
+    st.subheader("Stock · disponible + no disponible / bloqueado")
     st.caption(
-        "Disponible conserva el mismo contrato del Excel. No disponible, Separado, Vendido y Entregado son vistas adicionales de la interfaz y no se exportan por ahora."
+        "Por defecto se muestran Disponible + No disponible/Bloqueado. Puedes sumar o quitar estados con los botones. El Excel continúa exportando sólo Disponibles."
     )
 
     stock_projects = sorted(stock_df["proyecto"].dropna().astype(str).unique(), key=natural_key)
-    selected_stock = st.multiselect(
+    selected_projects = st.multiselect(
         "Proyectos",
         stock_projects,
         default=stock_projects,
         key="stock_projects",
     )
     project_view = (
-        stock_df[stock_df["proyecto"].isin(selected_stock)].copy()
-        if selected_stock else stock_df.iloc[0:0].copy()
+        stock_df[stock_df["proyecto"].isin(selected_projects)].copy()
+        if selected_projects
+        else stock_df.iloc[0:0].copy()
     )
 
-    if "stock_state_filter" not in st.session_state:
-        st.session_state["stock_state_filter"] = "Disponible"
+    if "stock_selected_states" not in st.session_state:
+        st.session_state["stock_selected_states"] = DEFAULT_STOCK_STATES.copy()
 
     counts = project_view["estado_grupo"].value_counts()
-    button_states = [s for s in STOCK_BUTTON_STATES if int(counts.get(s, 0)) > 0]
-    button_labels = button_states + ["Todos"]
-    button_cols = st.columns(max(len(button_labels), 1))
-    for col, state in zip(button_cols, button_labels):
-        count = len(project_view) if state == "Todos" else int(counts.get(state, 0))
-        icon = "◼" if state == "Todos" else STATE_ICONS.get(state, "▫️")
-        active = st.session_state["stock_state_filter"] == state
+    selected_states = list(st.session_state["stock_selected_states"])
+
+    quick1, quick2, quick3 = st.columns([1.2, 1.2, 4])
+    with quick1:
+        if st.button("Stock operativo", use_container_width=True, help="Disponible + No disponible/Bloqueado"):
+            st.session_state["stock_selected_states"] = DEFAULT_STOCK_STATES.copy()
+            st.rerun()
+    with quick2:
+        if st.button("Todos los estados", use_container_width=True):
+            st.session_state["stock_selected_states"] = [
+                s for s in STOCK_BUTTON_STATES if int(counts.get(s, 0)) > 0
+            ]
+            st.rerun()
+
+    button_cols = st.columns(len(STOCK_BUTTON_STATES))
+    for col, state in zip(button_cols, STOCK_BUTTON_STATES):
+        count = int(counts.get(state, 0))
+        active = state in selected_states
         with col:
             if st.button(
-                f"{icon} {state} · {count}",
-                key=f"stock_state_{state}",
+                f"{STATE_ICONS[state]} {state} · {count}",
+                key=f"stock_toggle_{state}",
                 type="primary" if active else "secondary",
                 use_container_width=True,
             ):
-                st.session_state["stock_state_filter"] = state
+                current = list(st.session_state["stock_selected_states"])
+                if state in current:
+                    current.remove(state)
+                else:
+                    current.append(state)
+                st.session_state["stock_selected_states"] = current
                 st.rerun()
 
-    selected_state = st.session_state["stock_state_filter"]
-    if selected_state not in button_labels:
-        selected_state = "Disponible" if "Disponible" in button_labels else "Todos"
-        st.session_state["stock_state_filter"] = selected_state
-
+    selected_states = list(st.session_state["stock_selected_states"])
     stock_view = (
-        project_view.copy()
-        if selected_state == "Todos"
-        else project_view[project_view["estado_grupo"] == selected_state].copy()
+        project_view[project_view["estado_grupo"].isin(selected_states)].copy()
+        if selected_states
+        else project_view.iloc[0:0].copy()
     )
     stock_view = _to_numeric(stock_view, ["precio_lista", "precio_con_descuento", "discount_pct"])
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     render_cards([
         (c1, "Unidades visibles", f"{len(stock_view):,}"),
-        (c2, "Departamentos", f"{(stock_view['tipo_unidad'] == 'Departamento').sum():,}"),
-        (c3, "Valor lista actual", f"S/ {stock_view['precio_lista'].sum(skipna=True):,.0f}"),
-        (c4, "Valor c/ descuento actual", f"S/ {stock_view['precio_con_descuento'].sum(skipna=True):,.0f}"),
+        (c2, "Disponibles", f"{(stock_view['estado_grupo'] == 'Disponible').sum():,}"),
+        (c3, "No disp./bloq.", f"{(stock_view['estado_grupo'] == 'No disponible').sum():,}"),
+        (c4, "Valor lista", f"S/ {stock_view['precio_lista'].sum(skipna=True):,.0f}"),
+        (c5, "Valor c/ descuento", f"S/ {stock_view['precio_con_descuento'].sum(skipna=True):,.0f}"),
     ])
 
     st.dataframe(
@@ -399,12 +415,10 @@ with stock_tab:
         },
     )
 
-    st.caption(
-        "El selector de estado sólo cambia la visualización. El Excel mantiene el contrato original: únicamente unidades Disponibles."
-    )
+    st.caption("La tabla puede combinar estados. El botón de Excel mantiene el contrato original de unidades Disponibles.")
     if st.button("Generar Excel de DISPONIBLES para estos proyectos", type="primary"):
         with st.spinner("Generando Excel de stock disponible..."):
-            output = export_stock_excel(projects=selected_stock or None)
+            output = export_stock_excel(projects=selected_projects or None)
             st.session_state["excel_path"] = str(output)
 
     excel_path = st.session_state.get("excel_path")
@@ -419,7 +433,7 @@ with stock_tab:
 
 with units_tab:
     st.subheader("Unidades · matriz de departamentos")
-    st.caption("Primera versión: solo flag_departamento = true. Esta rama es exploratoria y no se exporta a Excel por ahora.")
+    st.caption("Solo flag_departamento = true. Esta rama es visual y no se exporta a Excel por ahora.")
 
     projects = sorted(units_df["proyecto"].dropna().astype(str).unique(), key=natural_key)
     if not projects:
@@ -444,14 +458,15 @@ with units_tab:
     project_df = prepare_units(units_df[units_df["proyecto"] == project].copy(), tc)
     state_counts = project_df["estado_matriz"].value_counts()
     available_states = [s for s in STATE_ORDER if s in state_counts.index]
-    selected_states = st.multiselect(
+    selected_unit_states = st.multiselect(
         "Estados comerciales visibles",
         available_states,
         default=available_states,
     )
     view = (
-        project_df[project_df["estado_matriz"].isin(selected_states)].copy()
-        if selected_states else project_df.iloc[0:0].copy()
+        project_df[project_df["estado_matriz"].isin(selected_unit_states)].copy()
+        if selected_unit_states
+        else project_df.iloc[0:0].copy()
     )
 
     if total_currency.startswith("Soles"):
@@ -477,7 +492,7 @@ with units_tab:
         metric_label = st.selectbox("Métrica de la matriz", list(metric_options.keys()))
         metric = metric_options[metric_label]
     with f2:
-        orientation = st.radio("Orientación", ["Piso en filas", "Piso en columnas"], horizontal=False)
+        orientation = st.radio("Orientación", ["Piso en filas", "Piso en columnas"])
     with f3:
         show_raw = st.checkbox("Mostrar detalle debajo", value=False)
 
@@ -491,11 +506,11 @@ with units_tab:
     render_cards([
         (k1, "Departamentos", f"{len(view):,}"),
         (k2, "Disponible", f"{(view['estado_matriz'] == 'Disponible').sum():,}"),
-        (k3, "Precio m² promedio", metric_formatter("precio_m2_usd", view["precio_m2_usd"].mean())),
-        (k4, "Descuento configurado", f"{view['discount_pct'].max(skipna=True) * 100:.0f}%" if not view.empty else "—"),
+        (k3, "Precio m² prom.", metric_formatter("precio_m2_usd", view["precio_m2_usd"].mean())),
+        (k4, "Descuento", f"{view['discount_pct'].max(skipna=True) * 100:.0f}%" if not view.empty else "—"),
     ])
 
-    subtitle = f"{metric_label} · TC: {tc:.2f} · color = estado_comercial · flag_departamento = true"
+    subtitle = f"{metric_label} · TC: {tc:.2f} · color = estado comercial · flag_departamento = true"
     st.markdown(
         matrix_html(
             view,
@@ -508,9 +523,12 @@ with units_tab:
         unsafe_allow_html=True,
     )
 
-    legend_states = [s for s in ["Disponible", "No disponible", "Separado", "Vendido", "Entregado"] if s in available_states]
+    legend_states = [
+        s for s in ["Disponible", "No disponible", "Separado", "Vendido", "Entregado"]
+        if s in available_states
+    ]
     st.markdown(legend_html(legend_states), unsafe_allow_html=True)
-    st.caption("Disponible = amarillo · No disponible = gris · Separado = naranja · Vendido = verde · Entregado = morado.")
+    st.caption("Disponible = amarillo · No disponible/Bloqueado = gris · Separado = naranja · Vendido = verde · Entregado = morado.")
 
     duplicates = (
         view.groupby(["piso", "tipologia_ubicacion"], dropna=False)
@@ -521,7 +539,7 @@ with units_tab:
     if not duplicates.empty:
         st.info(
             f"Hay {len(duplicates)} celdas piso × tipología con más de una unidad. "
-            "La matriz muestra el promedio de la métrica y el estado más frecuente en esas celdas."
+            "La matriz muestra el promedio de la métrica y el estado más frecuente."
         )
 
     if show_raw:
