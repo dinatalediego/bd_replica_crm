@@ -1,1 +1,0 @@
-Post-merge follow-up: monthly stock exporter now derives observed history directly from fact_movimientos_stock and treats Phase C coverage as optional.
