@@ -10,6 +10,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from replica_cygnus.stock_export import export_stock_excel, install_stock_export_sql
+from replica_cygnus.stock_export.dependencies import ensure_unidades_view
 
 
 DEFAULT_PROJECTS = ["Fénix", "Urbanzen", "Tizón y Bueno"]
@@ -26,7 +27,7 @@ def main() -> int:
     parser.add_argument(
         "--install-view",
         action="store_true",
-        help="Instala/actualiza las reglas y la vista SQL antes de exportar.",
+        help="Instala/actualiza dependencias, reglas y la vista SQL antes de exportar.",
     )
     parser.add_argument(
         "--all",
@@ -36,11 +37,13 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.install_view:
-        print("[1/2] Instalando capa SQL de stock exportable...")
+        print("[1/3] Validando dependencia canónica de unidades...")
+        ensure_unidades_view()
+        print("[2/3] Instalando capa SQL de stock exportable...")
         install_stock_export_sql()
 
     projects = None if args.all else args.projects
-    print("[2/2] Leyendo Medallio DW y generando Excel...")
+    print("[3/3] Leyendo Medallio DW y generando Excel...")
     output = export_stock_excel(projects=projects)
     print(f"OK: {output}")
     return 0
