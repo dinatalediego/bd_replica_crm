@@ -86,7 +86,8 @@ def _safe_sheet_name(name: str) -> str:
 
 
 def _money_format(currency: str) -> str:
-    return 'S/ #,##0.00' if str(currency).upper() in {"PEN", "SOLES", "S/"} else '$ #,##0.00'
+    # Texto literal para que Excel muestre siempre el símbolo/abreviatura.
+    return '"S/ "#,##0.00' if str(currency).upper() in {"PEN", "SOLES", "S/"} else '"$ "#,##0.00'
 
 
 def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame, generated_at: datetime) -> None:
@@ -109,12 +110,15 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
     text_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6"})
     center_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6", "align": "center"})
     pct_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6", "num_format": "0%", "align": "center"})
-    money_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6", "num_format": _money_format(df["moneda"].mode().iat[0] if not df.empty else "PEN")})
-    date_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6", "num_format": "dd/mm/yyyy", "align": "center"})
+    money_fmt = workbook.add_format({
+        "border": 1,
+        "border_color": "#E7E6E6",
+        "num_format": _money_format(df["moneda"].mode().iat[0] if not df.empty else "PEN"),
+    })
 
     worksheet.merge_range("A1:H1", f"STOCK DISPONIBLE · {project}", title_fmt)
-    worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y – %H:%M')}", subtitle_fmt)
-    worksheet.write("A3", "Incluye departamentos, estacionamientos y depósitos. Fuente: Medallio DW.", subtitle_fmt)
+    worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y')}", subtitle_fmt)
+    # Fila 3 se deja intencionalmente vacía.
 
     export_cols = [
         ("tipo_unidad", "TIPO"),
@@ -165,8 +169,8 @@ def _write_project_sheet(writer: pd.ExcelWriter, project: str, df: pd.DataFrame,
 
 def _write_summary_sheet(writer: pd.ExcelWriter, df: pd.DataFrame, generated_at: datetime) -> None:
     workbook = writer.book
-    worksheet = workbook.add_worksheet("00_RESUMEN")
-    writer.sheets["00_RESUMEN"] = worksheet
+    worksheet = workbook.add_worksheet("RESUMEN")
+    writer.sheets["RESUMEN"] = worksheet
 
     title_fmt = workbook.add_format({
         "bold": True, "font_size": 17, "font_color": "#FFFFFF",
@@ -179,11 +183,15 @@ def _write_summary_sheet(writer: pd.ExcelWriter, df: pd.DataFrame, generated_at:
     })
     body_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6"})
     int_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6", "num_format": "0", "align": "center"})
-    money_fmt = workbook.add_format({"border": 1, "border_color": "#E7E6E6", "num_format": "S/ #,##0.00"})
+    money_fmt = workbook.add_format({
+        "border": 1,
+        "border_color": "#E7E6E6",
+        "num_format": '"S/ "#,##0.00',
+    })
 
     worksheet.merge_range("A1:G1", "STOCK DISPONIBLE · RESUMEN EJECUTIVO", title_fmt)
-    worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y – %H:%M')}", subtitle_fmt)
-    worksheet.write("A3", "Fuente única: analytics.v_stock_disponible_export · Medallio DW", subtitle_fmt)
+    worksheet.write("A2", f"Actualizado al {generated_at.strftime('%d/%m/%Y')}", subtitle_fmt)
+    # Fila 3 se deja intencionalmente vacía.
 
     summary = (
         df.assign(
