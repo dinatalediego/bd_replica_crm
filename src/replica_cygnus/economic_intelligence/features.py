@@ -83,18 +83,15 @@ def build_supervised_panel(panel: pd.DataFrame, horizons: tuple[int, ...] = (1, 
     df["target_minutas_next_1m"] = grouped["ventas_minutas_mes"].shift(-1)
 
     # Useful economically interpretable transformations.
-    df["stock_pressure"] = np.where(
-        df["stock_inicio_observado"].fillna(0).gt(0),
-        df["mov_neto_ma3"] / df["stock_inicio_observado"],
-        np.nan,
-    )
-    df["market_share_demand"] = np.where(
-        df["demanda_neta_market"].fillna(0).ne(0),
-        df["movimiento_neto_mes"] / df["demanda_neta_market"],
-        np.nan,
-    )
+    stock = pd.to_numeric(df["stock_inicio_observado"], errors="coerce")
+    mov_ma3 = pd.to_numeric(df["mov_neto_ma3"], errors="coerce")
+    market_demand = pd.to_numeric(df["demanda_neta_market"], errors="coerce")
+    mov = pd.to_numeric(df["movimiento_neto_mes"], errors="coerce")
+    df["stock_pressure"] = np.where(stock.fillna(0).gt(0), mov_ma3 / stock, np.nan)
+    df["market_share_demand"] = np.where(market_demand.fillna(0).ne(0), mov / market_demand, np.nan)
     df["supply_coverage_gap_ref"] = (
-        df["stock_total_departamentos_actual_ref"] - df["stock_ofertado_observado_acum"]
+        pd.to_numeric(df["stock_total_departamentos_actual_ref"], errors="coerce")
+        - pd.to_numeric(df["stock_ofertado_observado_acum"], errors="coerce")
     )
     return df
 
@@ -115,7 +112,7 @@ def select_model_matrix(
     cols = [c for c in cols if c in supervised.columns]
 
     work = supervised.dropna(subset=[target]).copy()
-    X = work[cols].replace([np.inf, -np.inf], np.nan)
+    X = work[cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
     y = pd.to_numeric(work[target], errors="coerce")
     mask = y.notna()
     return X.loc[mask], y.loc[mask], cols
