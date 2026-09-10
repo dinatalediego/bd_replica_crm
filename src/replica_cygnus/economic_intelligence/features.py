@@ -113,6 +113,14 @@ def select_model_matrix(
 
     work = supervised.dropna(subset=[target]).copy()
     X = work[cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
+
+    # Features completely empty in the current Medallio installation (for
+    # example macro variables before their loader is populated) are excluded
+    # rather than sent to sklearn's median imputer. This removes noisy warnings
+    # and, more importantly, makes the effective training contract explicit.
+    usable_cols = [c for c in X.columns if X[c].notna().any()]
+    X = X[usable_cols]
+
     y = pd.to_numeric(work[target], errors="coerce")
     mask = y.notna()
-    return X.loc[mask], y.loc[mask], cols
+    return X.loc[mask], y.loc[mask], usable_cols
