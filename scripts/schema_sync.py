@@ -71,6 +71,26 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         ),
     ),
     SchemaComponent(
+        name="pricing_projection",
+        files=(
+            "sql/60_pricing_projection/00_inputs_seed.sql",
+            "sql/60_pricing_projection/01_powerbi_views.sql",
+            "sql/60_pricing_projection/02_fact_refresh.sql",
+            "sql/60_pricing_projection/03_qa.sql",
+        ),
+        expected_relations=(
+            "pricing.projection_baseline_assumption",
+            "pricing.absorption_scenario",
+            "pricing.price_milestone",
+            "analytics.v_base_proyeccion_tipologia",
+            "analytics.v_supuestos_absorcion",
+            "analytics.v_hitos_pricing",
+            "analytics.fact_proyeccion_pricing",
+            "pricing.v_projection_health",
+        ),
+        expected_procedures=("pricing.refresh_fact_proyeccion_pricing()",),
+    ),
+    SchemaComponent(
         name="observability",
         files=("sql/init_observability.sql",),
         expected_relations=(

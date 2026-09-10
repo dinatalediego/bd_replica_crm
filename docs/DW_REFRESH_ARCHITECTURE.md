@@ -33,7 +33,9 @@ Redshift
    ↓
 06 CORE lifecycle contract
    ↓
-07 materialized views de core / analytics / analytics_compare / gold
+07 pricing projection mart + QA
+   ↓
+08 materialized views de core / analytics / analytics_compare / gold
    ↓
 99 observability
 ```
@@ -89,7 +91,8 @@ Reinstalar únicamente Phase B:
 - Las dimensiones CORE.
 - `analytics.unidades_powerbi`.
 - El ciclo comercial y absorción incremental.
-- Las definiciones registradas de `core`, `analytics`, `analytics_compare` y observabilidad.
+- El simulador de pricing `analytics.fact_proyeccion_pricing` y su QA.
+- Las definiciones registradas de `core`, `analytics`, `analytics_compare`, `pricing` y observabilidad.
 - Todas las materialized views existentes en `core`, `analytics`, `analytics_compare` y `gold`.
 - La observabilidad del ciclo, incluso si un paso anterior falla.
 

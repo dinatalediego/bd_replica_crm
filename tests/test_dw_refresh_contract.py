@@ -19,10 +19,11 @@ def test_dw_refresh_orders_layers_and_observability() -> None:
     pbi_pos = code.index('"04_unidades_powerbi_refresh"')
     phase_b_pos = code.index('"05_absorption_phase_b_incremental"')
     lifecycle_pos = code.index('"06_core_lifecycle_contract"')
-    matview_pos = code.index('"07_materialized_views"')
+    pricing_pos = code.index('"07_pricing_projection"')
+    matview_pos = code.index('"08_materialized_views"')
     observe_pos = code.index('"99_observability"')
 
-    assert raw_pos < schema_pos < core_pos < pbi_pos < phase_b_pos < lifecycle_pos < matview_pos < observe_pos
+    assert raw_pos < schema_pos < core_pos < pbi_pos < phase_b_pos < lifecycle_pos < pricing_pos < matview_pos < observe_pos
 
 
 def test_schema_sync_tracks_checksums_and_repairs_missing_phase_b_qa() -> None:
