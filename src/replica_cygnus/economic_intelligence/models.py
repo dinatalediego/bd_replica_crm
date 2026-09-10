@@ -5,7 +5,6 @@ from typing import Iterable
 
 import numpy as np
 import pandas as pd
-from sklearn.compose import TransformedTargetRegressor
 from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import PoissonRegressor, Ridge
@@ -26,8 +25,17 @@ class ModelResult:
 
 
 def _smape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
     den = np.abs(y_true) + np.abs(y_pred)
-    return float(np.nanmean(np.where(den == 0, 0.0, 2 * np.abs(y_pred - y_true) / den)))
+    ratio = np.zeros_like(den, dtype=float)
+    np.divide(
+        2 * np.abs(y_pred - y_true),
+        den,
+        out=ratio,
+        where=den != 0,
+    )
+    return float(np.nanmean(ratio))
 
 
 def _split_by_time(meta: pd.DataFrame, test_months: int = 6) -> tuple[pd.Index, pd.Index]:
