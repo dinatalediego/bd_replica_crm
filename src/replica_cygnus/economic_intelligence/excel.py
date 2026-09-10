@@ -18,6 +18,13 @@ def _sheet_name(value: str) -> str:
     return "".join("_" if c in forbidden else c for c in str(value))[:31] or "Proyecto"
 
 
+def _write_nullable(ws, row: int, col: int, value, fmt) -> None:
+    if value is None or pd.isna(value):
+        ws.write_blank(row, col, None, fmt)
+    else:
+        ws.write(row, col, value, fmt)
+
+
 def export_absorption_economic_excel(
     projects: Iterable[str] | None = None,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
@@ -66,6 +73,7 @@ def export_absorption_economic_excel(
         integer = wb.add_format({"num_format": "0", "align": "center", "border": 1, "border_color": "#E2E8F0"})
         pct = wb.add_format({"num_format": "0.0%", "align": "center", "border": 1, "border_color": "#E2E8F0"})
         body = wb.add_format({"border": 1, "border_color": "#E2E8F0"})
+        date_fmt = wb.add_format({"num_format": "mmm yyyy", "border": 1, "border_color": "#E2E8F0"})
 
         latest = panel.sort_values("periodo_mes").groupby(["codigo_proyecto", "proyecto"], as_index=False).tail(1)
         summary_cols = [
@@ -88,13 +96,13 @@ def export_absorption_economic_excel(
             ws.write(4, c, h, header)
         for r, (_, row) in enumerate(latest[summary_cols].iterrows(), start=5):
             ws.write(r, 0, row["proyecto"], body)
-            ws.write(r, 1, row["stock_total_departamentos_actual_ref"], integer)
-            ws.write(r, 2, row["stock_ofertado_observado_acum"], integer)
-            ws.write(r, 3, row["cobertura_oferta_ledger_vs_universo_actual"], pct)
-            ws.write(r, 4, row["saldo_final_observado"], integer)
-            ws.write(r, 5, row["absorcion_neta_mes"], pct)
-            ws.write(r, 6, row["absorcion_neta_6m"], pct)
-            ws.write(r, 7, row["absorcion_stock_acumulada_observada"], pct)
+            _write_nullable(ws, r, 1, row["stock_total_departamentos_actual_ref"], integer)
+            _write_nullable(ws, r, 2, row["stock_ofertado_observado_acum"], integer)
+            _write_nullable(ws, r, 3, row["cobertura_oferta_ledger_vs_universo_actual"], pct)
+            _write_nullable(ws, r, 4, row["saldo_final_observado"], integer)
+            _write_nullable(ws, r, 5, row["absorcion_neta_mes"], pct)
+            _write_nullable(ws, r, 6, row["absorcion_neta_6m"], pct)
+            _write_nullable(ws, r, 7, row["absorcion_stock_acumulada_observada"], pct)
         ws.set_column("A:A", 24)
         ws.set_column("B:H", 22)
         ws.freeze_panes(5, 1)
@@ -130,15 +138,14 @@ def export_absorption_economic_excel(
             for c, h in enumerate(display_headers):
                 ws.write(4, c, h, header)
             for rr, (_, row) in enumerate(g[cols].iterrows(), start=5):
-                ws.write_datetime(rr, 0, pd.Timestamp(row["periodo_mes"]).to_pydatetime(), wb.add_format({"num_format": "mmm yyyy", "border": 1, "border_color": "#E2E8F0"}))
+                if pd.isna(row["periodo_mes"]):
+                    ws.write_blank(rr, 0, None, date_fmt)
+                else:
+                    ws.write_datetime(rr, 0, pd.Timestamp(row["periodo_mes"]).to_pydatetime(), date_fmt)
                 for c in [1,2,3,4,5,7,8,9,10,11,16]:
-                    ws.write(rr, c, row.iloc[c], integer)
+                    _write_nullable(ws, rr, c, row.iloc[c], integer)
                 for c in [6,12,13,14,15]:
-                    value = row.iloc[c]
-                    if pd.isna(value):
-                        ws.write_blank(rr, c, None, pct)
-                    else:
-                        ws.write(rr, c, value, pct)
+                    _write_nullable(ws, rr, c, row.iloc[c], pct)
             ws.set_column("A:A", 14)
             ws.set_column("B:Q", 19)
             ws.freeze_panes(5, 1)
