@@ -1,0 +1,46 @@
+version: 0.1.0
+scope:
+  product_type: DEPARTAMENTO
+  grain: proyecto_mes
+  historical_source: analytics.fact_movimientos_stock
+  monthly_view: analytics.v_stock_movimiento_mensual_export
+  feature_view: analytics.v_econ_project_monthly_features
+
+forecast:
+  horizons_months: [1, 3, 6, 12]
+  primary_stockout_target: movimiento_neto
+  parallel_commercial_target: ventas_minutas
+  test_months: 6
+  candidates:
+    - ridge
+    - hist_gradient_boosting
+    - random_forest
+    - poisson_for_nonnegative_counts
+
+training_guardrails:
+  exclude_current_reference_features: true
+  require_temporal_holdout: true
+  require_baseline_comparison: true
+  forbid_backcast_current_stock: true
+  forbid_causal_language_without_identification: true
+
+reference_features:
+  - stock_total_departamentos_actual_ref
+  - precio_lista_prom_actual_ref
+  - precio_lista_mediana_actual_ref
+  - precio_m2_prom_actual_ref
+  - descuento_prom_actual_ref
+  - cobertura_oferta_ledger_vs_universo_actual
+
+committee:
+  slow_stock_months: 12
+  absorption_under_ma6_ratio: 0.70
+  high_falls_count: 3
+  ledger_coverage_alert: 0.80
+
+pricing:
+  causal_elasticity_requires_any:
+    - historical_price_snapshots
+    - identified_discount_experiment
+    - staggered_rollout_with_valid_control
+  current_price_only_is_causal: false
