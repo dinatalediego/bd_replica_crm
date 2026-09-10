@@ -81,7 +81,11 @@ def _steps() -> tuple[Step, ...]:
             (py, str(ROOT / "scripts" / "core_commercial_lifecycle.py"), "init"),
         ),
         Step(
-            "07_materialized_views",
+            "07_pricing_projection",
+            (py, str(ROOT / "scripts" / "refresh_pricing_projection.py")),
+        ),
+        Step(
+            "08_materialized_views",
             (py, str(ROOT / "scripts" / "refresh_materialized_views.py")),
         ),
     )
@@ -91,7 +95,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Refresh maestro de Medallio DW: RAW -> schema -> CORE -> analytics -> "
-            "lifecycle -> materialized views -> observabilidad."
+            "lifecycle -> pricing -> materialized views -> observabilidad."
         )
     )
     parser.add_argument(
