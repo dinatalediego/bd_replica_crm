@@ -3,33 +3,7 @@ setlocal
 cd /d "%~dp0.."
 if not exist ".venv\Scripts\python.exe" exit /b 10
 
-rem 1) Replica RAW desde Redshift.
-call ".venv\Scripts\python.exe" -m replica_cygnus.cli sync
-set SYNC_RC=%ERRORLEVEL%
-if not "%SYNC_RC%"=="0" goto OBSERVE_AND_EXIT
-
-rem 2) Refresca dimensiones CORE de estado actual.
-call ".venv\Scripts\python.exe" ".\scripts\core_commercial.py" refresh
-set CORE_RC=%ERRORLEVEL%
-if not "%CORE_RC%"=="0" goto OBSERVE_AND_EXIT
-
-rem 3) Refresca mart semantico de unidades para Power BI (Cygnus + Mercado).
-call ".venv\Scripts\python.exe" ".\scripts\unidades_powerbi.py"
-set UNIDADES_PBI_RC=%ERRORLEVEL%
-if not "%UNIDADES_PBI_RC%"=="0" goto OBSERVE_AND_EXIT
-
-rem 4) Refresca ciclo comercial/absorcion solo si hubo cambios en el lookback.
-call ".venv\Scripts\python.exe" ".\src\absorption_phase_b\run_incremental.py"
-set LIFECYCLE_RC=%ERRORLEVEL%
-if not "%LIFECYCLE_RC%"=="0" goto OBSERVE_AND_EXIT
-
-:OBSERVE_AND_EXIT
-rem Siempre intentamos registrar observabilidad para que Power BI vea el estado.
-call ".venv\Scripts\python.exe" -m replica_cygnus.cli observe --mode hourly
-set OBS_RC=%ERRORLEVEL%
-
-if defined SYNC_RC if not "%SYNC_RC%"=="0" exit /b %SYNC_RC%
-if defined CORE_RC if not "%CORE_RC%"=="0" exit /b %CORE_RC%
-if defined UNIDADES_PBI_RC if not "%UNIDADES_PBI_RC%"=="0" exit /b %UNIDADES_PBI_RC%
-if defined LIFECYCLE_RC if not "%LIFECYCLE_RC%"=="0" exit /b %LIFECYCLE_RC%
-exit /b %OBS_RC%
+rem Punto unico de mantenimiento del DW.
+rem La tarea de Windows sigue apuntando a este archivo; toda la orquestacion vive en Python.
+call ".venv\Scripts\python.exe" ".\scripts\dw_refresh.py" --mode hourly
+exit /b %ERRORLEVEL%
