@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
+import time
 from pathlib import Path
 
 from .catalog import discover_source
@@ -21,6 +23,39 @@ from .observability.schema import ensure_observability
 from .observability.service import register_all_assets, run_observability
 
 LOGGER = logging.getLogger(__name__)
+
+
+_TRANSIENT_SOURCE_MARKERS = (
+    "timed out",
+    "timeout",
+    "cannot read from timed out object",
+    "connection reset",
+    "connection closed",
+    "server closed",
+    "broken pipe",
+    "connection refused",
+    "network is unreachable",
+)
+
+
+def _is_transient_source_error(exc: BaseException) -> bool:
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (TimeoutError, ConnectionError)):
+            return True
+        message = str(current).lower()
+        if any(marker in message for marker in _TRANSIENT_SOURCE_MARKERS):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _sync_attempt_settings() -> tuple[int, float]:
+    attempts = max(1, int(os.getenv("REDSHIFT_SYNC_MAX_ATTEMPTS", "2")))
+    backoff = max(0.0, float(os.getenv("REDSHIFT_SYNC_RETRY_SECONDS", "5")))
+    return attempts, backoff
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -182,20 +217,60 @@ def command_sync(
         print("No hay tablas habilitadas. Edita config/tables.yml y cambia enabled: true.")
         return 0
 
-    source = connect_redshift(settings)
     target = connect_postgres(settings)
     failures = 0
+    max_attempts, retry_seconds = _sync_attempt_settings()
     try:
         ensure_control_tables(target)
         for cfg in configs:
-            try:
-                result = sync_table(
-                    source,
-                    target,
-                    cfg,
-                    max_rows=max_rows,
-                    dry_run=dry_run,
-                )
+            result = None
+            last_exc: Exception | None = None
+
+            for attempt in range(1, max_attempts + 1):
+                source = None
+                try:
+                    # Una conexión Redshift por intento/tabla evita que un socket
+                    # que quedó inválido por timeout contamine las tablas siguientes.
+                    source = connect_redshift(settings)
+                    result = sync_table(
+                        source,
+                        target,
+                        cfg,
+                        max_rows=max_rows,
+                        dry_run=dry_run,
+                    )
+                    break
+                except Exception as exc:
+                    last_exc = exc
+                    transient = _is_transient_source_error(exc)
+                    can_retry = transient and attempt < max_attempts
+
+                    if can_retry:
+                        LOGGER.warning(
+                            "Timeout/conexión transitoria en %s (intento %s/%s). "
+                            "Se cerrará la conexión Redshift y se reintentará en %.1f s.",
+                            cfg.source_name,
+                            attempt,
+                            max_attempts,
+                            retry_seconds,
+                        )
+                    else:
+                        break
+                finally:
+                    if source is not None:
+                        try:
+                            source.close()
+                        except Exception:
+                            LOGGER.debug(
+                                "No se pudo cerrar limpiamente Redshift para %s.",
+                                cfg.source_name,
+                                exc_info=True,
+                            )
+
+                if retry_seconds > 0:
+                    time.sleep(retry_seconds)
+
+            if result is not None:
                 print(
                     f"{result.status}: {result.source_name} -> {result.target_name} | "
                     f"extraídas={result.rows_extracted} cargadas={result.rows_loaded} | "
@@ -203,12 +278,18 @@ def command_sync(
                 )
                 if result.message:
                     print(result.message)
-            except Exception as exc:
-                failures += 1
-                LOGGER.exception("Falló la tabla %s", cfg.source_name)
-                print(f"FAILED: {cfg.source_name}: {exc}", file=sys.stderr)
+                continue
+
+            failures += 1
+            assert last_exc is not None
+            LOGGER.error(
+                "Falló definitivamente la tabla %s tras %s intento(s): %s",
+                cfg.source_name,
+                max_attempts,
+                last_exc,
+            )
+            print(f"FAILED: {cfg.source_name}: {last_exc}", file=sys.stderr)
     finally:
-        source.close()
         target.close()
     return 1 if failures else 0
 
