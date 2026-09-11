@@ -28,6 +28,8 @@ class Relation:
     schema: str
     name: str
     object_type: str
+    approx_rows: int
+    total_bytes: int
 
 
 def load_config(path: Path) -> dict:
@@ -39,14 +41,30 @@ def relation_id(schema: str, relation: str) -> str:
     return f"{schema}.{relation}"
 
 
+def human_bytes(value: int) -> str:
+    size = float(value)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if size < 1024 or unit == "TB":
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{value} B"
+
+
 def discover_relations(conn: psycopg.Connection, schemas: Iterable[str]) -> list[Relation]:
     schemas = list(schemas)
     query = """
-        SELECT table_schema, table_name, table_type
-        FROM information_schema.tables
-        WHERE table_schema = ANY(%s)
-          AND table_type = 'BASE TABLE'
-        ORDER BY table_schema, table_name
+        SELECT
+            n.nspname AS table_schema,
+            c.relname AS table_name,
+            'BASE TABLE'::text AS table_type,
+            COALESCE(s.n_live_tup, 0)::bigint AS approx_rows,
+            pg_total_relation_size(c.oid)::bigint AS total_bytes
+        FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+        WHERE n.nspname = ANY(%s)
+          AND c.relkind IN ('r', 'p')
+        ORDER BY n.nspname, c.relname
     """
     with conn.cursor() as cur:
         cur.execute(query, (schemas,))
@@ -76,8 +94,6 @@ def discover_columns(conn: psycopg.Connection, relation: Relation) -> list[Colum
         cur.execute(query, (relation.schema, relation.name))
         for name, formatted_type, type_schema, typtype in cur.fetchall():
             target_type = formatted_type
-            # Research replica prioritizes preserving values. Custom enum/domain
-            # types may not exist in Supabase, so store those as text.
             if type_schema != "pg_catalog" and typtype in {"e", "d"}:
                 target_type = "text"
             out.append(ColumnDef(name=name, source_type=formatted_type, target_type=target_type))
@@ -377,8 +393,11 @@ def main() -> int:
         raise SystemExit("Falta SUPABASE_DB_URL.")
 
     schemas = list(schema_map)
-    with psycopg.connect(source_dsn, application_name="medallio_private_export") as source:
-        source.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
+    with psycopg.connect(
+        source_dsn,
+        application_name="medallio_private_export",
+        options="-c default_transaction_read_only=on",
+    ) as source:
         relations = [
             r
             for r in discover_relations(source, schemas)
@@ -386,10 +405,15 @@ def main() -> int:
             and (not only or relation_id(r.schema, r.name) in only)
         ]
 
+        approx_bytes = sum(r.total_bytes for r in relations)
         print(f"Source: {source.info.dbname}")
         print(f"Physical tables discovered: {len(relations)}")
+        print(f"Approx source footprint: {human_bytes(approx_bytes)}")
         for r in relations:
-            print(f"  {r.schema}.{r.name} -> {schema_map[r.schema]}.{r.name}")
+            print(
+                f"  {r.schema}.{r.name} -> {schema_map[r.schema]}.{r.name} "
+                f"approx_rows={r.approx_rows} size={human_bytes(r.total_bytes)}"
+            )
 
         if args.dry_run:
             return 0
@@ -472,8 +496,6 @@ def main() -> int:
                         total_rows += target_rows
                     except Exception as exc:
                         target.rollback()
-                        # Re-open event state without deleting copied data. A failed COPY
-                        # is transactional, so the target table remains empty.
                         start_table_event(target, sync_run_id, relation, target_schema, source_rows)
                         finish_table_event(
                             target,
