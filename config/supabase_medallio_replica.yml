@@ -1,0 +1,30 @@
+version: 1
+
+source_database: medallio_dw
+mode: initial_snapshot
+
+schema_map:
+  raw_cygnus: medallio_raw_cygnus
+  raw_mercado: medallio_raw_mercado
+  staging: medallio_staging
+  core: medallio_core
+  analytics: medallio_analytics
+  etl_control: medallio_etl_control
+  features: medallio_features
+  decision_intelligence: medallio_decision_intelligence
+  model_control: medallio_model_control
+  experiments: medallio_experiments
+  observability: medallio_observability
+
+# Physical tables are the source of truth. Views are derived and are not duplicated
+# by the initial snapshot. Research views are rebuilt later in medallio_research.
+include_object_types:
+  - BASE TABLE
+
+exclude_relations: []
+
+privacy:
+  target_is_private: true
+  expose_to_data_api: false
+  pii_may_exist_in_raw_replica: true
+  research_layer_must_remove_pii: true
