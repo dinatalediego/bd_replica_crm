@@ -17,3 +17,4 @@ config/lead_scoring.yml
 artifacts/
 output/stock_disponible/*.xlsx
 output/movimiento_stock_mensual/*.xlsx
+output/absorcion_historica/**/*.xlsx
