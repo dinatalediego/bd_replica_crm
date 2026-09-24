@@ -57,7 +57,10 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
         name="archivos_procesos",
         files=("sql/80_archivos_procesos/01_view.sql",),
-        expected_relations=("analytics.archivos_procesos",),
+        expected_relations=(
+            "analytics.archivos_contrato_patrones",
+            "analytics.archivos_procesos",
+        ),
     ),
     SchemaComponent(
         name="unidades_multifuente",
