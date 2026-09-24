@@ -67,7 +67,7 @@ def test_archivos_procesos_view_matches_power_query_contract() -> None:
     assert 'name="archivos_procesos"' in schema_sync
     assert "analytics.archivos_procesos" in schema_sync
     assert "create or replace view analytics.archivos_procesos" in sql
-    assert "regularizar.pdf" in sql
+    assert "position('regul' in lower(coalesce(f.nombre::text, ''))) > 0" in sql
     assert 'as "rank"' in sql
     assert "ranking_contrato" in sql
     assert "ranking_pasos" in sql
