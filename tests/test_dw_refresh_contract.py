@@ -83,3 +83,45 @@ def test_full_refresh_removes_obsolete_replica_unique_indexes() -> None:
     assert "def _drop_managed_unique_indexes" in code
     assert "if cfg.key_columns and cfg.strategy == \"incremental\"" in code
     assert "_drop_managed_unique_indexes(conn, cfg)" in code
+
+
+def test_archivos_procesos_classifies_contrato_filenames() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert "create table if not exists analytics.archivos_contrato_patrones" in sql
+    assert "analytics.archivos_contrato_patrones" in sql
+    assert "nombre_normalizado" in sql
+    assert "es_convenio_separacion" in sql
+    assert "es_carta_aprobacion" in sql
+    assert "es_contrato_minuta" in sql
+    assert "tipo_contrato_archivo" in sql
+
+    # Patrones observados en los casos reales compartidos.
+    assert "'convenio'" in sql
+    assert "'pendiente de carta'" in sql
+    assert "'carta'" in sql
+    assert "'minuta'" in sql
+    assert "'contrato'" in sql
+
+    # Solo archivos cuyo montaje sea Contrato pueden clasificarse.
+    assert "lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'" in sql
+    assert "p.activo" in sql
+    assert "position(' ' || p.patron || ' ' in ' ' || n.nombre_normalizado || ' ')" in sql
+
+    # Si no hay una única categoría detectable, el resultado debe quedar incierto.
+    assert "<> 1 then 'incierto'" in " ".join(sql.split())
+
+
+def test_archivos_procesos_appends_classifier_columns_after_existing_rank_contract() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    rank_pos = sql.index('as "rank"')
+    ranking_contrato_pos = sql.index("end as ranking_contrato")
+    ranking_pasos_pos = sql.index("end as ranking_pasos")
+    nombre_normalizado_pos = sql.index("as nombre_normalizado")
+
+    assert rank_pos < ranking_contrato_pos < ranking_pasos_pos < nombre_normalizado_pos
