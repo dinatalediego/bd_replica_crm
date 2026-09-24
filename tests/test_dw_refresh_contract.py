@@ -125,3 +125,11 @@ def test_archivos_procesos_appends_classifier_columns_after_existing_rank_contra
     nombre_normalizado_pos = sql.index("as nombre_normalizado")
 
     assert rank_pos < ranking_contrato_pos < ranking_pasos_pos < nombre_normalizado_pos
+
+
+def test_archivos_procesos_treats_regul_as_blank_document() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert "position('regul' in lower(coalesce(f.nombre::text, ''))) > 0" in sql
