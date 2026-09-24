@@ -106,7 +106,7 @@ def test_archivos_procesos_classifies_contrato_filenames() -> None:
     assert "'contrato'" in sql
 
     # Solo archivos cuyo montaje sea Contrato pueden clasificarse.
-    assert "n.montaje_normalizado = 'contrato'" in sql
+    assert "lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'" in sql
     assert "p.activo" in sql
 
     # Si no hay una única categoría detectable, el resultado debe quedar incierto.
