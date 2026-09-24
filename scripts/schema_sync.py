@@ -91,6 +91,11 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_procedures=("pricing.refresh_fact_proyeccion_pricing()",),
     ),
     SchemaComponent(
+        name="propietarios_equipamiento",
+        files=("sql/70_propietarios_equipamiento/01_view.sql",),
+        expected_relations=("analytics.v_propietarios_equipamiento",),
+    ),
+    SchemaComponent(
         name="observability",
         files=("sql/init_observability.sql",),
         expected_relations=(
