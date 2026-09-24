@@ -73,13 +73,47 @@ flags AS (
         ) AS tiene_pasos_en_blanco
     FROM enriched e
 ),
-normalized AS (
+-- Mantener primero el contrato de columnas histórico de la vista.
+-- Las columnas nuevas se agregan después de Rank/ranking_contrato/ranking_pasos
+-- para que CREATE OR REPLACE VIEW pueda actualizar la vista existente sin romper orden/nombres.
+ranked AS (
     SELECT
         f.*,
+        row_number() OVER (
+            PARTITION BY btrim(f.codigo_proforma::text)
+            ORDER BY f.fecha_carga ASC NULLS LAST, f.entidad_id DESC NULLS LAST
+        )::bigint AS "Rank",
+        CASE
+            WHEN lower(btrim(coalesce(f.montaje::text, ''))) = 'contrato'
+            THEN count(*) FILTER (
+                WHERE lower(btrim(coalesce(f.montaje::text, ''))) = 'contrato'
+            ) OVER (
+                PARTITION BY btrim(f.codigo_proforma::text)
+                ORDER BY f.fecha_carga ASC NULLS LAST, f.entidad_id DESC NULLS LAST
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            )::bigint
+            ELSE NULL
+        END AS ranking_contrato,
+        CASE
+            WHEN lower(btrim(coalesce(f.montaje::text, ''))) = 'proceso adquisicion'
+            THEN count(*) FILTER (
+                WHERE lower(btrim(coalesce(f.montaje::text, ''))) = 'proceso adquisicion'
+            ) OVER (
+                PARTITION BY btrim(f.codigo_proforma::text)
+                ORDER BY f.fecha_carga ASC NULLS LAST, f.entidad_id DESC NULLS LAST
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            )::bigint
+            ELSE NULL
+        END AS ranking_pasos
+    FROM flags f
+),
+normalized AS (
+    SELECT
+        r.*,
         btrim(
             regexp_replace(
                 translate(
-                    lower(coalesce(f.nombre::text, '')),
+                    lower(coalesce(r.nombre::text, '')),
                     'áéíóúüñ',
                     'aeiouun'
                 ),
@@ -88,7 +122,7 @@ normalized AS (
                 'g'
             )
         ) AS nombre_normalizado
-    FROM flags f
+    FROM ranked r
 ),
 classified AS (
     SELECT
@@ -143,37 +177,11 @@ typed AS (
     FROM classified c
 )
 SELECT
-    t.*,
-    row_number() OVER (
-        PARTITION BY btrim(t.codigo_proforma::text)
-        ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
-    )::bigint AS "Rank",
-    CASE
-        WHEN lower(btrim(coalesce(t.montaje::text, ''))) = 'contrato'
-        THEN count(*) FILTER (
-            WHERE lower(btrim(coalesce(t.montaje::text, ''))) = 'contrato'
-        ) OVER (
-            PARTITION BY btrim(t.codigo_proforma::text)
-            ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        )::bigint
-        ELSE NULL
-    END AS ranking_contrato,
-    CASE
-        WHEN lower(btrim(coalesce(t.montaje::text, ''))) = 'proceso adquisicion'
-        THEN count(*) FILTER (
-            WHERE lower(btrim(coalesce(t.montaje::text, ''))) = 'proceso adquisicion'
-        ) OVER (
-            PARTITION BY btrim(t.codigo_proforma::text)
-            ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        )::bigint
-        ELSE NULL
-    END AS ranking_pasos
+    t.*
 FROM typed t;
 
 COMMENT ON TABLE analytics.archivos_contrato_patrones IS
 'Patrones editables para clasificar archivos con montaje Contrato a partir de su nombre normalizado.';
 
 COMMENT ON VIEW analytics.archivos_procesos IS
-'Replica en PostgreSQL de la lógica Power Query archivos_procesos: filtra Proceso Adquisicion/Paso, marca regularizar.pdf, clasifica nombres de archivos de montaje Contrato y calcula Rank, ranking_contrato y ranking_pasos por codigo_proforma.';
+'Replica en PostgreSQL de la lógica Power Query archivos_procesos: filtra Proceso Adquisicion/Paso, marca regularizar.pdf, calcula Rank/rankings y clasifica nombres de archivos cuyo montaje es Contrato.';
