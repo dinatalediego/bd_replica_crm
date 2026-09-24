@@ -54,7 +54,7 @@ enriched AS (
     SELECT
         f.*,
         (
-            lower(btrim(coalesce(f.nombre::text, ''))) = 'regularizar.pdf'
+            position('regul' in lower(coalesce(f.nombre::text, ''))) > 0
         ) AS papel_blanco
     FROM filtered f
 ),
@@ -184,4 +184,4 @@ COMMENT ON TABLE analytics.archivos_contrato_patrones IS
 'Patrones editables para clasificar archivos con montaje Contrato a partir de su nombre normalizado.';
 
 COMMENT ON VIEW analytics.archivos_procesos IS
-'Replica en PostgreSQL de la lógica Power Query archivos_procesos: filtra Proceso Adquisicion/Paso, marca regularizar.pdf, calcula Rank/rankings y clasifica nombres de archivos cuyo montaje es Contrato.';
+'Replica en PostgreSQL de la lógica Power Query archivos_procesos: filtra Proceso Adquisicion/Paso, considera papel_blanco cuando nombre contiene regul, calcula Rank/rankings y clasifica nombres de archivos cuyo montaje es Contrato.';

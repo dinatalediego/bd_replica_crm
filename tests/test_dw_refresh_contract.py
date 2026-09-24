@@ -67,7 +67,7 @@ def test_archivos_procesos_view_matches_power_query_contract() -> None:
     assert 'name="archivos_procesos"' in schema_sync
     assert "analytics.archivos_procesos" in schema_sync
     assert "create or replace view analytics.archivos_procesos" in sql
-    assert "regularizar.pdf" in sql
+    assert "position('regul' in lower(coalesce(f.nombre::text, ''))) > 0" in sql
     assert 'as "rank"' in sql
     assert "ranking_contrato" in sql
     assert "ranking_pasos" in sql
@@ -125,3 +125,11 @@ def test_archivos_procesos_appends_classifier_columns_after_existing_rank_contra
     nombre_normalizado_pos = sql.index("as nombre_normalizado")
 
     assert rank_pos < ranking_contrato_pos < ranking_pasos_pos < nombre_normalizado_pos
+
+
+def test_archivos_procesos_treats_regul_as_blank_document() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert "position('regul' in lower(coalesce(f.nombre::text, ''))) > 0" in sql
