@@ -17,7 +17,10 @@ Redshift
    ↓
 01 RAW sync de todas las tablas enabled=true en config/tables.yml
    ↓
+01b RAW obligatorio: grupocygnus.archivos -> raw_cygnus.archivos
+   ↓
 02 schema sync por checksum
+   ├─ analytics.archivos_procesos
    ├─ CORE commercial
    ├─ Absorption Phase B
    ├─ CORE lifecycle
@@ -88,6 +91,8 @@ Reinstalar únicamente Phase B:
 ## Qué se actualiza automáticamente
 
 - Todas las tablas Redshift declaradas en `config/tables.yml` con `enabled: true`.
+- `grupocygnus.archivos` mediante `config/hourly_required_tables.yml`, usando `full_refresh` para no colapsar varios archivos de una misma `codigo_proforma`.
+- `analytics.archivos_procesos`, como vista derivada de `raw_cygnus.archivos` con `papel_blanco`, `contrato_con_papel_blanco`, `tiene_pasos_en_blanco`, `Rank`, `ranking_contrato` y `ranking_pasos`.
 - Las dimensiones CORE.
 - `analytics.unidades_powerbi`.
 - El ciclo comercial y absorción incremental.
@@ -99,6 +104,8 @@ Reinstalar únicamente Phase B:
 ## Límites intencionales
 
 Una tabla nueva de Redshift no se incorpora automáticamente si nunca fue declarada en `config/tables.yml`: todavía se requieren llave, watermark y estrategia verificadas. Esta barrera evita copiar tablas desconocidas con una granularidad incorrecta.
+
+`archivos` es una excepción versionada y explícita porque una `codigo_proforma` puede tener múltiples archivos. Por eso no se usa la llave sugerida automáticamente `[codigo_proforma]` para un UPSERT incremental: el refresh horario usa reemplazo completo y preserva todas las filas antes de construir `analytics.archivos_procesos`.
 
 `raw_mercado` tampoco inventa una fuente nueva por sí solo: cuando cambie el CSV/Excel de mercado debe cargarse mediante su loader. Una vez cargado, las vistas multifuente se mantienen dentro del refresh maestro.
 

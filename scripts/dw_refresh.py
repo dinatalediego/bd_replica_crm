@@ -61,6 +61,17 @@ def _steps() -> tuple[Step, ...]:
             (py, "-m", "replica_cygnus.cli", "sync"),
         ),
         Step(
+            "01b_archivos_raw_sync",
+            (
+                py,
+                "-m",
+                "replica_cygnus.cli",
+                "--config",
+                "config/hourly_required_tables.yml",
+                "sync",
+            ),
+        ),
+        Step(
             "02_schema_sync",
             (py, str(ROOT / "scripts" / "schema_sync.py")),
         ),

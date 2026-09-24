@@ -55,6 +55,11 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_relations=("analytics.unidades_powerbi",),
     ),
     SchemaComponent(
+        name="archivos_procesos",
+        files=("sql/80_archivos_procesos/01_view.sql",),
+        expected_relations=("analytics.archivos_procesos",),
+    ),
+    SchemaComponent(
         name="unidades_multifuente",
         files=(
             "sql/40_unidades_multifuente/00_add_tipologia_ubicacion.sql",
