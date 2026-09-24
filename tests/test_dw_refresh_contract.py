@@ -112,3 +112,16 @@ def test_archivos_procesos_classifies_contrato_filenames() -> None:
 
     # Si no hay una única categoría detectable, el resultado debe quedar incierto.
     assert "<> 1 then 'incierto'" in " ".join(sql.split())
+
+
+def test_archivos_procesos_appends_classifier_columns_after_existing_rank_contract() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    rank_pos = sql.index('as "rank"')
+    ranking_contrato_pos = sql.index("end as ranking_contrato")
+    ranking_pasos_pos = sql.index("end as ranking_pasos")
+    nombre_normalizado_pos = sql.index("as nombre_normalizado")
+
+    assert rank_pos < ranking_contrato_pos < ranking_pasos_pos < nombre_normalizado_pos
