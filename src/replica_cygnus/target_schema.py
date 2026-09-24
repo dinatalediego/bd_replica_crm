@@ -154,10 +154,10 @@ def _ensure_unique_index(conn: Connection, cfg: TableConfig) -> None:
     columns = sql.SQL(", ").join(sql.Identifier(name) for name in cfg.key_columns)
 
     try:
+        # Elimina únicamente índices gestionados por esta réplica (prefijo ux_replica_)
+        # que hayan quedado obsoletos para la misma tabla.
+        managed_indexes = _managed_unique_indexes(conn, cfg)
         with conn.cursor() as cursor:
-            # Elimina únicamente índices gestionados por esta réplica (prefijo ux_replica_)
-            # que hayan quedado obsoletos para la misma tabla.
-            managed_indexes = _managed_unique_indexes(conn, cfg)
             for existing_name in managed_indexes:
                 if existing_name != index_name:
                     cursor.execute(
