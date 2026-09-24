@@ -100,7 +100,7 @@ classified AS (
                 FROM analytics.archivos_contrato_patrones p
                 WHERE p.activo
                   AND p.tipo_contrato = 'Convenio de Separacion'
-                  AND position(p.patron in n.nombre_normalizado) > 0
+                  AND position(' ' || p.patron || ' ' in ' ' || n.nombre_normalizado || ' ') > 0
             )
         ) AS es_convenio_separacion,
         (
@@ -110,7 +110,7 @@ classified AS (
                 FROM analytics.archivos_contrato_patrones p
                 WHERE p.activo
                   AND p.tipo_contrato = 'carta de aprobacion'
-                  AND position(p.patron in n.nombre_normalizado) > 0
+                  AND position(' ' || p.patron || ' ' in ' ' || n.nombre_normalizado || ' ') > 0
             )
         ) AS es_carta_aprobacion,
         (
@@ -120,7 +120,7 @@ classified AS (
                 FROM analytics.archivos_contrato_patrones p
                 WHERE p.activo
                   AND p.tipo_contrato = 'contrato o minuta'
-                  AND position(p.patron in n.nombre_normalizado) > 0
+                  AND position(' ' || p.patron || ' ' in ' ' || n.nombre_normalizado || ' ') > 0
             )
         ) AS es_contrato_minuta
     FROM normalized n
