@@ -73,3 +73,13 @@ def test_archivos_procesos_view_matches_power_query_contract() -> None:
     assert "ranking_pasos" in sql
     assert "= 'contrato'" in sql
     assert "= 'proceso adquisicion'" in sql
+
+
+def test_full_refresh_removes_obsolete_replica_unique_indexes() -> None:
+    code = (ROOT / "src" / "replica_cygnus" / "target_schema.py").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert "def _drop_managed_unique_indexes" in code
+    assert "if cfg.key_columns and cfg.strategy == \"incremental\"" in code
+    assert "_drop_managed_unique_indexes(conn, cfg)" in code
