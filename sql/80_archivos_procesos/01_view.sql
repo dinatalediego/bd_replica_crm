@@ -79,8 +79,7 @@ classified AS (
                 FROM unnest(pc.contrato_minuta) AS p(patron)
                 WHERE position(p.patron in n.nombre_normalizado) > 0
             )
-        ) AS es_contrato_minuta,
-        n.montaje_normalizado
+        ) AS es_contrato_minuta
     FROM flags f
     CROSS JOIN pattern_config pc
     CROSS JOIN LATERAL (
@@ -104,7 +103,7 @@ typed AS (
     SELECT
         c.*,
         CASE
-            WHEN c.montaje_normalizado <> 'contrato' THEN NULL
+            WHEN lower(btrim(coalesce(c.montaje::text, ''))) <> 'contrato' THEN NULL
             WHEN (
                 c.es_convenio_separacion::int
                 + c.es_carta_aprobacion::int
@@ -124,9 +123,9 @@ SELECT
         ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
     )::bigint AS "Rank",
     CASE
-        WHEN t.montaje_normalizado = 'contrato'
+        WHEN lower(btrim(coalesce(t.montaje::text, ''))) = 'contrato'
         THEN count(*) FILTER (
-            WHERE t.montaje_normalizado = 'contrato'
+            WHERE lower(btrim(coalesce(t.montaje::text, ''))) = 'contrato'
         ) OVER (
             PARTITION BY btrim(t.codigo_proforma::text)
             ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
@@ -135,9 +134,9 @@ SELECT
         ELSE NULL
     END AS ranking_contrato,
     CASE
-        WHEN t.montaje_normalizado = 'proceso adquisicion'
+        WHEN lower(btrim(coalesce(t.montaje::text, ''))) = 'proceso adquisicion'
         THEN count(*) FILTER (
-            WHERE t.montaje_normalizado = 'proceso adquisicion'
+            WHERE lower(btrim(coalesce(t.montaje::text, ''))) = 'proceso adquisicion'
         ) OVER (
             PARTITION BY btrim(t.codigo_proforma::text)
             ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
