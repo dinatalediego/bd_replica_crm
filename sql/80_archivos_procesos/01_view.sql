@@ -87,15 +87,14 @@ normalized AS (
                 ' ',
                 'g'
             )
-        ) AS nombre_normalizado,
-        lower(btrim(coalesce(f.montaje::text, ''))) AS montaje_normalizado
+        ) AS nombre_normalizado
     FROM flags f
 ),
 classified AS (
     SELECT
         n.*,
         (
-            n.montaje_normalizado = 'contrato'
+            lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -105,7 +104,7 @@ classified AS (
             )
         ) AS es_convenio_separacion,
         (
-            n.montaje_normalizado = 'contrato'
+            lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -115,7 +114,7 @@ classified AS (
             )
         ) AS es_carta_aprobacion,
         (
-            n.montaje_normalizado = 'contrato'
+            lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -130,7 +129,7 @@ typed AS (
     SELECT
         c.*,
         CASE
-            WHEN c.montaje_normalizado <> 'contrato' THEN NULL
+            WHEN lower(btrim(coalesce(c.montaje::text, ''))) <> 'contrato' THEN NULL
             WHEN (
                 c.es_convenio_separacion::int
                 + c.es_carta_aprobacion::int
@@ -150,9 +149,9 @@ SELECT
         ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
     )::bigint AS "Rank",
     CASE
-        WHEN t.montaje_normalizado = 'contrato'
+        WHEN lower(btrim(coalesce(t.montaje::text, ''))) = 'contrato'
         THEN count(*) FILTER (
-            WHERE t.montaje_normalizado = 'contrato'
+            WHERE lower(btrim(coalesce(t.montaje::text, ''))) = 'contrato'
         ) OVER (
             PARTITION BY btrim(t.codigo_proforma::text)
             ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
@@ -161,9 +160,9 @@ SELECT
         ELSE NULL
     END AS ranking_contrato,
     CASE
-        WHEN t.montaje_normalizado = 'proceso adquisicion'
+        WHEN lower(btrim(coalesce(t.montaje::text, ''))) = 'proceso adquisicion'
         THEN count(*) FILTER (
-            WHERE t.montaje_normalizado = 'proceso adquisicion'
+            WHERE lower(btrim(coalesce(t.montaje::text, ''))) = 'proceso adquisicion'
         ) OVER (
             PARTITION BY btrim(t.codigo_proforma::text)
             ORDER BY t.fecha_carga ASC NULLS LAST, t.entidad_id DESC NULLS LAST
