@@ -90,7 +90,8 @@ def test_archivos_procesos_classifies_contrato_filenames() -> None:
         encoding="utf-8"
     ).lower()
 
-    assert "pattern_config" in sql
+    assert "create table if not exists analytics.archivos_contrato_patrones" in sql
+    assert "analytics.archivos_contrato_patrones" in sql
     assert "nombre_normalizado" in sql
     assert "es_convenio_separacion" in sql
     assert "es_carta_aprobacion" in sql
@@ -106,6 +107,7 @@ def test_archivos_procesos_classifies_contrato_filenames() -> None:
 
     # Solo archivos cuyo montaje sea Contrato pueden clasificarse.
     assert "n.montaje_normalizado = 'contrato'" in sql
+    assert "p.activo" in sql
 
     # Si no hay una única categoría detectable, el resultado debe quedar incierto.
     assert "<> 1 then 'incierto'" in " ".join(sql.split())
