@@ -130,6 +130,7 @@ classified AS (
         n.*,
         (
             lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
+            AND NOT n.papel_blanco
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -140,6 +141,7 @@ classified AS (
         ) AS es_convenio_separacion,
         (
             lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
+            AND NOT n.papel_blanco
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -150,6 +152,7 @@ classified AS (
         ) AS es_carta_aprobacion,
         (
             lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
+            AND NOT n.papel_blanco
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
