@@ -76,6 +76,10 @@ def _steps() -> tuple[Step, ...]:
             (py, str(ROOT / "scripts" / "schema_sync.py")),
         ),
         Step(
+            "02b_clientes_calidad_refresh",
+            (py, str(ROOT / "scripts" / "refresh_clientes_calidad.py")),
+        ),
+        Step(
             "03_core_commercial_refresh",
             (py, str(ROOT / "scripts" / "core_commercial.py"), "refresh"),
         ),
@@ -105,7 +109,7 @@ def _steps() -> tuple[Step, ...]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Refresh maestro de Medallio DW: RAW -> schema -> CORE -> analytics -> "
+            "Refresh maestro de Medallio DW: RAW -> schema -> staging DQ -> CORE -> analytics -> "
             "lifecycle -> pricing -> materialized views -> observabilidad."
         )
     )
