@@ -146,3 +146,11 @@ def test_archivos_procesos_adds_human_readable_file_classifier() -> None:
 
     assert "position('documento_' in lower(coalesce(f.nombre::text, ''))) = 1" in sql
     assert "when c.papel_blanco then 'en blanco'" in sql
+
+
+def test_blank_placeholders_do_not_count_as_identified_document_types() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert sql.count("and not n.papel_blanco") >= 3
