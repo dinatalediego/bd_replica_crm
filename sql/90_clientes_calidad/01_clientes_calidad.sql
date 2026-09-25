@@ -308,7 +308,7 @@ BEGIN
             ) AS dq_documento_ok,
             (
                 p.dq_email_limpio IS NOT NULL
-                AND p.dq_email_limpio ~* '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+
+                AND p.dq_email_limpio ~* '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$'
             ) AS dq_email_ok,
             p.dq_proyecto IS NOT NULL AS dq_proyecto_ok,
             p.dq_asesor_comercial IS NOT NULL AS dq_asesor_ok,
