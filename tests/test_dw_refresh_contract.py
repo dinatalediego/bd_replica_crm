@@ -133,3 +133,24 @@ def test_archivos_procesos_treats_regul_as_blank_document() -> None:
     ).lower()
 
     assert "position('regul' in lower(coalesce(f.nombre::text, ''))) > 0" in sql
+
+
+def test_archivos_procesos_adds_human_readable_file_classifier() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert "clasificador_archivo" in sql
+    for value in ("'convenio'", "'carta de aprobacion'", "'minuta'", "'incierto'", "'en blanco'"):
+        assert value in sql
+
+    assert "position('documento_' in lower(coalesce(f.nombre::text, ''))) = 1" in sql
+    assert "when c.papel_blanco then 'en blanco'" in sql
+
+
+def test_blank_placeholders_do_not_count_as_identified_document_types() -> None:
+    sql = (ROOT / "sql" / "80_archivos_procesos" / "01_view.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert sql.count("and not n.papel_blanco") >= 3

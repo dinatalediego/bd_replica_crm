@@ -55,6 +55,7 @@ enriched AS (
         f.*,
         (
             position('regul' in lower(coalesce(f.nombre::text, ''))) > 0
+            OR position('documento_' in lower(coalesce(f.nombre::text, ''))) = 1
         ) AS papel_blanco
     FROM filtered f
 ),
@@ -129,6 +130,7 @@ classified AS (
         n.*,
         (
             lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
+            AND NOT n.papel_blanco
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -139,6 +141,7 @@ classified AS (
         ) AS es_convenio_separacion,
         (
             lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
+            AND NOT n.papel_blanco
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -149,6 +152,7 @@ classified AS (
         ) AS es_carta_aprobacion,
         (
             lower(btrim(coalesce(n.montaje::text, ''))) = 'contrato'
+            AND NOT n.papel_blanco
             AND EXISTS (
                 SELECT 1
                 FROM analytics.archivos_contrato_patrones p
@@ -173,7 +177,20 @@ typed AS (
             WHEN c.es_carta_aprobacion THEN 'carta de aprobacion'
             WHEN c.es_contrato_minuta THEN 'contrato o minuta'
             ELSE 'incierto'
-        END AS tipo_contrato_archivo
+        END AS tipo_contrato_archivo,
+        CASE
+            WHEN c.papel_blanco THEN 'en blanco'
+            WHEN lower(btrim(coalesce(c.montaje::text, ''))) <> 'contrato' THEN 'incierto'
+            WHEN (
+                c.es_convenio_separacion::int
+                + c.es_carta_aprobacion::int
+                + c.es_contrato_minuta::int
+            ) <> 1 THEN 'incierto'
+            WHEN c.es_convenio_separacion THEN 'convenio'
+            WHEN c.es_carta_aprobacion THEN 'carta de aprobacion'
+            WHEN c.es_contrato_minuta THEN 'minuta'
+            ELSE 'incierto'
+        END AS clasificador_archivo
     FROM classified c
 )
 SELECT
@@ -184,4 +201,4 @@ COMMENT ON TABLE analytics.archivos_contrato_patrones IS
 'Patrones editables para clasificar archivos con montaje Contrato a partir de su nombre normalizado.';
 
 COMMENT ON VIEW analytics.archivos_procesos IS
-'Replica en PostgreSQL de la lógica Power Query archivos_procesos: filtra Proceso Adquisicion/Paso, considera papel_blanco cuando nombre contiene regul, calcula Rank/rankings y clasifica nombres de archivos cuyo montaje es Contrato.';
+'Replica en PostgreSQL de la lógica Power Query archivos_procesos: filtra Proceso Adquisicion/Paso, considera papel_blanco cuando nombre contiene regul o empieza por Documento_, calcula Rank/rankings y clasifica archivos como convenio, carta de aprobacion, minuta, incierto o en blanco.';

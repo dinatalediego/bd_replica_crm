@@ -8,7 +8,8 @@ La vista `analytics.archivos_procesos` clasifica únicamente filas con `montaje 
 - `es_convenio_separacion`: booleano.
 - `es_carta_aprobacion`: booleano.
 - `es_contrato_minuta`: booleano.
-- `tipo_contrato_archivo`: categoría final; si no existe exactamente una coincidencia queda `incierto`.
+- `tipo_contrato_archivo`: categoría contractual detallada; si no existe exactamente una coincidencia queda `incierto`.
+- `clasificador_archivo`: etiqueta operativa simple con uno de estos valores: `convenio`, `carta de aprobacion`, `minuta`, `incierto` o `en blanco`.
 
 Las filas cuyo `montaje` no es `Contrato` dejan `tipo_contrato_archivo` en NULL.
 
@@ -66,10 +67,18 @@ WHERE tipo_contrato = 'carta de aprobacion'
 | MINUTA_-_VILLENA_ALVAREZ_ROMULO_-_A2502.pdf | contrato o minuta |
 | MINUTA_MATERA_-_SAAVEDRA_VELASQUEZ_MONICA_-A702.pdf | contrato o minuta |
 | MINUTA_FINAL_-_MUÑOZ_ROSAS_LIDIA_-_1104.pdf | contrato o minuta |
-| Regularizar.pdf | incierto |
+| Regularizar.pdf | en blanco |
+| Documento_12345.pdf | en blanco |
 | Captura_de_pantalla_2026-07-18_125034.pdf | incierto |
 
 ## Regla conservadora
 
 Si un nombre coincide con cero categorías o con más de una categoría, la categoría final es `incierto`.
 Esto evita resolver automáticamente una ambigüedad con una prioridad arbitraria.
+
+
+## Regla de papel en blanco
+
+`papel_blanco = true` cuando el nombre contiene `regul` o cuando empieza por `Documento_` (sin distinguir mayúsculas/minúsculas).
+
+El clasificador evalúa `papel_blanco` primero, por lo que esos archivos siempre se etiquetan como `en blanco` aunque el resto del nombre contenga palabras como contrato o minuta.
