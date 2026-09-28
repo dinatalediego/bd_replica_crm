@@ -70,7 +70,7 @@ def _client_catalog(
         SELECT
             source_id, documento, numero_documento, nombres, apellidos,
             dq_nombre_cliente, dq_celular_limpio, dq_email_limpio,
-            dq_medio_captacion, dq_score_cliente, dq_contacto_valido_ok
+            medio_captacion, dq_medio_captacion, dq_score_cliente, dq_contacto_valido_ok
         FROM staging.clientes_calidad
         """,
     )
@@ -144,21 +144,21 @@ def _load_leads(cur, start_year: int, by_doc, by_dni, by_source_id) -> list[Lead
         cur,
         """
         SELECT
-            id::text AS source_id,
-            codigo_proyecto::text AS codigo_proyecto,
-            documento_cliente::text AS documento_cliente,
-            to_jsonb(raw_cygnus.clientes_proyectos) ->> 'cliente_id' AS source_cliente_id,
-            fecha_creacion, fecha_actualizacion,
-            canal_entrada::text AS canal_entrada,
-            medio_captacion::text AS medio_captacion,
-            nivel_interes::text AS nivel_interes,
-            fecha_asignacion,
-            vendedor_asignado::text AS vendedor_asignado,
-            segmento::text AS segmento,
-            utm_source::text AS utm_source,
-            utm_medium::text AS utm_medium
-        FROM raw_cygnus.clientes_proyectos
-        WHERE fecha_creacion >= %s
+            cp.id::text AS source_id,
+            cp.codigo_proyecto::text AS codigo_proyecto,
+            cp.documento_cliente::text AS documento_cliente,
+            to_jsonb(cp) ->> 'cliente_id' AS source_cliente_id,
+            cp.fecha_creacion, cp.fecha_actualizacion,
+            cp.canal_entrada::text AS canal_entrada,
+            cp.medio_captacion::text AS medio_captacion,
+            cp.nivel_interes::text AS nivel_interes,
+            cp.fecha_asignacion,
+            cp.vendedor_asignado::text AS vendedor_asignado,
+            cp.segmento::text AS segmento,
+            cp.utm_source::text AS utm_source,
+            cp.utm_medium::text AS utm_medium
+        FROM raw_cygnus.clientes_proyectos cp
+        WHERE cp.fecha_creacion >= %s
         """,
         (start_date,),
     )
@@ -166,22 +166,22 @@ def _load_leads(cur, start_year: int, by_doc, by_dni, by_source_id) -> list[Lead
         cur,
         """
         SELECT
-            id::text AS source_id,
-            codigo_proyecto::text AS codigo_proyecto,
-            documento_cliente::text AS documento_cliente,
-            to_jsonb(raw_cygnus.interacciones) ->> 'cliente_id' AS source_cliente_id,
-            fecha_creacion, fecha_actualizacion,
-            canal_entrada::text AS canal_entrada,
-            medio_captacion::text AS medio_captacion,
-            nivel_interes::text AS nivel_interes,
-            tipo::text AS tipo_interaccion,
-            nombre::text AS nombre_interaccion,
-            segmento::text AS segmento,
-            utm_source::text AS utm_source,
-            utm_medium::text AS utm_medium
-        FROM raw_cygnus.interacciones
-        WHERE lower(btrim(nombre::text)) = 'portal inmobiliario'
-          AND fecha_creacion >= %s
+            i.id::text AS source_id,
+            i.codigo_proyecto::text AS codigo_proyecto,
+            i.documento_cliente::text AS documento_cliente,
+            to_jsonb(i) ->> 'cliente_id' AS source_cliente_id,
+            i.fecha_creacion, i.fecha_actualizacion,
+            i.canal_entrada::text AS canal_entrada,
+            i.medio_captacion::text AS medio_captacion,
+            i.nivel_interes::text AS nivel_interes,
+            i.tipo::text AS tipo_interaccion,
+            i.nombre::text AS nombre_interaccion,
+            i.segmento::text AS segmento,
+            i.utm_source::text AS utm_source,
+            i.utm_medium::text AS utm_medium
+        FROM raw_cygnus.interacciones i
+        WHERE lower(btrim(i.nombre::text)) = 'portal inmobiliario'
+          AND i.fecha_creacion >= %s
         """,
         (start_date,),
     )
@@ -209,7 +209,11 @@ def _load_leads(cur, start_year: int, by_doc, by_dni, by_source_id) -> list[Lead
                 "dni": identity.dni or None,
                 "celular": identity.phone or None,
                 "email": identity.email or None,
-                "medio_cliente": client.get("dq_medio_captacion") if client else None,
+                "medio_cliente": (
+                    client.get("medio_captacion") or client.get("dq_medio_captacion")
+                    if client
+                    else None
+                ),
                 "person_key": identity.preferred_person_key() or None,
                 "duplicado_en_origen": False,
                 "lead_origen_uid": None,
@@ -329,7 +333,11 @@ def _load_buyers(cur, start_year: int, by_doc, by_dni, by_source_id) -> list[Buy
             "dni": identity.dni or None,
             "celular": identity.phone or None,
             "email": identity.email or None,
-            "medio_cliente": client.get("dq_medio_captacion") if client else None,
+            "medio_cliente": (
+                    client.get("medio_captacion") or client.get("dq_medio_captacion")
+                    if client
+                    else None
+                ),
             "person_key": identity.preferred_person_key() or None,
             "filas_proceso_deduplicadas": len(members),
         }
