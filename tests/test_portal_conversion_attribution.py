@@ -6,6 +6,7 @@ from scripts.refresh_portal_conversion import (
     _apply_origin_priority,
     _assign_unique_conversions,
     _conversion_key,
+    _identity_from_client,
 )
 
 
@@ -88,3 +89,22 @@ def test_one_person_conversion_is_attributed_only_once() -> None:
 
     assert sum(bool(match["conversion_atribuida"]) for match in matches) == 1
     assert matches[0]["conversion_atribuida"] is True
+
+
+def test_client_document_recovers_real_dni_from_auto_source_document() -> None:
+    identity = _identity_from_client(
+        "auto-123456789",
+        {
+            "source_id": "42",
+            "documento": "70856177",
+            "numero_documento": None,
+            "dq_nombre_cliente": "Diego Di Natale",
+            "nombres": "Diego",
+            "apellidos": "Di Natale",
+            "dq_celular_limpio": "987654321",
+            "dq_email_limpio": "diego@example.com",
+        },
+    )
+
+    assert identity.source_document == "auto-123456789"
+    assert identity.dni == "70856177"
