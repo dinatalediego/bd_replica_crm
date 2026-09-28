@@ -57,7 +57,13 @@ def _fetch_dicts(cur, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, 
     return [dict(zip(columns, row)) for row in cur.fetchall()]
 
 
-def _client_catalog(cur) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+def _client_catalog(
+    cur,
+) -> tuple[
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+]:
     rows = _fetch_dicts(
         cur,
         """
@@ -78,7 +84,14 @@ def _client_catalog(cur) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str,
 
     by_doc: dict[str, dict[str, Any]] = {}
     by_dni: dict[str, dict[str, Any]] = {}
+    by_source_id: dict[str, dict[str, Any]] = {}
     for row in rows:
+        source_id = normalize_source_document(row.get("source_id"))
+        if source_id and (
+            source_id not in by_source_id
+            or quality_key(row) > quality_key(by_source_id[source_id])
+        ):
+            by_source_id[source_id] = row
         raw_doc = row.get("documento") or row.get("numero_documento")
         doc_key = normalize_source_document(raw_doc)
         dni = normalize_dni(raw_doc)
@@ -86,10 +99,19 @@ def _client_catalog(cur) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str,
             by_doc[doc_key] = row
         if dni and (dni not in by_dni or quality_key(row) > quality_key(by_dni[dni])):
             by_dni[dni] = row
-    return by_doc, by_dni
+    return by_doc, by_dni, by_source_id
 
 
-def _find_client(document: Any, by_doc, by_dni) -> dict[str, Any] | None:
+def _find_client(
+    document: Any,
+    client_id: Any,
+    by_doc,
+    by_dni,
+    by_source_id,
+) -> dict[str, Any] | None:
+    source_id = normalize_source_document(client_id)
+    if source_id and source_id in by_source_id:
+        return by_source_id[source_id]
     doc_key = normalize_source_document(document)
     if doc_key and doc_key in by_doc:
         return by_doc[doc_key]
@@ -116,7 +138,7 @@ def _identity_from_client(
     return PersonIdentity.build(source_document=document, dni=document, name=fallback_name)
 
 
-def _load_leads(cur, start_year: int, by_doc, by_dni) -> list[LeadRow]:
+def _load_leads(cur, start_year: int, by_doc, by_dni, by_source_id) -> list[LeadRow]:
     start_date = datetime(start_year, 1, 1)
     origin = _fetch_dicts(
         cur,
@@ -125,6 +147,7 @@ def _load_leads(cur, start_year: int, by_doc, by_dni) -> list[LeadRow]:
             id::text AS source_id,
             codigo_proyecto::text AS codigo_proyecto,
             documento_cliente::text AS documento_cliente,
+            to_jsonb(raw_cygnus.clientes_proyectos) ->> 'cliente_id' AS source_cliente_id,
             fecha_creacion, fecha_actualizacion,
             canal_entrada::text AS canal_entrada,
             medio_captacion::text AS medio_captacion,
@@ -146,6 +169,7 @@ def _load_leads(cur, start_year: int, by_doc, by_dni) -> list[LeadRow]:
             id::text AS source_id,
             codigo_proyecto::text AS codigo_proyecto,
             documento_cliente::text AS documento_cliente,
+            to_jsonb(raw_cygnus.interacciones) ->> 'cliente_id' AS source_cliente_id,
             fecha_creacion, fecha_actualizacion,
             canal_entrada::text AS canal_entrada,
             medio_captacion::text AS medio_captacion,
@@ -166,7 +190,13 @@ def _load_leads(cur, start_year: int, by_doc, by_dni) -> list[LeadRow]:
     for source_name, rows in (("ORIGEN", origin), ("MEDIO_ACTUAL", current)):
         for row in rows:
             document = row.get("documento_cliente")
-            client = _find_client(document, by_doc, by_dni)
+            client = _find_client(
+                document,
+                row.get("source_cliente_id"),
+                by_doc,
+                by_dni,
+                by_source_id,
+            )
             identity = _identity_from_client(document, client)
             data = {
                 **row,
@@ -229,7 +259,7 @@ def _conversion_key(identity: PersonIdentity, row: dict[str, Any]) -> str:
     return f"process:{row.get('proceso_id')}|{row.get('codigo_proforma')}"
 
 
-def _load_buyers(cur, start_year: int, by_doc, by_dni) -> list[BuyerRow]:
+def _load_buyers(cur, start_year: int, by_doc, by_dni, by_source_id) -> list[BuyerRow]:
     start_date = datetime(start_year, 1, 1)
     rows = _fetch_dicts(
         cur,
@@ -241,6 +271,7 @@ def _load_buyers(cur, start_year: int, by_doc, by_dni) -> list[BuyerRow]:
             p.codigo_unidad::text AS codigo_unidad,
             p.codigo_proforma::text AS codigo_proforma,
             p.documento_cliente::text AS documento_cliente,
+            to_jsonb(p) ->> 'cliente_id' AS source_cliente_id,
             p.fecha_inicio AS fecha_separacion,
             p.nombres_cliente::text AS nombres_proceso,
             p.apellidos_cliente::text AS apellidos_proceso
@@ -255,7 +286,13 @@ def _load_buyers(cur, start_year: int, by_doc, by_dni) -> list[BuyerRow]:
     grouped: dict[str, list[tuple[dict[str, Any], PersonIdentity, dict[str, Any] | None]]] = defaultdict(list)
     for row in rows:
         document = row.get("documento_cliente")
-        client = _find_client(document, by_doc, by_dni)
+        client = _find_client(
+            document,
+            row.get("source_cliente_id"),
+            by_doc,
+            by_dni,
+            by_source_id,
+        )
         fallback_name = " ".join(
             part for part in [row.get("nombres_proceso"), row.get("apellidos_proceso")] if part
         )
@@ -590,9 +627,9 @@ def main() -> int:
                     raise RuntimeError(
                         f"Falta {relation}; ejecutar RAW/schema/clientes_calidad antes del mart de portales"
                     )
-            by_doc, by_dni = _client_catalog(cur)
-            leads = _load_leads(cur, args.start_year, by_doc, by_dni)
-            buyers = _load_buyers(cur, args.start_year, by_doc, by_dni)
+            by_doc, by_dni, by_source_id = _client_catalog(cur)
+            leads = _load_leads(cur, args.start_year, by_doc, by_dni, by_source_id)
+            buyers = _load_buyers(cur, args.start_year, by_doc, by_dni, by_source_id)
 
         matches = _match_leads(leads, buyers)
         print("[PORTAL_CONVERSION] " + _summary(leads, buyers, matches))
