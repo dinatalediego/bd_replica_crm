@@ -31,6 +31,8 @@ Redshift
    ↓
 02b staging.clientes_calidad refresh + health gate
    ↓
+02c portal conversion attribution (ORIGEN > MEDIO_ACTUAL, conversion única por persona)
+   ↓
 03 CORE commercial refresh
    ↓
 04 analytics.unidades_powerbi
@@ -96,6 +98,7 @@ Reinstalar únicamente Phase B:
 - Todas las tablas Redshift declaradas en `config/tables.yml` con `enabled: true`.
 - `grupocygnus.archivos` mediante `config/hourly_required_tables.yml`, usando `full_refresh` para no colapsar varios archivos de una misma `codigo_proforma`.
 - `staging.clientes_calidad`, como contrato DQ derivado de `raw_cygnus.clientes`, incluyendo limpieza de DNI/contacto, prioridad `celulares -> telefono`, clasificación de números extranjeros, flags `dq_*` y score de calidad.
+- `staging.portal_leads_base`, `staging.portal_compradores_base` y `analytics.portal_lead_match`, para atribución lead -> Separacion Activo por medio de captación, con prioridad ORIGEN y deduplicación por DNI/persona.
 - `analytics.archivos_procesos`, como vista derivada de `raw_cygnus.archivos` con `papel_blanco`, `contrato_con_papel_blanco`, `tiene_pasos_en_blanco`, `Rank`, `ranking_contrato` y `ranking_pasos`.
 - Las dimensiones CORE.
 - `analytics.unidades_powerbi`.

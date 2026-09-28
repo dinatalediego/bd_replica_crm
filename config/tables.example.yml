@@ -27,6 +27,15 @@ tables:
     enabled: false
 
   - source_schema: grupocygnus
+    source_table: interacciones
+    target_table: interacciones
+    key_columns: [id]                 # Requerida por portal conversion attribution
+    watermark_column: fecha_actualizacion
+    strategy: incremental
+    lookback_hours: 72
+    enabled: false
+
+  - source_schema: grupocygnus
     source_table: procesos
     target_table: procesos
     key_columns: [id]                 # CONFIRMAR
