@@ -72,6 +72,18 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_procedures=("staging.refresh_clientes_calidad()",),
     ),
     SchemaComponent(
+        name="portal_conversion",
+        files=("sql/95_portal_conversion/01_contract.sql",),
+        expected_relations=(
+            "staging.portal_leads_base",
+            "staging.portal_compradores_base",
+            "analytics.portal_lead_match",
+            "analytics.v_portal_conversion_export",
+            "analytics.v_portal_conversion_medio_total",
+            "analytics.v_portal_conversion_health",
+        ),
+    ),
+    SchemaComponent(
         name="unidades_multifuente",
         files=(
             "sql/40_unidades_multifuente/00_add_tipologia_ubicacion.sql",
