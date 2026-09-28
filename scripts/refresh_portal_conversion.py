@@ -128,9 +128,10 @@ def _identity_from_client(
         name = client.get("dq_nombre_cliente") or " ".join(
             part for part in [client.get("nombres"), client.get("apellidos")] if part
         )
+        client_document = client.get("documento") or client.get("numero_documento")
         return PersonIdentity.build(
-            source_document=document,
-            dni=document,
+            source_document=document or client_document or client.get("source_id"),
+            dni=client_document or document,
             name=name,
             phone=client.get("dq_celular_limpio"),
             email=client.get("dq_email_limpio"),
