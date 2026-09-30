@@ -94,6 +94,11 @@ def _parser() -> argparse.ArgumentParser:
     sync.add_argument("--max-rows", type=int, help="Límite de seguridad para una prueba.")
     sync.add_argument("--dry-run", action="store_true", help="Muestra la consulta sin extraer filas.")
 
+    sync.add_argument("--due-only", action="store_true", help="Consulta solo fuentes vencidas según Medallio.")
+    sync.add_argument("--additional-config", action="append", default=[])
+    watch = sub.add_parser("watch", help="Frescura y errores desde PostgreSQL; cero Redshift.")
+    watch.add_argument("--additional-config", action="append", default=[])
+
     status = sub.add_parser("status", help="Muestra las ejecuciones recientes.")
     status.add_argument("--limit", type=int, default=30)
 
@@ -209,9 +214,12 @@ def command_sync(
     include_disabled: bool,
     max_rows: int | None,
     dry_run: bool,
+    due_only: bool = False,
+    additional_configs: tuple[Path, ...] = (),
 ) -> int:
+    from .source_gate import merged_configs, due_configs
     configs = select_configs(
-        load_table_configs(config_path), only=only, include_disabled=include_disabled
+        merged_configs(config_path, additional_configs), only=only, include_disabled=include_disabled
     )
     if not configs:
         print("No hay tablas habilitadas. Edita config/tables.yml y cambia enabled: true.")
@@ -223,6 +231,18 @@ def command_sync(
     source = None
     try:
         ensure_control_tables(target)
+        if due_only:
+            with target.cursor() as cursor:
+                cursor.execute("SELECT pg_try_advisory_lock(hashtext('medallio_source_gate'))")
+                acquired = cursor.fetchone()[0]
+            target.commit()
+            if not acquired:
+                print("SKIP_REDSHIFT: otra corrida tiene el Gate.")
+                return 1
+            configs = due_configs(target, configs)
+            if not configs:
+                print("SKIP_REDSHIFT: ninguna fuente vencida; 0 conexiones Redshift.")
+                return 0
 
         # Connection Gate: authenticate once per sync run. This prevents one bad
         # credential from generating N login attempts (one per configured table)
@@ -403,7 +423,7 @@ def command_observe(
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        settings = load_settings()
+        settings = load_settings(require_source=args.command not in {"watch", "status", "init", "observability-init"})
         configure_logging(settings.project_root / "logs", settings.log_level)
         config_path = _resolve_config(settings.project_root, args.config)
 
@@ -429,7 +449,15 @@ def main(argv: list[str] | None = None) -> int:
                 args.include_disabled,
                 args.max_rows,
                 args.dry_run,
+                args.due_only,
+                tuple(_resolve_config(settings.project_root, p) for p in args.additional_config),
             )
+        if args.command == "watch":
+            from .source_gate import watch_rows
+            rows = watch_rows(settings, config_path, tuple(_resolve_config(settings.project_root, p) for p in args.additional_config))
+            _print_table(["fuente", "ultima_sync", "edad_min", "intervalo_h", "estado", "watermark_replicado", "filas", "ultimo_intento", "error"], rows)
+            print("Edad desde réplica exitosa; watermark replicado no mide el atraso actual de Redshift.")
+            return 0
         if args.command == "status":
             return command_status(settings, args.limit)
         if args.command == "observability-init":
