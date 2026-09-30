@@ -220,18 +220,33 @@ def command_sync(
     target = connect_postgres(settings)
     failures = 0
     max_attempts, retry_seconds = _sync_attempt_settings()
+    source = None
     try:
         ensure_control_tables(target)
+
+        # Connection Gate: authenticate once per sync run. This prevents one bad
+        # credential from generating N login attempts (one per configured table)
+        # and deliberately reuses a single Redshift session to reduce source load.
+        try:
+            source = connect_redshift(settings)
+            with source.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except Exception as exc:
+            LOGGER.error("Connection Gate Redshift rechazado; se aborta todo el sync: %s", exc)
+            print(
+                "FAILED: REDSHIFT_CONNECTION_GATE: "
+                f"{exc}\nNo se intentó ninguna tabla.",
+                file=sys.stderr,
+            )
+            return 1
+
         for cfg in configs:
             result = None
             last_exc: Exception | None = None
 
             for attempt in range(1, max_attempts + 1):
-                source = None
                 try:
-                    # Una conexión Redshift por intento/tabla evita que un socket
-                    # que quedó inválido por timeout contamine las tablas siguientes.
-                    source = connect_redshift(settings)
                     result = sync_table(
                         source,
                         target,
@@ -256,19 +271,16 @@ def command_sync(
                         )
                     else:
                         break
-                finally:
-                    if source is not None:
-                        try:
-                            source.close()
-                        except Exception:
-                            LOGGER.debug(
-                                "No se pudo cerrar limpiamente Redshift para %s.",
-                                cfg.source_name,
-                                exc_info=True,
-                            )
-
-                if retry_seconds > 0:
-                    time.sleep(retry_seconds)
+                if can_retry:
+                    # Reconnect only after a genuine transient transport failure.
+                    # Authentication failures are not transient and never retry.
+                    try:
+                        source.close()
+                    except Exception:
+                        pass
+                    source = connect_redshift(settings)
+                    if retry_seconds > 0:
+                        time.sleep(retry_seconds)
 
             if result is not None:
                 print(
@@ -290,6 +302,11 @@ def command_sync(
             )
             print(f"FAILED: {cfg.source_name}: {last_exc}", file=sys.stderr)
     finally:
+        if source is not None:
+            try:
+                source.close()
+            except Exception:
+                LOGGER.debug("No se pudo cerrar limpiamente la sesión Redshift.", exc_info=True)
         target.close()
     return 1 if failures else 0
 
