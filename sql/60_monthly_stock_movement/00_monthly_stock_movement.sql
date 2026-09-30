@@ -1,122 +1,63 @@
 -- Monthly stock movement export for Medallio DW.
 --
--- Self-contained reporting layer over the governed event ledger.
--- It deliberately does NOT require the materialized unit-semantics / stock
--- facts to exist locally. This keeps the exporter runnable on Medallio
--- installations where Phase B exists but Phase C / v1.1 has not been installed.
+-- Contract:
+--   * Primary business absorption scope = DEPARTAMENTO only.
+--   * Historical movement/absorption remains event-ledger observed evidence.
+--   * Current stock certification remains analytics.fact_stock_snapshot_diario_unidad.
+--   * Never back-cast current-state flags to fabricate historical stock.
 --
--- Contract preserved:
---   * primary absorption scope = DEPARTAMENTO only;
---   * historical stock remains observed from analytics.fact_movimientos_stock;
---   * no current-state flag is back-cast to fabricate historical stock;
---   * only transition_applied=true events affect the report;
---   * current-stock certification/coverage, when available, is added by Python
---     as optional evidence and never required to calculate the ledger history.
+-- This layer is presentation-ready but keeps quality/provenance explicit.
 
 CREATE SCHEMA IF NOT EXISTS analytics;
 
 CREATE OR REPLACE VIEW analytics.v_stock_movimiento_mensual_export AS
-WITH typed_events AS (
+WITH daily AS (
     SELECT
-        m.fecha_evento AS fecha,
-        m.codigo_proyecto,
-        m.codigo_unidad,
-        m.tipo_evento,
-        m.delta_stock,
-        lower(coalesce(u.tipo_unidad, '')) AS tipo_norm
-    FROM analytics.fact_movimientos_stock m
-    JOIN core.dim_unidad u
-      ON u.codigo_unidad = m.codigo_unidad
-    WHERE m.transition_applied
-      AND m.codigo_proyecto IS NOT NULL
-      AND lower(coalesce(u.tipo_unidad, '')) LIKE '%departamento%'
-), project_bounds AS (
-    SELECT
-        codigo_proyecto,
-        min(fecha) AS min_fecha,
-        greatest(max(fecha), current_date) AS max_fecha
-    FROM typed_events
-    GROUP BY codigo_proyecto
-), calendar AS (
-    SELECT
-        b.codigo_proyecto,
-        gs::date AS fecha
-    FROM project_bounds b
-    CROSS JOIN LATERAL generate_series(
-        b.min_fecha::timestamp,
-        b.max_fecha::timestamp,
-        interval '1 day'
-    ) gs
-), daily_move AS (
-    SELECT
-        e.codigo_proyecto,
-        e.fecha,
-        count(*) FILTER (WHERE e.tipo_evento = 'ALTA_STOCK')::bigint AS altas,
-        count(*) FILTER (WHERE e.tipo_evento = 'SEPARACION')::bigint AS separaciones,
-        count(*) FILTER (WHERE e.tipo_evento = 'CAIDA')::bigint AS caidas,
-        count(*) FILTER (WHERE e.tipo_evento = 'VENTA')::bigint AS ventas,
-        coalesce(sum(e.delta_stock), 0)::bigint AS delta_stock
-    FROM typed_events e
-    GROUP BY e.codigo_proyecto, e.fecha
-), daily AS (
-    SELECT
-        c.fecha,
-        c.codigo_proyecto,
-        coalesce(m.altas, 0)::bigint AS altas,
-        coalesce(m.separaciones, 0)::bigint AS separaciones,
-        coalesce(m.caidas, 0)::bigint AS caidas,
-        coalesce(m.ventas, 0)::bigint AS ventas,
-        coalesce(m.delta_stock, 0)::bigint AS delta_stock
-    FROM calendar c
-    LEFT JOIN daily_move m
-      ON m.codigo_proyecto = c.codigo_proyecto
-     AND m.fecha = c.fecha
-), running AS (
-    SELECT
-        d.*,
-        sum(d.delta_stock) OVER (
-            PARTITION BY d.codigo_proyecto
-            ORDER BY d.fecha
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        )::bigint AS stock_fin_observado
-    FROM daily d
-), daily_stock AS (
-    SELECT
-        r.*,
-        (r.stock_fin_observado - r.delta_stock)::bigint AS stock_inicio_observado
-    FROM running r
+        s.fecha,
+        date_trunc('month', s.fecha)::date AS periodo_mes,
+        s.codigo_proyecto,
+        s.tipo_unidad_consolidado,
+        s.stock_inicio,
+        s.stock_fin,
+        s.altas,
+        s.separaciones,
+        s.caidas_reingresadas,
+        s.ventas
+    FROM analytics.fact_stock_ofertado_diario_tipo s
+    WHERE s.tipo_unidad_consolidado = 'DEPARTAMENTO'
 ), monthly AS (
     SELECT
-        date_trunc('month', fecha)::date AS periodo_mes,
+        periodo_mes,
         codigo_proyecto,
+        tipo_unidad_consolidado,
         min(fecha) AS primera_fecha_observada,
         max(fecha) AS ultima_fecha_observada,
-        (array_agg(stock_inicio_observado ORDER BY fecha))[1]::bigint AS stock_inicio_observado,
-        (array_agg(stock_fin_observado ORDER BY fecha DESC))[1]::bigint AS saldo_final_observado,
+        (array_agg(stock_inicio ORDER BY fecha))[1]::bigint AS stock_inicio_observado,
+        (array_agg(stock_fin ORDER BY fecha DESC))[1]::bigint AS saldo_final_observado,
         sum(altas)::bigint AS altas_mes,
         sum(separaciones)::bigint AS separaciones_brutas_mes,
-        sum(caidas)::bigint AS caidas_mes,
-        sum(separaciones - caidas)::bigint AS movimiento_neto_mes,
+        sum(caidas_reingresadas)::bigint AS caidas_mes,
+        sum(separaciones - caidas_reingresadas)::bigint AS movimiento_neto_mes,
         sum(ventas)::bigint AS ventas_minutas_mes
-    FROM daily_stock
-    GROUP BY date_trunc('month', fecha)::date, codigo_proyecto
+    FROM daily
+    GROUP BY periodo_mes, codigo_proyecto, tipo_unidad_consolidado
 ), enriched AS (
     SELECT
         m.*,
         m.separaciones_brutas_mes::numeric / nullif(m.stock_inicio_observado, 0) AS absorcion_bruta_mes,
         m.movimiento_neto_mes::numeric / nullif(m.stock_inicio_observado, 0) AS absorcion_neta_mes,
         sum(m.movimiento_neto_mes) OVER (
-            PARTITION BY m.codigo_proyecto
+            PARTITION BY m.codigo_proyecto, m.tipo_unidad_consolidado
             ORDER BY m.periodo_mes
             ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
         )::numeric AS movimiento_neto_6m,
         first_value(m.stock_inicio_observado) OVER (
-            PARTITION BY m.codigo_proyecto
+            PARTITION BY m.codigo_proyecto, m.tipo_unidad_consolidado
             ORDER BY m.periodo_mes
             ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
         )::numeric AS stock_inicio_ventana_6m,
         count(*) OVER (
-            PARTITION BY m.codigo_proyecto
+            PARTITION BY m.codigo_proyecto, m.tipo_unidad_consolidado
             ORDER BY m.periodo_mes
             ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
         ) AS meses_en_ventana_6m
@@ -132,7 +73,7 @@ SELECT
     e.periodo_mes,
     e.codigo_proyecto,
     coalesce(r.project_display_name, p.nombre_proyecto, e.codigo_proyecto) AS proyecto,
-    'DEPARTAMENTO'::text AS tipo_unidad_consolidado,
+    e.tipo_unidad_consolidado,
     e.primera_fecha_observada,
     e.ultima_fecha_observada,
     e.stock_inicio_observado,
@@ -150,8 +91,16 @@ SELECT
         ELSE NULL
     END AS absorcion_neta_6m,
     e.meses_en_ventana_6m,
-    'HISTORICO_LEDGER_OBSERVADO'::text AS calidad_stock_historico,
-    'FACT_MOVIMIENTOS_STOCK'::text AS metodo_stock_historico,
+    c.stock_disponible_actual,
+    c.stock_disponible_ledger,
+    c.gap_stock_disponible,
+    c.cobertura_stock_disponible_ratio,
+    c.ledger_reconcilia_estado_actual,
+    CASE
+        WHEN c.ledger_reconcilia_estado_actual THEN 'CERTIFICADO_ESTADO_ACTUAL'
+        ELSE 'HISTORICO_LEDGER_CON_GAP_DE_COBERTURA'
+    END AS calidad_stock_historico,
+    'OBSERVADO_LEDGER'::text AS metodo_stock_historico,
     'SEPARACIONES_EFECTIVAS_MENOS_CAIDAS'::text AS metodo_movimiento,
     'VENTA_EFECTIVA / MINUTA_CANONICA'::text AS metodo_venta
 FROM enriched e
@@ -164,10 +113,13 @@ LEFT JOIN active_rules r
             'ÁÉÍÓÚÜÑ',
             'AEIOUUN'
         )
-     ) > 0;
+     ) > 0
+LEFT JOIN analytics.v_stock_coverage_actual_por_tipo c
+  ON c.codigo_proyecto = e.codigo_proyecto
+ AND c.tipo_unidad_consolidado = e.tipo_unidad_consolidado;
 
 COMMENT ON VIEW analytics.v_stock_movimiento_mensual_export IS
-'Resumen mensual de departamentos derivado directamente del ledger efectivo fact_movimientos_stock. No requiere reconstruir ni materializar Phase C y no fabrica stock historico faltante.';
+'Resumen mensual de stock y absorcion principal de departamentos. Historico observado desde fact_movimientos_stock/fact_stock_ofertado_diario_tipo; no fabrica stock historico faltante.';
 
 CREATE OR REPLACE VIEW analytics.v_stock_movimiento_mensual_unidad_export AS
 WITH events AS (
@@ -189,10 +141,10 @@ WITH events AS (
             ORDER BY m.fecha_evento, m.event_order, m.movement_id
         ) AS event_rank
     FROM analytics.fact_movimientos_stock m
-    JOIN core.dim_unidad u
-      ON u.codigo_unidad = m.codigo_unidad
+    JOIN analytics.dim_unidad_semantica s
+      ON s.codigo_unidad = m.codigo_unidad
     WHERE m.transition_applied
-      AND lower(coalesce(u.tipo_unidad, '')) LIKE '%departamento%'
+      AND s.tipo_unidad_consolidado = 'DEPARTAMENTO'
       AND m.tipo_evento IN ('SEPARACION', 'CAIDA', 'VENTA')
 ), rules AS (
     SELECT *
@@ -211,11 +163,7 @@ WITH events AS (
         u.precio_lista_actual,
         u.precio_venta_actual,
         coalesce(u.moneda_precio_lista, 'PEN') AS moneda,
-        translate(
-            upper(coalesce(p.nombre_proyecto, u.nombre_proyecto_origen, '')),
-            'ÁÉÍÓÚÜÑ',
-            'AEIOUUN'
-        ) AS proyecto_norm,
+        translate(upper(coalesce(p.nombre_proyecto, u.nombre_proyecto_origen, '')), 'ÁÉÍÓÚÜÑ', 'AEIOUUN') AS proyecto_norm,
         coalesce(p.nombre_proyecto, u.nombre_proyecto_origen, u.codigo_proyecto) AS proyecto_origen
     FROM core.dim_unidad u
     LEFT JOIN core.dim_proyecto p
@@ -252,4 +200,4 @@ LEFT JOIN rules r
   ON position(r.project_key in u.proyecto_norm) > 0;
 
 COMMENT ON VIEW analytics.v_stock_movimiento_mensual_unidad_export IS
-'Detalle mensual de movimientos efectivos de departamentos. Precios de lista/descuento son actuales; precio_venta_actual queda disponible para auditoria.';
+'Detalle de departamentos con movimientos comerciales efectivos por mes. Precios de lista/descuento corresponden al estado actual de core.dim_unidad y reglas vigentes; precio_venta_actual queda para auditoria.';
