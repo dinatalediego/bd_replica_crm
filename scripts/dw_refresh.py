@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import subprocess
 import sys
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -53,24 +55,33 @@ def _run(step: Step, logger: logging.Logger) -> None:
     logger.info("OK %s", step.name)
 
 
-def _steps() -> tuple[Step, ...]:
+def _source_sync_due(mode: str) -> bool:
+    """Keep Redshift sparse; local Medallio transforms can run independently."""
+    if mode == "manual":
+        return True
+    interval = max(1, int(os.getenv("REDSHIFT_SYNC_INTERVAL_HOURS", "4")))
+    return datetime.now().hour % interval == 0
+
+
+def _steps(mode: str) -> tuple[Step, ...]:
     py = sys.executable
-    return (
-        Step(
-            "01_raw_sync",
-            (py, "-m", "replica_cygnus.cli", "sync"),
-        ),
-        Step(
-            "01b_archivos_raw_sync",
-            (
-                py,
-                "-m",
-                "replica_cygnus.cli",
-                "--config",
-                "config/hourly_required_tables.yml",
-                "sync",
+    source_steps: tuple[Step, ...] = ()
+    if _source_sync_due(mode):
+        source_steps = (
+            Step("01_raw_sync", (py, "-m", "replica_cygnus.cli", "sync")),
+            Step(
+                "01b_archivos_raw_sync",
+                (
+                    py,
+                    "-m",
+                    "replica_cygnus.cli",
+                    "--config",
+                    "config/hourly_required_tables.yml",
+                    "sync",
+                ),
             ),
-        ),
+        )
+    return source_steps + (
         Step(
             "02_schema_sync",
             (py, str(ROOT / "scripts" / "schema_sync.py")),
@@ -130,7 +141,11 @@ def main() -> int:
 
     failure: StepFailure | None = None
     try:
-        for step in _steps():
+        if not _source_sync_due(args.mode):
+            logger.info(
+                "SKIP_REDSHIFT source sync not due; refreshing Medallio locally from cached RAW"
+            )
+        for step in _steps(args.mode):
             _run(step, logger)
     except StepFailure as exc:
         failure = exc
