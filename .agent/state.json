@@ -1,0 +1,27 @@
+{
+  "protocol": "MEDALLIO_AGENT_PROTOCOL",
+  "protocol_version": "1.0",
+  "project": "bd_replica_crm",
+  "active_task": {
+    "id": "MAP-001",
+    "title": "Introduce MEDALLIO AGENT PROTOCOL v1.0",
+    "status": "REVIEW_READY",
+    "owner": "chatgpt",
+    "next_agent": "claude",
+    "next_action": "Run local validate/status and perform first adversarial review"
+  },
+  "git": {
+    "base_branch": "main",
+    "working_branch": "feat/medallio-agent-protocol",
+    "checkpoint_commit": null,
+    "dirty": null
+  },
+  "validation": {
+    "last_checked_at": null,
+    "tests": [],
+    "notes": [
+      "Files created through GitHub integration; local CLI runtime validation pending."
+    ]
+  },
+  "updated_at": "2026-09-30T00:00:00Z"
+}
