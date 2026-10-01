@@ -1,53 +1,42 @@
 # Active Task
 
-Task ID: NIGHT-001  
-Title: Bootstrap Night Shift OS and restore green CI  
-Status: IMPLEMENTING  
+Task ID: NIGHT-002  
+Title: Medallio low-impact refresh health checks  
+Status: READY  
 Owner: chatgpt  
 Next agent: claude  
-Branch: feat/medallio-night-shift-os  
+Branch: to be created by the unattended worker  
 Base branch: main
 
 ## Objective
 
-Turn MAP into a governed overnight production pilot for 2026-10-01 through 2026-10-07, while fixing the current root CI dependency gap.
+Audit the canonical Medallio refresh path for low-impact Redshift usage and add observability/tests without increasing source load.
 
-## Scope
+## Prior task evidence
 
-- Night Shift protocol;
-- seven-day queue;
-- autonomy/safety policies;
-- resource budget guards;
-- morning-report template;
-- deterministic local validation/status/next-task CLI;
-- tests for queue contracts;
-- minimal CI dependency fix for `matplotlib`.
+NIGHT-001 is complete:
 
-## Explicit non-scope
+- Night Shift OS merged through PR #35;
+- GitHub CI run 181 completed successfully;
+- the previous matplotlib collection failure was fixed by installing the required dev dependency;
+- the seven-day dispatcher and morning-report automations are configured for the pilot.
 
-- no automatic merge to main;
-- no production deploy;
-- no destructive DB migration;
-- no additional Redshift polling;
-- no Claude API spend;
-- no attempt to invent unknown repositories.
+## Constraints
 
-## Evidence already observed
-
-The first MAP PR was merged to main.
-
-GitHub CI failed during test collection because `replica_cygnus.pricing_study.service` imports `matplotlib.pyplot` while the CI installation `.[dev]` did not install matplotlib.
+- do not increase Redshift polling frequency;
+- prefer Medallio/local replica evidence;
+- no production DB writes;
+- no merge to main from unattended execution;
+- at most one automatic rework cycle;
+- leave a draft PR or justified blocker.
 
 ## Acceptance criteria
 
-- [x] Night Shift queue/policies/budgets/week plan defined;
-- [x] queue validation/status/next-task CLI implemented;
-- [x] queue tests added;
-- [x] dev dependency includes matplotlib for pricing-study test collection;
-- [ ] GitHub CI passes on this branch;
-- [ ] first morning-report flow is proven;
-- [ ] Claude or human performs adversarial review before merge.
+- canonical refresh entrypoint documented;
+- health/watch evidence exists;
+- no new high-frequency Redshift query path;
+- tests or deterministic validation added.
 
 ## Next action
 
-Wait for GitHub CI on the draft PR, resolve only evidence-backed failures, then hand NIGHT-001 to Claude/human review.
+The Night Shift Dispatcher should claim NIGHT-002, inspect the real refresh orchestration, create a feature branch, and implement only evidence-backed low-impact guards.
