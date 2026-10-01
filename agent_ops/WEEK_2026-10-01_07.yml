@@ -4,25 +4,32 @@ week:
   end: "2026-10-07"
   theme: "Prove the factory before scaling the factory"
 
+preflight:
+  task: NIGHT-001
+  status: DONE
+  evidence:
+    - "PR #35 merged"
+    - "CI run 181 passed"
+
 daily_focus:
   "2026-10-01":
-    task: NIGHT-001
-    outcome: "Night Shift OS + green CI + draft PR"
-  "2026-10-02":
     task: NIGHT-002
     outcome: "Low-impact Medallio refresh health/observability"
-  "2026-10-03":
+  "2026-10-02":
     task: NIGHT-003
     outcome: "Stable Medallio contract for future Orbita COE Analytics"
-  "2026-10-04":
+  "2026-10-03":
     task: NIGHT-004
     outcome: "One commercial export path made deterministic and testable"
-  "2026-10-05":
+  "2026-10-04":
     task: NIGHT-005
     outcome: "Reproducible probabilistic -> ML baseline"
-  "2026-10-06":
+  "2026-10-05":
     task: NIGHT-006
     outcome: "Native Android Sudoku MAP/readiness audit"
+  "2026-10-06":
+    task: NIGHT-008
+    outcome: "Agent factory hardening from observed pilot failures"
   "2026-10-07":
     task: NIGHT-007
     outcome: "Pilot retrospective + evidence-based Week 2 backlog"
