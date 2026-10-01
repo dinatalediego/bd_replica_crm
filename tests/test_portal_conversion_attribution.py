@@ -1,12 +1,14 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from portal_conversion.matching import PersonIdentity
 from scripts.refresh_portal_conversion import (
+    BuyerRow,
     LeadRow,
     _apply_origin_priority,
     _assign_unique_conversions,
     _conversion_key,
     _identity_from_client,
+    _match_leads,
 )
 
 
@@ -108,3 +110,22 @@ def test_client_document_recovers_real_dni_from_auto_source_document() -> None:
 
     assert identity.source_document == "auto-123456789"
     assert identity.dni == "70856177"
+
+
+def test_match_accepts_timestamp_lead_and_date_separation() -> None:
+    lead = _lead("ORIGEN:1", "ORIGEN", datetime(2026, 1, 10, 14, 30))
+    buyer = BuyerRow(
+        data={
+            "conversion_uid": "conversion-1",
+            "conversion_key": "dni:70856177",
+            "fecha_separacion": date(2026, 1, 12),
+        },
+        identity=lead.identity,
+    )
+
+    matches = _match_leads([lead], [buyer])
+
+    assert len(matches) == 1
+    assert matches[0]["conversion_uid"] == "conversion-1"
+    assert matches[0]["dias_a_separacion"] == 2
+    assert matches[0]["conversion_elegible"] is True
