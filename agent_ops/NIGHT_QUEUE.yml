@@ -23,7 +23,7 @@ tasks:
     priority: P0
     repo: dinatalediego/bd_replica_crm
     title: "Bootstrap Night Shift OS and restore green CI"
-    status: IN_PROGRESS
+    status: DONE
     primary_agent: chatgpt
     reviewer: claude
     risk: LOW
@@ -42,10 +42,14 @@ tasks:
       - "night_shift.py validation tests pass"
       - "root CI installs dependencies required by pricing_study tests"
       - "draft PR opened"
-    next_action: "Finish implementation, run GitHub CI, and leave review-ready handoff."
+      - "GitHub CI passes"
+    evidence:
+      - "PR #35 merged to main by human-authorized interaction"
+      - "GitHub CI run 181 completed successfully"
+    next_action: "Complete the first unattended production task: NIGHT-002."
 
   - id: NIGHT-002
-    date: "2026-10-02"
+    date: "2026-10-01"
     priority: P0
     repo: dinatalediego/bd_replica_crm
     title: "Medallio low-impact refresh health checks"
@@ -72,7 +76,7 @@ tasks:
     next_action: "Inspect current refresh orchestration and implement only evidence-backed guards."
 
   - id: NIGHT-003
-    date: "2026-10-03"
+    date: "2026-10-02"
     priority: P1
     repo: dinatalediego/bd_replica_crm
     title: "Agent-ready COE Analytics contract for Orbita"
@@ -99,7 +103,7 @@ tasks:
     next_action: "Create backend-facing contract in bd_replica_crm first; do not invent an Orbita repository."
 
   - id: NIGHT-004
-    date: "2026-10-04"
+    date: "2026-10-03"
     priority: P1
     repo: dinatalediego/bd_replica_crm
     title: "Commercial report export reliability pass"
@@ -125,7 +129,7 @@ tasks:
     next_action: "Select the existing highest-value export path from repository evidence before editing."
 
   - id: NIGHT-005
-    date: "2026-10-05"
+    date: "2026-10-04"
     priority: P1
     repo: dinatalediego/bd_replica_crm
     title: "Probabilistic-to-ML reproducible baseline"
@@ -154,7 +158,7 @@ tasks:
     next_action: "Reuse existing probabilistic-lab code if present; avoid duplicate frameworks."
 
   - id: NIGHT-006
-    date: "2026-10-06"
+    date: "2026-10-05"
     priority: P2
     repo: dinatalediego/Sudoku
     title: "MAP readiness audit for native Android Sudoku"
@@ -179,6 +183,33 @@ tasks:
       - "no signing secrets copied"
       - "next implementation task defined"
     next_action: "Inspect dinatalediego/Sudoku first; bootstrap MAP only if no conflicting agent instructions exist."
+
+  - id: NIGHT-008
+    date: "2026-10-06"
+    priority: P1
+    repo: dinatalediego/bd_replica_crm
+    title: "Agent factory hardening and failure-mode tests"
+    status: READY
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: LOW
+    objective: "Harden MAP/Night Shift OS from the first five nights: validate stop conditions, stale-state detection, queue consistency, and morning-report evidence."
+    allowed:
+      - inspect_repository
+      - edit_code
+      - add_tests
+      - update_docs
+      - open_draft_pr
+    forbidden:
+      - production_deploy
+      - merge_main
+      - increase_redshift_polling_frequency
+    acceptance:
+      - "at least one observed pilot weakness is converted into a regression test or guard"
+      - "queue/state consistency is validated"
+      - "stop conditions are tested or deterministically checked"
+      - "no production behavior changes"
+    next_action: "Use actual pilot evidence; do not invent theoretical hardening work unsupported by the first five nights."
 
   - id: NIGHT-007
     date: "2026-10-07"
