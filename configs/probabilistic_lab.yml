@@ -1,0 +1,32 @@
+lab:
+  title: "Medallio · Modelos Probabilísticos para Matemática de IA"
+  source_relation: "analytics.int_ciclo_comercial_unidad"
+  random_state: 42
+  min_rows_for_modeling: 80
+  output_dir: "outputs/probabilistic_lab"
+
+families:
+  - conversion_binomial
+  - bayesian_conversion
+  - time_to_event
+  - predictive_probability
+  - latent_segments
+
+bayesian_conversion:
+  group_by: "codigo_proyecto"
+  alpha_prior: 1.0
+  beta_prior: 1.0
+  min_group_n: 8
+
+predictive_probability:
+  test_fraction: 0.25
+  use_xgboost_if_available: true
+
+latent_segments:
+  min_components: 2
+  max_components: 5
+
+presentation:
+  include_theory: true
+  include_methodology: true
+  include_limitations: true
