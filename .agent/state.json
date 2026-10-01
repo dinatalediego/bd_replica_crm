@@ -3,25 +3,26 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "MAP-001",
-    "title": "Introduce MEDALLIO AGENT PROTOCOL v1.0",
-    "status": "REVIEW_READY",
+    "id": "NIGHT-001",
+    "title": "Bootstrap Night Shift OS and restore green CI",
+    "status": "IMPLEMENTING",
     "owner": "chatgpt",
     "next_agent": "claude",
-    "next_action": "Run local validate/status and perform first adversarial review"
+    "next_action": "Wait for GitHub CI, resolve evidence-backed failures, then perform adversarial review"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/medallio-agent-protocol",
+    "working_branch": "feat/medallio-night-shift-os",
     "checkpoint_commit": null,
     "dirty": null
   },
   "validation": {
-    "last_checked_at": null,
+    "last_checked_at": "2026-10-01T05:00:00Z",
     "tests": [],
     "notes": [
-      "Files created through GitHub integration; local CLI runtime validation pending."
+      "Observed previous CI failure: ModuleNotFoundError matplotlib during tests/test_pricing_study.py collection.",
+      "Night Shift OS pilot files are being introduced on an isolated feature branch."
     ]
   },
-  "updated_at": "2026-09-30T00:00:00Z"
+  "updated_at": "2026-10-01T05:00:00Z"
 }
