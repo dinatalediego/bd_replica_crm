@@ -19,6 +19,8 @@ def test_multisource_contract_reads_market_rows_through_json():
     assert "j->>'source_id'" in sql
     assert "replace(area_total_raw" in sql
     assert "u.codigo::text" not in sql
+    assert "source_run_id_raw::text as source_run_id" in sql
+    assert "source_run_id_raw::uuid" not in sql
 
 
 def test_market_lifecycle_consumes_canonical_compatibility_view():

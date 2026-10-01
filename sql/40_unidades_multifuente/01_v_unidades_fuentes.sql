@@ -85,7 +85,7 @@ SELECT
     CASE WHEN fecha_actualizacion_raw ~ '^\d{4}-\d{2}-\d{2}' THEN left(fecha_actualizacion_raw, 10)::date END AS fecha_actualizacion,
     CASE WHEN fecha_estimada_entrega_raw ~ '^\d{4}-\d{2}-\d{2}' THEN left(fecha_estimada_entrega_raw, 10)::date END AS fecha_estimada_entrega,
     CASE WHEN source_loaded_at_raw ~ '^\d{4}-\d{2}-\d{2}' THEN source_loaded_at_raw::timestamptz END AS source_loaded_at,
-    CASE WHEN source_run_id_raw ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN source_run_id_raw::uuid END AS source_run_id,
+    source_run_id_raw::text AS source_run_id,
     tipologia_ubicacion
 FROM typed;
 
