@@ -1,54 +1,53 @@
 # Active Task
 
-Task ID: MAP-001  
-Title: Introduce MEDALLIO AGENT PROTOCOL v1.0  
-Status: REVIEW_READY  
+Task ID: NIGHT-001  
+Title: Bootstrap Night Shift OS and restore green CI  
+Status: IMPLEMENTING  
 Owner: chatgpt  
 Next agent: claude  
-Branch: feat/medallio-agent-protocol  
+Branch: feat/medallio-night-shift-os  
 Base branch: main
 
 ## Objective
 
-Create a repository-native, vendor-neutral handoff protocol so ChatGPT/Work can remain the primary working environment while Claude Code can resume/review the latest state with minimal context loss.
+Turn MAP into a governed overnight production pilot for 2026-10-01 through 2026-10-07, while fixing the current root CI dependency gap.
 
-## Scope implemented
+## Scope
 
-- OpenAI/Codex entrypoint: `AGENTS.md`
-- Claude entrypoint: `CLAUDE.md`
-- MAP specification
-- project/task/decision/handoff documents
-- machine-readable state
-- local status/validate/checkpoint/bootstrap utility
-- reusable bootstrap template documentation
-- GitHub issue template for agent tasks
+- Night Shift protocol;
+- seven-day queue;
+- autonomy/safety policies;
+- resource budget guards;
+- morning-report template;
+- deterministic local validation/status/next-task CLI;
+- tests for queue contracts;
+- minimal CI dependency fix for `matplotlib`.
 
 ## Explicit non-scope
 
-- no ETL behavior changes;
-- no Redshift scheduling changes;
-- no database migrations;
-- no automatic Git push or merge;
-- no automatic model/API calls.
+- no automatic merge to main;
+- no production deploy;
+- no destructive DB migration;
+- no additional Redshift polling;
+- no Claude API spend;
+- no attempt to invent unknown repositories.
 
-## Validation state
+## Evidence already observed
 
-Repository files are created through the GitHub integration.
+The first MAP PR was merged to main.
 
-Local execution of `tools/agent_handoff.py` should be performed after pulling this branch. Until that command is executed locally, CLI behavior is implementation-complete but runtime validation is still required.
+GitHub CI failed during test collection because `replica_cygnus.pricing_study.service` imports `matplotlib.pyplot` while the CI installation `.[dev]` did not install matplotlib.
 
 ## Acceptance criteria
 
-- [x] shared human-readable state exists;
-- [x] machine-readable state exists;
-- [x] ChatGPT and Claude have dedicated entrypoints;
-- [x] protocol defines authority and handoff rules;
-- [x] reusable bootstrap path exists;
-- [ ] run `python tools/agent_handoff.py validate` locally;
-- [ ] run `python tools/agent_handoff.py status` locally;
-- [ ] optionally have Claude perform first adversarial review;
-- [ ] merge after review.
+- [x] Night Shift queue/policies/budgets/week plan defined;
+- [x] queue validation/status/next-task CLI implemented;
+- [x] queue tests added;
+- [x] dev dependency includes matplotlib for pricing-study test collection;
+- [ ] GitHub CI passes on this branch;
+- [ ] first morning-report flow is proven;
+- [ ] Claude or human performs adversarial review before merge.
 
 ## Next action
 
-Pull the branch locally, execute `validate` and `status`, then ask Claude to review MAP-001 from `CLAUDE.md` and the current diff.
+Wait for GitHub CI on the draft PR, resolve only evidence-backed failures, then hand NIGHT-001 to Claude/human review.
