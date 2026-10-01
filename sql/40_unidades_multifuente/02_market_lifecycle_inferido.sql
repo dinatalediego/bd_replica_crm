@@ -17,15 +17,16 @@ WITH proyecto_inicio AS (
         codigo_proyecto,
         min(fecha_separacion)::date AS primera_fecha_separacion,
         (min(fecha_separacion)::date - interval '1 month')::date AS fecha_inicio_comercial_inferida
-    FROM raw_mercado.unidades
-    WHERE codigo_proyecto IS NOT NULL
+    FROM core.v_unidades_fuentes
+    WHERE esquema_fuente = 'raw_mercado'
+      AND codigo_proyecto IS NOT NULL
       AND fecha_separacion IS NOT NULL
     GROUP BY codigo_proyecto
 )
 SELECT
     'raw_mercado'::text AS esquema_fuente,
-    ('raw_mercado:' || u.codigo::text) AS unidad_fuente_key,
-    u.codigo::text AS codigo_unidad,
+    u.unidad_fuente_key,
+    u.codigo AS codigo_unidad,
     u.codigo_proyecto::text AS codigo_proyecto,
     u.nombre_proyecto::text AS nombre_proyecto,
     u.nombre_tipologia::text AS nombre_tipologia,
@@ -49,10 +50,11 @@ SELECT
     'PRIMERA_SEPARACION_PROYECTO_MENOS_1_MES'::text AS metodo_inicio_comercial,
     'FECHA_SEPARACION_UNIDAD'::text AS metodo_salida_stock,
     'INFERIDO_DESDE_SNAPSHOT'::text AS nivel_evidencia,
-    u._etl_loaded_at AS source_loaded_at,
-    u._etl_source_run_id AS source_run_id
-FROM raw_mercado.unidades u
-LEFT JOIN proyecto_inicio p USING (codigo_proyecto);
+    u.source_loaded_at,
+    u.source_run_id
+FROM core.v_unidades_fuentes u
+LEFT JOIN proyecto_inicio p USING (codigo_proyecto)
+WHERE u.esquema_fuente = 'raw_mercado';
 
 COMMENT ON VIEW analytics_market.v_unidad_lifecycle_inferido IS
 'Ciclo de inventario de mercado inferido desde snapshot: entrada = primera separación del proyecto menos 1 mes; salida = fecha_separacion de la unidad.';

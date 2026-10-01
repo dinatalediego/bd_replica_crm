@@ -4,18 +4,8 @@
 
 CREATE SCHEMA IF NOT EXISTS analytics;
 
-ALTER TABLE raw_mercado.unidades
-    ADD COLUMN IF NOT EXISTS tipologia_ubicacion text;
-
-UPDATE raw_mercado.unidades
-SET tipologia_ubicacion = CASE
-    WHEN NULLIF(TRIM(codigo), '') IS NULL THEN NULL
-    ELSE RIGHT(TRIM(codigo), 2)
-END
-WHERE tipologia_ubicacion IS DISTINCT FROM CASE
-    WHEN NULLIF(TRIM(codigo), '') IS NULL THEN NULL
-    ELSE RIGHT(TRIM(codigo), 2)
-END;
+-- raw_mercado conserva contratos históricos (por ejemplo codigo_unidad).
+-- La normalización se hace al leer JSONB para no mutar ni reemplazar RAW.
 
 CREATE OR REPLACE VIEW analytics.unidades_powerbi AS
 WITH base AS (
@@ -34,8 +24,8 @@ WITH base AS (
 normalizada AS (
     SELECT
         fuente_esquema,
-        NULLIF(TRIM(j->>'codigo'), '') AS codigo,
-        j->>'nombre' AS nombre,
+        COALESCE(NULLIF(TRIM(j->>'codigo'), ''), NULLIF(TRIM(j->>'codigo_unidad'), '')) AS codigo,
+        COALESCE(j->>'nombre', j->>'nombre_unidad') AS nombre,
         NULLIF(TRIM(j->>'codigo_proyecto'), '') AS codigo_proyecto,
         j->>'nombre_proyecto' AS nombre_proyecto,
         j->>'codigo_subdivision' AS codigo_subdivision,
@@ -43,21 +33,21 @@ normalizada AS (
         j->>'tipo_unidad' AS tipo_unidad,
         j->>'piso' AS piso,
         j->>'estado_construccion' AS estado_construccion,
-        j->>'nombre_tipologia' AS nombre_tipologia,
-        COALESCE(NULLIF(TRIM(j->>'tipologia_ubicacion'), ''), RIGHT(NULLIF(TRIM(j->>'codigo'), ''), 2)) AS tipologia_ubicacion,
-        j->>'total_habitaciones' AS total_habitaciones,
+        COALESCE(j->>'nombre_tipologia', j->>'tipologia') AS nombre_tipologia,
+        COALESCE(NULLIF(TRIM(j->>'tipologia_ubicacion'), ''), RIGHT(COALESCE(NULLIF(TRIM(j->>'codigo'), ''), NULLIF(TRIM(j->>'codigo_unidad'), '')), 2)) AS tipologia_ubicacion,
+        COALESCE(j->>'total_habitaciones', j->>'dormitorios') AS total_habitaciones,
         j->>'total_banos' AS total_banos,
         j->>'area_libre' AS area_libre,
         j->>'area_techada' AS area_techada,
-        j->>'area_total' AS area_total,
-        j->>'estado_comercial' AS estado_comercial,
+        COALESCE(j->>'area_total', j->>'area_venta') AS area_total,
+        COALESCE(j->>'estado_comercial', j->>'estado') AS estado_comercial,
         j->>'estado_personalizado' AS estado_personalizado,
         j->>'codigo_proforma' AS codigo_proforma,
         j->>'precio_lista' AS precio_lista,
         j->>'precio_base_proforma' AS precio_base_proforma,
         j->>'descuento_venta' AS descuento_venta,
         j->>'precio_venta' AS precio_venta,
-        j->>'precio_m2' AS precio_m2,
+        COALESCE(j->>'precio_m2', j->>'pxm2') AS precio_m2,
         j->>'fecha_reserva' AS fecha_reserva,
         j->>'fecha_separacion' AS fecha_separacion,
         j->>'fecha_venta' AS fecha_venta,
@@ -74,9 +64,9 @@ normalizada AS (
             ) THEN 1 ELSE 0
         END AS flag_departamento,
         CASE
-            WHEN LOWER(TRIM(COALESCE(j->>'estado_comercial',''))) = 'no disponible' THEN 'no disponible'
-            WHEN LOWER(TRIM(COALESCE(j->>'estado_comercial',''))) = 'disponible' THEN 'disponible'
-            ELSE translate(LOWER(TRIM(COALESCE(j->>'estado_comercial',''))),'áéíóú','aeiou')
+            WHEN LOWER(TRIM(COALESCE(j->>'estado_comercial', j->>'estado', ''))) = 'no disponible' THEN 'no disponible'
+            WHEN LOWER(TRIM(COALESCE(j->>'estado_comercial', j->>'estado', ''))) = 'disponible' THEN 'disponible'
+            ELSE translate(LOWER(TRIM(COALESCE(j->>'estado_comercial', j->>'estado', ''))),'áéíóú','aeiou')
         END AS estado_comercial_normalizado
     FROM base
 ),
