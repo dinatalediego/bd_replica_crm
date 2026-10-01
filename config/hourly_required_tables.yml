@@ -1,0 +1,20 @@
+version: 1
+
+defaults:
+  target_schema: raw_cygnus
+  batch_size: 10000
+  lookback_hours: 48
+  enabled: true
+  create_target_if_missing: true
+  add_etl_columns: true
+
+# Tablas RAW obligatorias para el refresh maestro horario.
+# Se mantienen separadas de config/tables.yml porque ese archivo es local/no versionado.
+tables:
+  - source_schema: grupocygnus
+    source_table: archivos
+    target_table: archivos
+    key_columns: []
+    watermark_column: null
+    strategy: full_refresh
+    enabled: true

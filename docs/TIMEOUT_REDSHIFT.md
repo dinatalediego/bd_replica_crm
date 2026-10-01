@@ -41,3 +41,31 @@ Luego:
 .\.venv\Scripts\python.exe -m replica_cygnus.cli validate --only proforma_unidad --include-disabled --deep
 .\scripts\05_probar_una_tabla.bat proforma_unidad
 ```
+
+
+## Recuperación automática del refresh maestro
+
+Desde septiembre de 2026, el `sync` usado por `scripts\run_hourly.bat` abre una conexión Redshift independiente por tabla e intento.
+
+Esto evita el patrón observado donde un timeout en `unidades` dejaba el socket inválido y hacía que `proyectos` y `datos_extras` fallaran inmediatamente al intentar leer metadatos con la misma conexión.
+
+Valores por defecto:
+
+```dotenv
+REDSHIFT_SYNC_MAX_ATTEMPTS=2
+REDSHIFT_SYNC_RETRY_SECONDS=5
+```
+
+Ante errores transitorios de red/timeout:
+
+1. se registra el fallo de ese intento;
+2. se cierra la conexión Redshift;
+3. se abre una conexión nueva;
+4. se reintenta la misma tabla;
+5. las tablas siguientes siempre comienzan con una conexión limpia.
+
+La carga incremental sigue siendo idempotente: si un intento alcanzó a cargar lotes antes del timeout, el reintento vuelve a procesar la ventana sin duplicar la llave, porque la réplica usa UPSERT y el watermark solo avanza al completar correctamente el run.
+
+Si una tabla sigue fallando después del último intento, el RAW termina con código de error y el refresh maestro **no promueve CORE/analytics sobre un snapshot incompleto**. Observabilidad sí se ejecuta para dejar evidencia del fallo.
+
+Los fallbacks de metadatos `SHOW COLUMNS -> SVV_COLUMNS -> information_schema.columns` se conservan para errores funcionales/no transitorios. Si el error es un timeout de socket, se abandona el fallback sobre esa conexión porque el driver ya no puede reutilizarla de forma fiable.

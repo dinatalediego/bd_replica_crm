@@ -1,0 +1,10 @@
+# Inbox local donde se dejan las versiones del dashboard.
+source_dir: 'C:\clientes\Cygnus\dashboards'
+
+# Snapshots, extracción PBIX y reportes de progreso. No se versiona.
+state_dir: '.state/powerbi_adapter'
+
+# Para PBIX/PBIT. Con PBIP/TMDL no es obligatorio.
+pbi_tools_executable: 'pbi-tools'
+
+keep_extracted: true

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
+import time
 from pathlib import Path
 
 from .catalog import discover_source
@@ -21,6 +23,39 @@ from .observability.schema import ensure_observability
 from .observability.service import register_all_assets, run_observability
 
 LOGGER = logging.getLogger(__name__)
+
+
+_TRANSIENT_SOURCE_MARKERS = (
+    "timed out",
+    "timeout",
+    "cannot read from timed out object",
+    "connection reset",
+    "connection closed",
+    "server closed",
+    "broken pipe",
+    "connection refused",
+    "network is unreachable",
+)
+
+
+def _is_transient_source_error(exc: BaseException) -> bool:
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (TimeoutError, ConnectionError)):
+            return True
+        message = str(current).lower()
+        if any(marker in message for marker in _TRANSIENT_SOURCE_MARKERS):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _sync_attempt_settings() -> tuple[int, float]:
+    attempts = max(1, int(os.getenv("REDSHIFT_SYNC_MAX_ATTEMPTS", "2")))
+    backoff = max(0.0, float(os.getenv("REDSHIFT_SYNC_RETRY_SECONDS", "5")))
+    return attempts, backoff
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -58,6 +93,11 @@ def _parser() -> argparse.ArgumentParser:
     sync.add_argument("--include-disabled", action="store_true")
     sync.add_argument("--max-rows", type=int, help="Límite de seguridad para una prueba.")
     sync.add_argument("--dry-run", action="store_true", help="Muestra la consulta sin extraer filas.")
+
+    sync.add_argument("--due-only", action="store_true", help="Consulta solo fuentes vencidas según Medallio.")
+    sync.add_argument("--additional-config", action="append", default=[])
+    watch = sub.add_parser("watch", help="Frescura y errores desde PostgreSQL; cero Redshift.")
+    watch.add_argument("--additional-config", action="append", default=[])
 
     status = sub.add_parser("status", help="Muestra las ejecuciones recientes.")
     status.add_argument("--limit", type=int, default=30)
@@ -174,28 +214,95 @@ def command_sync(
     include_disabled: bool,
     max_rows: int | None,
     dry_run: bool,
+    due_only: bool = False,
+    additional_configs: tuple[Path, ...] = (),
 ) -> int:
+    from .source_gate import merged_configs, due_configs
     configs = select_configs(
-        load_table_configs(config_path), only=only, include_disabled=include_disabled
+        merged_configs(config_path, additional_configs), only=only, include_disabled=include_disabled
     )
     if not configs:
         print("No hay tablas habilitadas. Edita config/tables.yml y cambia enabled: true.")
         return 0
 
-    source = connect_redshift(settings)
     target = connect_postgres(settings)
     failures = 0
+    max_attempts, retry_seconds = _sync_attempt_settings()
+    source = None
     try:
         ensure_control_tables(target)
+        if due_only:
+            with target.cursor() as cursor:
+                cursor.execute("SELECT pg_try_advisory_lock(hashtext('medallio_source_gate'))")
+                acquired = cursor.fetchone()[0]
+            target.commit()
+            if not acquired:
+                print("SKIP_REDSHIFT: otra corrida tiene el Gate.")
+                return 1
+            configs = due_configs(target, configs)
+            if not configs:
+                print("SKIP_REDSHIFT: ninguna fuente vencida; 0 conexiones Redshift.")
+                return 0
+
+        # Connection Gate: authenticate once per sync run. This prevents one bad
+        # credential from generating N login attempts (one per configured table)
+        # and deliberately reuses a single Redshift session to reduce source load.
+        try:
+            source = connect_redshift(settings)
+            with source.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except Exception as exc:
+            LOGGER.error("Connection Gate Redshift rechazado; se aborta todo el sync: %s", exc)
+            print(
+                "FAILED: REDSHIFT_CONNECTION_GATE: "
+                f"{exc}\nNo se intentó ninguna tabla.",
+                file=sys.stderr,
+            )
+            return 1
+
         for cfg in configs:
-            try:
-                result = sync_table(
-                    source,
-                    target,
-                    cfg,
-                    max_rows=max_rows,
-                    dry_run=dry_run,
-                )
+            result = None
+            last_exc: Exception | None = None
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    result = sync_table(
+                        source,
+                        target,
+                        cfg,
+                        max_rows=max_rows,
+                        dry_run=dry_run,
+                    )
+                    break
+                except Exception as exc:
+                    last_exc = exc
+                    transient = _is_transient_source_error(exc)
+                    can_retry = transient and attempt < max_attempts
+
+                    if can_retry:
+                        LOGGER.warning(
+                            "Timeout/conexión transitoria en %s (intento %s/%s). "
+                            "Se cerrará la conexión Redshift y se reintentará en %.1f s.",
+                            cfg.source_name,
+                            attempt,
+                            max_attempts,
+                            retry_seconds,
+                        )
+                    else:
+                        break
+                if can_retry:
+                    # Reconnect only after a genuine transient transport failure.
+                    # Authentication failures are not transient and never retry.
+                    try:
+                        source.close()
+                    except Exception:
+                        pass
+                    source = connect_redshift(settings)
+                    if retry_seconds > 0:
+                        time.sleep(retry_seconds)
+
+            if result is not None:
                 print(
                     f"{result.status}: {result.source_name} -> {result.target_name} | "
                     f"extraídas={result.rows_extracted} cargadas={result.rows_loaded} | "
@@ -203,12 +310,23 @@ def command_sync(
                 )
                 if result.message:
                     print(result.message)
-            except Exception as exc:
-                failures += 1
-                LOGGER.exception("Falló la tabla %s", cfg.source_name)
-                print(f"FAILED: {cfg.source_name}: {exc}", file=sys.stderr)
+                continue
+
+            failures += 1
+            assert last_exc is not None
+            LOGGER.error(
+                "Falló definitivamente la tabla %s tras %s intento(s): %s",
+                cfg.source_name,
+                max_attempts,
+                last_exc,
+            )
+            print(f"FAILED: {cfg.source_name}: {last_exc}", file=sys.stderr)
     finally:
-        source.close()
+        if source is not None:
+            try:
+                source.close()
+            except Exception:
+                LOGGER.debug("No se pudo cerrar limpiamente la sesión Redshift.", exc_info=True)
         target.close()
     return 1 if failures else 0
 
@@ -305,7 +423,7 @@ def command_observe(
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        settings = load_settings()
+        settings = load_settings(require_source=args.command not in {"watch", "status", "init", "observability-init"})
         configure_logging(settings.project_root / "logs", settings.log_level)
         config_path = _resolve_config(settings.project_root, args.config)
 
@@ -331,7 +449,15 @@ def main(argv: list[str] | None = None) -> int:
                 args.include_disabled,
                 args.max_rows,
                 args.dry_run,
+                args.due_only,
+                tuple(_resolve_config(settings.project_root, p) for p in args.additional_config),
             )
+        if args.command == "watch":
+            from .source_gate import watch_rows
+            rows = watch_rows(settings, config_path, tuple(_resolve_config(settings.project_root, p) for p in args.additional_config))
+            _print_table(["fuente", "ultima_sync", "edad_min", "intervalo_h", "estado", "watermark_replicado", "filas", "ultimo_intento", "error"], rows)
+            print("Edad desde réplica exitosa; watermark replicado no mide el atraso actual de Redshift.")
+            return 0
         if args.command == "status":
             return command_status(settings, args.limit)
         if args.command == "observability-init":

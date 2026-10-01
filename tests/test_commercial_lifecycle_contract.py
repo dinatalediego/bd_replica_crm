@@ -22,12 +22,12 @@ def test_core_lifecycle_is_governed_projection_not_duplicate_logic() -> None:
 
 
 def test_hourly_pipeline_refreshes_raw_core_lifecycle_then_observes() -> None:
-    batch = (ROOT / "scripts" / "run_hourly.bat").read_text(encoding="utf-8").lower()
+    orchestrator = (ROOT / "scripts" / "dw_refresh.py").read_text(encoding="utf-8").lower()
 
-    sync_pos = batch.index("replica_cygnus.cli sync")
-    core_pos = batch.index("scripts\\core_commercial.py\" refresh")
-    lifecycle_pos = batch.index("src\\absorption_phase_b\\run_incremental.py")
-    observe_pos = batch.index("replica_cygnus.cli observe --mode hourly")
+    sync_pos = orchestrator.index('"01_raw_sync"')
+    core_pos = orchestrator.index('"03_core_commercial_refresh"')
+    lifecycle_pos = orchestrator.index('"05_absorption_phase_b_incremental"')
+    observe_pos = orchestrator.index('"99_observability"')
 
     assert sync_pos < core_pos < lifecycle_pos < observe_pos
 

@@ -1,0 +1,28 @@
+report:
+  title: "CASO DE USO: PRICING INMOBILIARIO"
+  subtitle: "Analítica para balancear precio, absorción y valor económico del inventario"
+
+planning:
+  # Escenarios de stress. No representan elasticidad causal estimada.
+  scenario_price_deltas:
+    - -0.05
+    - -0.025
+    - 0.0
+    - 0.025
+    - 0.05
+  stress_test_elasticity: -1.25
+  min_absorption_retention_ratio: 0.80
+
+unit_review_policy:
+  # Corredor relativo contra benchmark interno por proyecto/tipología.
+  high_price_index: 1.08
+  low_price_index: 0.92
+  slow_stock_months: 6.0
+  fast_stock_months: 3.0
+  review_down_delta: -0.025
+  review_up_delta: 0.025
+
+model_readiness:
+  # Habilita revisión del modelado; no valida causalidad por sí sola.
+  min_snapshot_days: 60
+  min_price_change_events: 20

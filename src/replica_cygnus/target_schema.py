@@ -101,6 +101,48 @@ def ensure_target_table(conn: Connection, cfg: TableConfig, source_columns: list
 
     if cfg.key_columns and cfg.strategy == "incremental":
         _ensure_unique_index(conn, cfg)
+    else:
+        _drop_managed_unique_indexes(conn, cfg)
+
+
+def _managed_unique_indexes(conn: Connection, cfg: TableConfig) -> list[str]:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT i.relname
+            FROM pg_class t
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            JOIN pg_index ix ON ix.indrelid = t.oid
+            JOIN pg_class i ON i.oid = ix.indexrelid
+            WHERE n.nspname = %s
+              AND t.relname = %s
+              AND ix.indisunique
+              AND i.relname LIKE 'ux_replica_%%'
+            """,
+            (cfg.target_schema, cfg.target_table),
+        )
+        return [row[0] for row in cursor.fetchall()]
+
+
+def _drop_managed_unique_indexes(conn: Connection, cfg: TableConfig) -> None:
+    managed_indexes = _managed_unique_indexes(conn, cfg)
+    if not managed_indexes:
+        return
+    with conn.cursor() as cursor:
+        for existing_name in managed_indexes:
+            cursor.execute(
+                sql.SQL("DROP INDEX IF EXISTS {}.{}").format(
+                    sql.Identifier(cfg.target_schema),
+                    sql.Identifier(existing_name),
+                )
+            )
+            LOGGER.warning(
+                "Índice de réplica eliminado para %s al usar estrategia %s: %s",
+                cfg.target_name,
+                cfg.strategy,
+                existing_name,
+            )
+    conn.commit()
 
 
 def _ensure_unique_index(conn: Connection, cfg: TableConfig) -> None:
@@ -112,24 +154,10 @@ def _ensure_unique_index(conn: Connection, cfg: TableConfig) -> None:
     columns = sql.SQL(", ").join(sql.Identifier(name) for name in cfg.key_columns)
 
     try:
+        # Elimina únicamente índices gestionados por esta réplica (prefijo ux_replica_)
+        # que hayan quedado obsoletos para la misma tabla.
+        managed_indexes = _managed_unique_indexes(conn, cfg)
         with conn.cursor() as cursor:
-            # Elimina únicamente índices gestionados por esta réplica (prefijo ux_replica_)
-            # que hayan quedado obsoletos para la misma tabla.
-            cursor.execute(
-                """
-                SELECT i.relname
-                FROM pg_class t
-                JOIN pg_namespace n ON n.oid = t.relnamespace
-                JOIN pg_index ix ON ix.indrelid = t.oid
-                JOIN pg_class i ON i.oid = ix.indexrelid
-                WHERE n.nspname = %s
-                  AND t.relname = %s
-                  AND ix.indisunique
-                  AND i.relname LIKE 'ux_replica_%%'
-                """,
-                (cfg.target_schema, cfg.target_table),
-            )
-            managed_indexes = [row[0] for row in cursor.fetchall()]
             for existing_name in managed_indexes:
                 if existing_name != index_name:
                     cursor.execute(

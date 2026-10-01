@@ -22,16 +22,17 @@ def _required(name: str) -> str:
     return value.strip()
 
 
-def load_settings(project_root: Path | None = None) -> AppSettings:
+def load_settings(project_root: Path | None = None, *, require_source: bool = True) -> AppSettings:
     root = project_root or Path(__file__).resolve().parents[2]
     load_dotenv(root / ".env")
 
+    source_value = _required if require_source else lambda name: os.getenv(name, "")
     redshift = DatabaseSettings(
-        host=_required("REDSHIFT_HOST"),
+        host=source_value("REDSHIFT_HOST"),
         port=int(os.getenv("REDSHIFT_PORT", "5439")),
-        database=_required("REDSHIFT_DATABASE"),
-        user=_required("REDSHIFT_USER"),
-        password=_required("REDSHIFT_PASSWORD"),
+        database=source_value("REDSHIFT_DATABASE"),
+        user=source_value("REDSHIFT_USER"),
+        password=source_value("REDSHIFT_PASSWORD"),
         sslmode=os.getenv("REDSHIFT_SSLMODE", "verify-ca"),
         ssl=_as_bool(os.getenv("REDSHIFT_SSL"), True),
         # redshift_connector usa `timeout` también durante lecturas del socket.

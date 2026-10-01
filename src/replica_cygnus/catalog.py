@@ -13,6 +13,20 @@ from .models import SourceColumn
 LOGGER = logging.getLogger(__name__)
 
 
+def _is_connection_timeout(exc: BaseException) -> bool:
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (TimeoutError, ConnectionError)):
+            return True
+        message = str(current).lower()
+        if "timed out" in message or "timeout" in message:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def list_source_tables(source_conn, schema_filter: str | None = None) -> list[tuple[str, str]]:
     sql = """
         SELECT table_schema, table_name
@@ -148,26 +162,47 @@ def get_source_columns(
         columns = _get_source_columns_show(source_conn, schema, table)
         if columns:
             return columns
-    except Exception:
+    except Exception as exc:
+        # Tras un socket timeout, redshift_connector deja la conexión inservible.
+        # No tiene sentido ejecutar dos fallbacks sobre el mismo socket roto:
+        # el caller debe reconectar y reintentar la tabla completa.
+        if _is_connection_timeout(exc):
+            LOGGER.warning(
+                "SHOW COLUMNS agotó/rompió la conexión para %s.%s; "
+                "se requiere reconexión antes de reintentar.",
+                schema,
+                table,
+            )
+            raise
         LOGGER.warning(
-            "SHOW COLUMNS falló para %s.%s; probando SVV_COLUMNS.",
+            "SHOW COLUMNS falló para %s.%s (%s); probando SVV_COLUMNS.",
             schema,
             table,
-            exc_info=True,
+            exc,
         )
+        LOGGER.debug("Detalle SHOW COLUMNS", exc_info=True)
 
     try:
         columns = _get_source_columns_svv(source_conn, schema, table)
         if columns:
             return columns
-    except Exception:
+    except Exception as exc:
+        if _is_connection_timeout(exc):
+            LOGGER.warning(
+                "SVV_COLUMNS agotó/rompió la conexión para %s.%s; "
+                "se requiere reconexión antes de reintentar.",
+                schema,
+                table,
+            )
+            raise
         LOGGER.warning(
-            "SVV_COLUMNS falló para %s.%s; "
+            "SVV_COLUMNS falló para %s.%s (%s); "
             "probando information_schema.columns.",
             schema,
             table,
-            exc_info=True,
+            exc,
         )
+        LOGGER.debug("Detalle SVV_COLUMNS", exc_info=True)
 
     try:
         columns = _get_source_columns_information_schema(
@@ -177,13 +212,22 @@ def get_source_columns(
         )
         if columns:
             return columns
-    except Exception:
+    except Exception as exc:
+        if _is_connection_timeout(exc):
+            LOGGER.warning(
+                "information_schema.columns agotó/rompió la conexión para %s.%s; "
+                "se requiere reconexión.",
+                schema,
+                table,
+            )
+            raise
         LOGGER.warning(
-            "information_schema.columns falló para %s.%s.",
+            "information_schema.columns falló para %s.%s (%s).",
             schema,
             table,
-            exc_info=True,
+            exc,
         )
+        LOGGER.debug("Detalle information_schema.columns", exc_info=True)
 
     raise RuntimeError(
         "No se encontraron columnas visibles para "

@@ -16,4 +16,6 @@ config/decision_systems.yml
 config/lead_scoring.yml
 artifacts/
 output/stock_disponible/*.xlsx
-output/movimiento_stock_mensual/*.xlsx
+
+# Power BI -> Medallio adapter local state/extractions.
+.state/
