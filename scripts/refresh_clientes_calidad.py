@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from time import monotonic
+
 from replica_cygnus.connections import connect_postgres
 from replica_cygnus.settings import load_settings
 
@@ -9,7 +11,19 @@ def main() -> int:
 
     with connect_postgres(settings) as conn:
         with conn.cursor() as cur:
+            cur.execute("SET lock_timeout TO '15s'")
+            cur.execute("SET statement_timeout TO '30min'")
+            cur.execute("SELECT COUNT(*) FROM raw_cygnus.clientes")
+            filas_raw_inicio = int(cur.fetchone()[0])
+            print(
+                f"Preparando staging.clientes_calidad desde {filas_raw_inicio:,} filas RAW...",
+                flush=True,
+            )
+
+            started_at = monotonic()
             cur.execute("CALL staging.refresh_clientes_calidad()")
+            elapsed = monotonic() - started_at
+            print(f"Transformación DQ completada en {elapsed:.1f} s; confirmando...", flush=True)
         conn.commit()
 
         with conn.cursor() as cur:

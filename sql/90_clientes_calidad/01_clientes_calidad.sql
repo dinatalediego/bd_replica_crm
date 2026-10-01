@@ -83,9 +83,17 @@ BEGIN
         RAISE EXCEPTION 'No existe raw_cygnus.clientes; ejecutar la sincronización RAW antes del refresh DQ.';
     END IF;
 
-    TRUNCATE TABLE staging.clientes_calidad;
+    IF NOT pg_try_advisory_xact_lock(hashtext('staging.refresh_clientes_calidad')) THEN
+        RAISE EXCEPTION 'Ya existe otro refresh de staging.clientes_calidad en ejecución.';
+    END IF;
 
-    INSERT INTO staging.clientes_calidad (
+    -- Construir el reemplazo fuera de la tabla publicada evita que Power BI u
+    -- Órbita queden bloqueados durante el cálculo de calidad.
+    CREATE TEMP TABLE _clientes_calidad_next
+        (LIKE staging.clientes_calidad INCLUDING DEFAULTS)
+        ON COMMIT DROP;
+
+    INSERT INTO _clientes_calidad_next (
         source_id,
         source_row_hash,
         nombres,
@@ -408,6 +416,12 @@ BEGIN
         CASE WHEN s.dq_cliente_sin_contacto THEN 'error' ELSE 'OK' END,
         now()
     FROM scored AS s;
+
+    -- DELETE/INSERT usa bloqueos compatibles con lectores. La transacción
+    -- publica el nuevo conjunto de forma atómica al hacer COMMIT.
+    DELETE FROM staging.clientes_calidad;
+    INSERT INTO staging.clientes_calidad
+    SELECT * FROM _clientes_calidad_next;
 END;
 $$;
 

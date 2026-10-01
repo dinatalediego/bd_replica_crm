@@ -46,3 +46,19 @@ def test_clientes_calidad_refresh_has_row_count_gate() -> None:
     assert "staging.v_clientes_calidad_health" in code
     assert 'health["filas_raw"]' in code
     assert 'health["filas_staging"]' in code
+
+
+def test_clientes_calidad_refresh_does_not_block_readers_indefinitely() -> None:
+    sql = (ROOT / "sql" / "90_clientes_calidad" / "01_clientes_calidad.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+    code = (ROOT / "scripts" / "refresh_clientes_calidad.py").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert "truncate table staging.clientes_calidad" not in sql
+    assert "create temp table _clientes_calidad_next" in sql
+    assert "pg_try_advisory_xact_lock" in sql
+    assert "delete from staging.clientes_calidad" in sql
+    assert "set lock_timeout" in code
+    assert "set statement_timeout" in code
