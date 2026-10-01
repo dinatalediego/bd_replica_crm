@@ -13,7 +13,8 @@ Read in this order:
 3. `docs/agentic/DECISIONS.md`
 4. `docs/agentic/HANDOFF.md`
 5. `.agent/state.json`
-6. the real code, tests, database/schema evidence, and Git history relevant to the task
+6. if the work is unattended/queued, read `agent_ops/NIGHT_SHIFT_PROTOCOL.md`, `agent_ops/POLICIES.yml`, `agent_ops/BUDGETS.yml`, and `agent_ops/NIGHT_QUEUE.yml`
+7. the real code, tests, database/schema evidence, and Git history relevant to the task
 
 ## Authority order
 
@@ -41,7 +42,27 @@ Never preserve stale documentation over verified repository truth.
 - Keep handoffs concise enough for another agent to load quickly.
 - One agent is the writer at a time. A reviewing agent should work from a clean checkpoint or explicit review branch.
 
-## Local commands
+## Night Shift rules
+
+For unattended work:
+
+- only take tasks marked `READY`;
+- obey the task-specific allowed/forbidden actions and `agent_ops/POLICIES.yml`;
+- never merge `main`, production-deploy, or perform destructive production writes during the pilot;
+- prefer Medallio/local data over adding Redshift source load;
+- allow at most one automatic rework cycle;
+- repeated blockers become `BLOCKED`, not endless retries;
+- leave evidence and a morning-ready decision summary.
+
+Useful commands:
+
+```bash
+python tools/night_shift.py validate
+python tools/night_shift.py status
+python tools/night_shift.py next
+```
+
+## MAP local commands
 
 ```bash
 python tools/agent_handoff.py status
@@ -67,4 +88,5 @@ Before handing work to another agent:
 6. commit the code and agentic state together when practical;
 7. hand off by task ID, branch, and next action—not by copying an entire chat.
 
-The full specification lives in `docs/agentic/MEDALLIO_AGENT_PROTOCOL.md`.
+The full MAP specification lives in `docs/agentic/MEDALLIO_AGENT_PROTOCOL.md`.
+The unattended pilot policy lives in `agent_ops/NIGHT_SHIFT_PROTOCOL.md`.

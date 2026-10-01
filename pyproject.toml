@@ -20,7 +20,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0,<9"]
+dev = [
+  "pytest>=8.0,<9",
+  "matplotlib>=3.9,<4",
+]
 probabilistic-lab = [
   "matplotlib>=3.9,<4",
   "seaborn>=0.13,<1",

@@ -91,3 +91,63 @@ The core protocol is named MEDALLIO AGENT PROTOCOL rather than after ChatGPT or 
 ### Rationale
 
 The coordination layer should survive model/provider changes. Provider-specific files are entrypoints into the same shared state.
+
+---
+
+## MAP-ADR-007 — Night Shift OS sits above MAP
+
+Date: 2026-10-01  
+Status: ACCEPTED
+
+### Decision
+
+MAP remains the cross-agent state/handoff protocol. Night Shift OS adds portfolio queueing, unattended-work policies, budgets, and morning reporting without replacing MAP.
+
+### Rationale
+
+State continuity and work selection are different responsibilities. Separating them keeps the core protocol portable.
+
+---
+
+## MAP-ADR-008 — Unattended pilot cannot perform irreversible production actions
+
+Date: 2026-10-01  
+Status: ACCEPTED
+
+### Decision
+
+During the 2026-10-01 through 2026-10-07 pilot, agents may create branches, code, tests, documentation, artifacts, and draft PRs, but may not merge main, production-deploy, publish stores, or execute destructive production writes.
+
+### Rationale
+
+The first week should maximize verifiable production while keeping irreversible decisions human-controlled.
+
+---
+
+## MAP-ADR-009 — One task in flight overnight by default
+
+Date: 2026-10-01  
+Status: ACCEPTED
+
+### Decision
+
+Night Shift OS targets one concurrent task and at most two task starts per night, with one automatic rework cycle.
+
+### Rationale
+
+This limits quota burn, duplicate work, CI congestion, and context fragmentation while the workflow is being validated.
+
+---
+
+## MAP-ADR-010 — ChatGPT builds; Claude challenges
+
+Date: 2026-10-01  
+Status: ACCEPTED
+
+### Decision
+
+The pilot targets approximately 90% primary work through ChatGPT/Work/Codex and 10% through Claude as a selective reviewer/challenger.
+
+### Rationale
+
+The second model adds more value by testing assumptions and finding failure modes than by duplicating the same implementation.

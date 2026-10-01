@@ -1,0 +1,207 @@
+version: "0.1"
+timezone: "America/Lima"
+pilot_window:
+  start: "2026-10-01"
+  end: "2026-10-07"
+
+status_order:
+  - READY
+  - CLAIMED
+  - IN_PROGRESS
+  - REVIEW_READY
+  - REVIEWING
+  - REWORK_REQUIRED
+  - READY_FOR_HUMAN
+  - BLOCKED
+  - NEEDS_SCOPING
+  - DONE
+  - CANCELLED
+
+tasks:
+  - id: NIGHT-001
+    date: "2026-10-01"
+    priority: P0
+    repo: dinatalediego/bd_replica_crm
+    title: "Bootstrap Night Shift OS and restore green CI"
+    status: IN_PROGRESS
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: LOW
+    objective: "Create the governed overnight queue, policies, budgets, morning-report tooling, and fix the CI dependency gap that prevents tests from collecting."
+    allowed:
+      - edit_code
+      - add_tests
+      - update_docs
+      - open_draft_pr
+    forbidden:
+      - merge_main
+      - production_deploy
+      - database_write
+    acceptance:
+      - "Night Shift YAML contracts parse"
+      - "night_shift.py validation tests pass"
+      - "root CI installs dependencies required by pricing_study tests"
+      - "draft PR opened"
+    next_action: "Finish implementation, run GitHub CI, and leave review-ready handoff."
+
+  - id: NIGHT-002
+    date: "2026-10-02"
+    priority: P0
+    repo: dinatalediego/bd_replica_crm
+    title: "Medallio low-impact refresh health checks"
+    status: READY
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: MEDIUM
+    objective: "Audit the canonical refresh path for low-impact Redshift usage and add observability/tests without increasing source load."
+    allowed:
+      - inspect_repository
+      - edit_code
+      - add_tests
+      - update_docs
+      - open_draft_pr
+    forbidden:
+      - increase_redshift_polling_frequency
+      - production_database_write
+      - merge_main
+    acceptance:
+      - "canonical refresh entrypoint documented"
+      - "health/watch evidence exists"
+      - "no new high-frequency Redshift query path"
+      - "tests or deterministic validation added"
+    next_action: "Inspect current refresh orchestration and implement only evidence-backed guards."
+
+  - id: NIGHT-003
+    date: "2026-10-03"
+    priority: P1
+    repo: dinatalediego/bd_replica_crm
+    title: "Agent-ready COE Analytics contract for Orbita"
+    status: READY
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: LOW
+    objective: "Define a stable, testable data/service contract that an Orbita UI can consume without coupling directly to Redshift."
+    allowed:
+      - inspect_repository
+      - edit_code
+      - add_tests
+      - update_docs
+      - open_draft_pr
+    forbidden:
+      - production_deploy
+      - direct_orbita_repo_change_without_verified_repo
+      - merge_main
+    acceptance:
+      - "contract names data sources and refresh semantics"
+      - "Medallio remains source of truth"
+      - "example payload or schema exists"
+      - "tests or schema validation exists"
+    next_action: "Create backend-facing contract in bd_replica_crm first; do not invent an Orbita repository."
+
+  - id: NIGHT-004
+    date: "2026-10-04"
+    priority: P1
+    repo: dinatalediego/bd_replica_crm
+    title: "Commercial report export reliability pass"
+    status: READY
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: LOW
+    objective: "Identify one high-value monthly-report/export flow and make it deterministic, testable, and easy to hand off."
+    allowed:
+      - inspect_repository
+      - edit_code
+      - add_tests
+      - generate_non_production_artifacts
+      - open_draft_pr
+    forbidden:
+      - send_email
+      - production_publish
+      - merge_main
+    acceptance:
+      - "selected export path explicitly documented"
+      - "deterministic test fixture or validation exists"
+      - "failure mode reported clearly"
+    next_action: "Select the existing highest-value export path from repository evidence before editing."
+
+  - id: NIGHT-005
+    date: "2026-10-05"
+    priority: P1
+    repo: dinatalediego/bd_replica_crm
+    title: "Probabilistic-to-ML reproducible baseline"
+    status: READY
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: MEDIUM
+    objective: "Create a reproducible baseline that connects probabilistic reasoning to a supervised ML example using synthetic or safe local Medallio data."
+    allowed:
+      - edit_code
+      - add_tests
+      - generate_synthetic_data
+      - update_docs
+      - open_draft_pr
+    forbidden:
+      - expose_pii
+      - claim_production_model
+      - production_deploy
+    acceptance:
+      - "explicit random variable/target definition"
+      - "baseline model"
+      - "train/validation separation"
+      - "leakage discussion"
+      - "metric and limitations"
+      - "reproducible command or notebook path"
+    next_action: "Reuse existing probabilistic-lab code if present; avoid duplicate frameworks."
+
+  - id: NIGHT-006
+    date: "2026-10-06"
+    priority: P2
+    repo: dinatalediego/Sudoku
+    title: "MAP readiness audit for native Android Sudoku"
+    status: READY
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: LOW
+    objective: "Audit the Android repository and prepare a conservative MAP bootstrap plan without changing release behavior."
+    allowed:
+      - inspect_repository
+      - update_docs
+      - create_feature_branch
+      - open_draft_pr
+    forbidden:
+      - publish_google_play
+      - rotate_signing_keys
+      - production_release
+      - merge_main
+    acceptance:
+      - "build system and current app structure identified"
+      - "MAP bootstrap compatibility assessed"
+      - "no signing secrets copied"
+      - "next implementation task defined"
+    next_action: "Inspect dinatalediego/Sudoku first; bootstrap MAP only if no conflicting agent instructions exist."
+
+  - id: NIGHT-007
+    date: "2026-10-07"
+    priority: P0
+    repo: dinatalediego/bd_replica_crm
+    title: "Seven-day agentic production audit"
+    status: READY
+    primary_agent: chatgpt
+    reviewer: claude
+    risk: LOW
+    objective: "Measure whether the pilot produced useful, reviewable work and define Week 2 from evidence."
+    allowed:
+      - inspect_repository
+      - update_docs
+      - generate_non_production_artifacts
+    forbidden:
+      - start_large_new_feature
+      - production_deploy
+      - merge_main
+    acceptance:
+      - "tasks started/completed/blocked counted"
+      - "PR and CI outcomes summarized"
+      - "review findings summarized"
+      - "resource/budget observations recorded"
+      - "Week 2 backlog ranked by readiness, not excitement"
+    next_action: "Generate the pilot retrospective and proposed Week 2 queue."

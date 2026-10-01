@@ -1,0 +1,84 @@
+protocol: MEDALLIO_NIGHT_SHIFT_OS
+version: "0.1"
+
+pilot:
+  start_date: "2026-10-01"
+  end_date: "2026-10-07"
+  timezone: "America/Lima"
+
+default_workflow:
+  primary_builder: chatgpt
+  secondary_reviewer: claude
+  human_approver: diego
+  max_automatic_rework_cycles: 1
+
+allowed_actions:
+  - inspect_repository
+  - create_feature_branch
+  - edit_code
+  - add_tests
+  - run_tests
+  - update_docs
+  - update_map_state
+  - open_draft_pr
+  - generate_non_production_artifacts
+  - create_safe_preview_if_already_configured
+
+forbidden_actions:
+  - merge_main
+  - production_deploy
+  - destructive_database_migration
+  - delete_production_data
+  - modify_production_crm_records
+  - publish_google_play
+  - expose_secrets
+  - change_billing
+  - increase_redshift_polling_frequency
+  - bypass_failed_quality_gate
+
+resource_policies:
+  redshift:
+    preference_order:
+      - medallio_local
+      - cached_or_replica_data
+      - redshift_only_when_required
+    heavy_query_overnight: false
+  github_actions:
+    prefer_concurrency: 1
+    stop_repeated_failure_after: 2
+  vercel:
+    preview_allowed: true
+    production_allowed: false
+  databases:
+    destructive_changes_allowed: false
+  secrets:
+    read_values_into_docs: false
+
+quality_gates:
+  software:
+    - relevant_tests_executed
+    - changed_files_identified
+    - evidence_recorded
+  data:
+    - source_impact_considered
+    - data_quality_evidence
+    - no_unapproved_destructive_write
+  ml:
+    - baseline_present
+    - leakage_considered
+    - validation_strategy_present
+    - metric_and_caveat_present
+  web:
+    - build_or_tests_pass
+    - no_production_deploy
+  android:
+    - build_evidence
+    - no_store_publish
+
+stop_conditions:
+  - repeated_same_blocker
+  - missing_required_credentials
+  - ambiguous_business_rule
+  - irreversible_action_required
+  - unexpected_production_risk
+  - budget_guard_triggered
