@@ -21,6 +21,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0,<9"]
+probabilistic-lab = [
+  "matplotlib>=3.9,<4",
+  "seaborn>=0.13,<1",
+  "scipy>=1.13,<2",
+  "xgboost>=2.1,<4",
+  "jupyter>=1.0,<2",
+]
 
 [project.scripts]
 replica-cygnus = "replica_cygnus.cli:main"
