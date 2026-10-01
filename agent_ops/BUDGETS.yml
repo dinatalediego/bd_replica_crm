@@ -1,0 +1,34 @@
+version: "0.1"
+
+principle: "Use paid agent capacity on work that produces verifiable artifacts; stop loops that only consume context."
+
+ai:
+  chatgpt:
+    share_target_percent: 90
+    mode: primary_builder
+    hard_credit_cap_usd: null
+    note: "Use included plan capacity first; purchased credits, if any, remain externally controlled."
+  claude:
+    share_target_percent: 10
+    mode: reviewer_challenger
+    unattended_api_budget_usd: 0
+    note: "Pilot assumes Claude Pro/manual or subscription-authenticated CLI; do not create API spend automatically."
+
+overnight_limits:
+  max_parallel_tasks: 1
+  max_tasks_started_per_night: 2
+  max_rework_cycles_per_task: 1
+  max_repeated_external_failures: 2
+
+external_resources:
+  github_actions:
+    max_concurrent_jobs_target: 1
+    avoid_duplicate_runs: true
+  vercel:
+    production_deploys: 0
+    preview_deploys: "only_if_project_already_supports_safe_preview"
+  redshift:
+    new_high_frequency_jobs: 0
+    prefer_local_replica: true
+  databases:
+    destructive_migrations: 0
