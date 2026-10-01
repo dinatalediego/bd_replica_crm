@@ -62,3 +62,16 @@ def test_clientes_calidad_refresh_does_not_block_readers_indefinitely() -> None:
     assert "delete from staging.clientes_calidad" in sql
     assert "set lock_timeout" in code
     assert "set statement_timeout" in code
+
+
+def test_clientes_calidad_materializes_expensive_normalization_stages() -> None:
+    sql = (ROOT / "sql" / "90_clientes_calidad" / "01_clientes_calidad.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    assert "source_rows as materialized" in sql
+    assert "extracted as materialized" in sql
+    assert "phone_raw as materialized" in sql
+    assert "dq_base as materialized" in sql
+    assert "scored as materialized" in sql
+    assert "select\n            src," not in sql

@@ -152,13 +152,12 @@ BEGIN
         dq_cliente_sin_contacto_estado,
         refreshed_at
     )
-    WITH source_rows AS (
+    WITH source_rows AS MATERIALIZED (
         SELECT to_jsonb(c) AS src
         FROM raw_cygnus.clientes AS c
     ),
-    extracted AS (
+    extracted AS MATERIALIZED (
         SELECT
-            src,
             src ->> 'id' AS source_id,
             md5(src::text) AS source_row_hash,
             staging.dq_normalize_text(src ->> 'nombres') AS nombres,
@@ -193,7 +192,7 @@ BEGIN
             END AS columna_celular
         FROM source_rows
     ),
-    chosen AS (
+    chosen AS MATERIALIZED (
         SELECT
             e.*,
             COALESCE(
@@ -220,14 +219,14 @@ BEGIN
             COALESCE(e.estado, e.estado_cliente) AS dq_estado_cliente
         FROM extracted AS e
     ),
-    phone_raw AS (
+    phone_raw AS MATERIALIZED (
         SELECT
             c.*,
             regexp_replace(COALESCE(c.telefono_elegido, ''), '[^0-9]', '', 'g') AS digitos_raw,
             left(btrim(COALESCE(c.telefono_elegido, '')), 1) = '+' AS tiene_signo_mas
         FROM chosen AS c
     ),
-    phone_int AS (
+    phone_int AS MATERIALIZED (
         SELECT
             p.*,
             p.digitos_raw LIKE '00%' AS tiene_prefijo00,
@@ -237,7 +236,7 @@ BEGIN
             END AS digitos_internacionales
         FROM phone_raw AS p
     ),
-    phone_country AS (
+    phone_country AS MATERIALIZED (
         SELECT
             p.*,
             length(p.digitos_internacionales) AS largo_internacional,
@@ -245,7 +244,7 @@ BEGIN
                 AND (length(p.digitos_internacionales) - 2) IN (7, 8, 9) AS es_peru_con_codigo
         FROM phone_int AS p
     ),
-    phone_local AS (
+    phone_local AS MATERIALIZED (
         SELECT
             p.*,
             CASE
@@ -254,7 +253,7 @@ BEGIN
             END AS numero_local_pe
         FROM phone_country AS p
     ),
-    phone_flags AS (
+    phone_flags AS MATERIALIZED (
         SELECT
             p.*,
             length(p.numero_local_pe) AS largo_local,
@@ -284,7 +283,7 @@ BEGIN
             ) AS es_celular_extranjero
         FROM phone_flags AS p
     ),
-    dq_base AS (
+    dq_base AS MATERIALIZED (
         SELECT
             p.*,
             CASE
@@ -324,7 +323,7 @@ BEGIN
             p.dq_estado_cliente IS NOT NULL AS dq_estado_cliente_ok
         FROM phone_classified AS p
     ),
-    dq_flags AS (
+    dq_flags AS MATERIALIZED (
         SELECT
             d.*,
             (d.dq_celular_ok OR d.dq_email_ok) AS dq_contacto_valido_ok,
@@ -332,7 +331,7 @@ BEGIN
             NOT (d.dq_celular_ok OR d.dq_email_ok) AS dq_cliente_sin_contacto
         FROM dq_base AS d
     ),
-    scored AS (
+    scored AS MATERIALIZED (
         SELECT
             d.*,
             GREATEST(
