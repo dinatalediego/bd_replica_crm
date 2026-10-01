@@ -15,6 +15,7 @@ class SchemaComponent:
     files: tuple[str, ...]
     expected_relations: tuple[str, ...] = ()
     expected_procedures: tuple[str, ...] = ()
+    required_relations: tuple[str, ...] = ()
 
 
 COMPONENTS: tuple[SchemaComponent, ...] = (
@@ -57,6 +58,7 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
         name="archivos_procesos",
         files=("sql/80_archivos_procesos/01_view.sql",),
+        required_relations=("raw_cygnus.archivos",),
         expected_relations=(
             "analytics.archivos_contrato_patrones",
             "analytics.archivos_procesos",
@@ -180,6 +182,16 @@ def _current_record(conn, component_name: str):
         return cur.fetchone()
 
 
+def _missing_required_relations(conn, component: SchemaComponent) -> list[str]:
+    missing: list[str] = []
+    with conn.cursor() as cur:
+        for relation in component.required_relations:
+            cur.execute("SELECT to_regclass(%s)", (relation,))
+            if cur.fetchone()[0] is None:
+                missing.append(relation)
+    return missing
+
+
 def _objects_exist(conn, component: SchemaComponent) -> tuple[bool, list[str]]:
     missing: list[str] = []
     with conn.cursor() as cur:
@@ -218,6 +230,14 @@ def _record_failure(conn, component: SchemaComponent, checksum: str, exc: Except
 
 
 def _apply_component(conn, root: Path, component: SchemaComponent, force: bool) -> str:
+    missing_sources = _missing_required_relations(conn, component)
+    if missing_sources:
+        print(
+            f"[SCHEMA][DEFER] {component.name}: fuente pendiente: "
+            + ", ".join(missing_sources)
+        )
+        return "DEFERRED"
+
     checksum = _checksum(root, component)
     record = _current_record(conn, component.name)
     healthy, missing = _objects_exist(conn, component)
@@ -294,9 +314,13 @@ def _print_status(conn, root: Path, components: tuple[SchemaComponent, ...]) -> 
     for component in components:
         checksum = _checksum(root, component)
         record = _current_record(conn, component.name)
+        missing_sources = _missing_required_relations(conn, component)
         healthy, missing = _objects_exist(conn, component)
 
-        if record is None:
+        if missing_sources:
+            state = "WAITING_SOURCE"
+            missing = missing_sources
+        elif record is None:
             state = "NOT_APPLIED"
         elif record[1] != "SUCCESS":
             state = "FAILED"
@@ -351,12 +375,17 @@ def main() -> int:
 
         applied = 0
         skipped = 0
+        deferred = 0
         for component in selected:
             result = _apply_component(conn, root, component, force=args.force)
             applied += result == "APPLIED"
             skipped += result == "SKIPPED"
+            deferred += result == "DEFERRED"
 
-    print(f"[SCHEMA] completado: applied={applied}, unchanged={skipped}.")
+    print(
+        f"[SCHEMA] completado: applied={applied}, unchanged={skipped}, "
+        f"waiting_source={deferred}."
+    )
     return 0
 
 
