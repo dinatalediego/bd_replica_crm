@@ -58,7 +58,7 @@ SELECT c.codigo_unidad,c.codigo_proforma,c.codigo_proyecto,
          WHEN c.resultado_canonico <> 'VENTA' OR c.reconciliation_status <> 'RECONCILED' THEN 'VENTA_NO_RECONCILIADA'
          ELSE 'ELEGIBLE'
        END AS calidad_ciclo
-FROM analytics.v_ciclo_comercial_reconciliado c
+FROM analytics.v_absorcion_ventas_reconciliado c
 JOIN core.dim_unidad u USING (codigo_unidad)
 JOIN analytics.absorcion_inicio_proyecto i ON i.codigo_proyecto=u.codigo_proyecto
 WHERE lower(trim(u.tipo_unidad)) IN

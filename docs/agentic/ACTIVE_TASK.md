@@ -22,7 +22,9 @@ sin nuevo job ni carga Redshift. Detalle, mensual e incidencias disponibles.
 
 ## Evidence
 
-35 tests passed: 13 casos PostgreSQL sintético + 22 contratos de regresión.
+36 tests passed: 14 casos PostgreSQL sintético + 22 contratos de regresión.
+Corrección validada: adaptador propio de reconciliación con columnas explícitas,
+conservando vistas legacy y soportando columnas nuevas en Phase B.
 SQL probado con instalación idempotente; Python compilado; git diff --check limpio.
 Documento de operación: docs/ABSORCION_VENTAS_MENSUAL.md.
 

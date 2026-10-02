@@ -8,22 +8,22 @@
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Instalar en Medallio y validar totales reales e incidencias según docs/ABSORCION_VENTAS_MENSUAL.md"
+    "next_action": "git pull --ff-only y repetir schema_sync.py --only absorcion_ventas_mensual; validar cuadro real"
   },
   "git": {
     "base_branch": "main",
     "working_branch": "feat/absorcion-mensual-ventas-2024",
-    "checkpoint_commit": "664e7726348961ec8fc6908bc932650f2b20baad",
+    "checkpoint_commit": "b3da19a8c25e749c04552da87f7348905023d0df",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-02T20:59:16Z",
+    "last_checked_at": "2026-10-02T21:09:59Z",
     "tests": [
-      "35 passed: 13 PostgreSQL synthetic integration + 22 existing contract regressions"
+      "36 passed: 14 synthetic PostgreSQL + 22 regression contracts; legacy-view compatibility covered"
     ],
     "notes": [
-      "No local Medallio access; no production execution or merge. Prior NIGHT-002 queue unchanged."
+      "Fix screenshot InvalidTableDefinition: report-scoped reconciliation with explicit columns; no legacy view replacement."
     ]
   },
-  "updated_at": "2026-10-02T20:59:16Z"
+  "updated_at": "2026-10-02T21:09:59Z"
 }

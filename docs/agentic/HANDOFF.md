@@ -1,17 +1,17 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-02T20:59:16Z
+Generated at: 2026-10-02T21:09:59Z
 Task: ABS-2024-VENTAS — Stock pendiente de venta y absorción mensual por proyecto
 From: chatgpt
 To: human
 Status: REVIEW_READY
 Branch: feat/absorcion-mensual-ventas-2024
-Commit at checkpoint: 664e7726348961ec8fc6908bc932650f2b20baad
+Commit at checkpoint: b3da19a8c25e749c04552da87f7348905023d0df
 
 ## Exact next action
 
-Instalar en Medallio y validar totales reales e incidencias según docs/ABSORCION_VENTAS_MENSUAL.md
+git pull --ff-only y repetir schema_sync.py --only absorcion_ventas_mensual; validar cuadro real
 
 ## Working-tree state
 
@@ -19,24 +19,22 @@ Dirty: yes
 
 ### Changed files
 
-- M .agent/state.json
-- M .github/workflows/ci.yml
+- M docs/ABSORCION_VENTAS_MENSUAL.md
 - M docs/agentic/ACTIVE_TASK.md
-- M docs/agentic/DECISIONS.md
 - M scripts/schema_sync.py
-- ?? docs/ABSORCION_VENTAS_MENSUAL.md
-- ?? sql/96_absorcion_ventas/
-- ?? tests/integration/
+- M sql/96_absorcion_ventas/01_contract.sql
+- M tests/integration/test_absorcion_ventas_postgres.py
+- ?? sql/96_absorcion_ventas/00_reconciliacion.sql
 
 ### Diff stat
 
 ```text
-.agent/state.json           |  8 +++----
- .github/workflows/ci.yml    | 14 ++++++++++++
- docs/agentic/ACTIVE_TASK.md | 52 +++++++++++++++++++++------------------------
- docs/agentic/DECISIONS.md   | 16 ++++++++++++++
- scripts/schema_sync.py      | 17 +++++++++++++++
- 5 files changed, 75 insertions(+), 32 deletions(-)
+docs/ABSORCION_VENTAS_MENSUAL.md                    | 13 ++++++++++++-
+ docs/agentic/ACTIVE_TASK.md                         |  4 +++-
+ scripts/schema_sync.py                              |  4 ++--
+ sql/96_absorcion_ventas/01_contract.sql             |  2 +-
+ tests/integration/test_absorcion_ventas_postgres.py | 15 ++++++++++++++-
+ 5 files changed, 32 insertions(+), 6 deletions(-)
 ```
 
 ### Staged diff stat
@@ -47,19 +45,19 @@ Dirty: yes
 
 ## Validation / tests recorded for this checkpoint
 
-- 35 passed: 13 PostgreSQL synthetic integration + 22 existing contract regressions
+- 36 passed: 14 synthetic PostgreSQL + 22 regression contracts; legacy-view compatibility covered
 
 ## Notes
 
-- No local Medallio access; no production execution or merge. Prior NIGHT-002 queue unchanged.
+- Fix screenshot InvalidTableDefinition: report-scoped reconciliation with explicit columns; no legacy view replacement.
 
 ## Recent commits
 
+- b3da19a feat: reconstruct monthly apartment stock from canonical sales
 - 664e772 chore(map): hand off first unattended task
 - d88ad9a chore(map): checkpoint Night Shift preflight
 - 5978944 chore(map): activate NIGHT-002
 - c88ca34 chore(night-shift): align seven-day production plan
-- d060e03 chore(night-shift): activate Oct 1 production queue
 
 ## Handoff rule
 

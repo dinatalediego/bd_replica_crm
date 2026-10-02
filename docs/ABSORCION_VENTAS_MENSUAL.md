@@ -10,7 +10,8 @@ Es un supuesto explícito de reconstrucción, no un snapshot histórico observad
 Los 17 códigos se conservan como texto, incluido `001`. Los proyectos sin fecha del
 adjunto aparecen en `v_absorcion_proyectos_sin_inicio` y no se les inventa un alta.
 
-Se reutiliza `analytics.v_ciclo_comercial_reconciliado`, no se duplica el cálculo de
+Se reutiliza la regla de reconciliación mediante `analytics.v_absorcion_ventas_reconciliado`,
+una vista propia con proyección explícita que no reemplaza vistas legacy. No se duplica el cálculo de
 fecha de venta ni se vuelve a consultar Redshift. Se conservan los controles:
 `fecha_de_minuta` tiene prioridad; el respaldo `Venta.fecha_inicio` solo es válido
 para separaciones anteriores a 2026, conforme a `fecha_separacion` del ciclo vigente.
@@ -97,3 +98,13 @@ base PostgreSQL desechable. `ABSORCION_TEST_DSN` debe apuntar solo a una base va
 pruebas: el fixture crea esquemas y revierte cada caso. CI usa un servicio PostgreSQL 16.
 Sin DSN puede usarse el paquete opcional pgserver; sin ambos, pytest marca esas pruebas
 como omitidas. Las pruebas no se conectan a Medallio ni a Redshift.
+
+## Compatibilidad con instalaciones antiguas
+
+La instalación inicial podía fallar con `InvalidTableDefinition` al reemplazar
+`v_ciclo_comercial_reconciliado`: su `c.*` incorporaba columnas nuevas de Phase B
+en posiciones intermedias. El componente ahora instala su propio adaptador con
+columnas explícitas, conservando la semántica de reconciliación. No renombrar
+columnas ni usar DROP CASCADE sobre la vista legacy. Tras descargar la corrección,
+repetir `schema_sync.py --only absorcion_ventas_mensual`; el checksum y el estado
+FAILED anterior provocan el reintento automático.

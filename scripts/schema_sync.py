@@ -44,7 +44,7 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
         name="absorcion_ventas_mensual",
         files=(
-            "sql/21_absorption_reconciliation/00_views.sql",
+            "sql/96_absorcion_ventas/00_reconciliacion.sql",
             "sql/96_absorcion_ventas/01_contract.sql",
         ),
         expected_relations=(
@@ -54,7 +54,7 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
             "analytics.v_absorcion_ventas_ciclos",
             "analytics.v_absorcion_ventas_revision",
             "analytics.v_absorcion_proyectos_sin_inicio",
-            "analytics.v_ciclo_comercial_reconciliado",
+            "analytics.v_absorcion_ventas_reconciliado",
         ),
         expected_procedures=("analytics.absorcion_ventas_mensual(date)",),
     ),

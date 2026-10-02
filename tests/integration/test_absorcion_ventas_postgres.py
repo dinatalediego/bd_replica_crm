@@ -24,8 +24,9 @@ def db():
         conn.execute('''CREATE TABLE core.dim_unidad (
             codigo_unidad text PRIMARY KEY, codigo_proyecto text, nombre_unidad text,
             tipo_unidad text, estado_comercial text)''')
+        conn.execute('CREATE VIEW analytics.v_ciclo_comercial_reconciliado AS SELECT 1 AS legacy_column')
         for path in ['sql/20_absorption_phase_b/02_tables.sql',
-                     'sql/21_absorption_reconciliation/00_views.sql',
+                     'sql/96_absorcion_ventas/00_reconciliacion.sql',
                      'sql/96_absorcion_ventas/01_contract.sql']:
             conn.execute((ROOT/path).read_text(), prepare=False)
         yield conn
@@ -141,3 +142,15 @@ def test_payment_date_priority_and_project_consistency(db):
     assert db.execute('SELECT calidad_ciclo FROM analytics.v_absorcion_ventas_ciclos').fetchone()[0]=='PAGO_CI_NO_PRIORIZADO'
     db.execute("UPDATE analytics.int_ciclo_comercial_unidad SET codigo_proyecto='CP'")
     assert db.execute('SELECT calidad_ciclo FROM analytics.v_absorcion_ventas_ciclos').fetchone()[0]=='PROYECTO_INCONSISTENTE'
+
+
+def test_install_preserves_legacy_view_and_handles_appended_columns(db):
+    # Emulate a live DB whose older canonical view has a different signature.
+    assert db.execute('SELECT * FROM analytics.v_ciclo_comercial_reconciliado').fetchone()==(1,)
+    before = db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='analytics' AND table_name='v_absorcion_ventas_reconciliado' ORDER BY ordinal_position").fetchall()
+    db.execute('ALTER TABLE analytics.int_ciclo_comercial_unidad ADD COLUMN future_compatibility text')
+    db.execute((ROOT/'sql/96_absorcion_ventas/00_reconciliacion.sql').read_text(),prepare=False)
+    db.execute((ROOT/'sql/96_absorcion_ventas/01_contract.sql').read_text(),prepare=False)
+    after = db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='analytics' AND table_name='v_absorcion_ventas_reconciliado' ORDER BY ordinal_position").fetchall()
+    assert before==after
+    assert db.execute('SELECT * FROM analytics.v_ciclo_comercial_reconciliado').fetchone()==(1,)
