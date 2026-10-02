@@ -3,28 +3,27 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "NIGHT-002",
-    "title": "Medallio low-impact refresh health checks",
-    "status": "READY",
+    "id": "ABS-2024-VENTAS",
+    "title": "Stock pendiente de venta y absorción mensual por proyecto",
+    "status": "REVIEW_READY",
     "owner": "chatgpt",
-    "next_agent": "claude",
-    "next_action": "Claim NIGHT-002 and audit the real refresh orchestration for low-impact Redshift guards"
+    "next_agent": "human",
+    "next_action": "Instalar en Medallio y validar totales reales e incidencias según docs/ABSORCION_VENTAS_MENSUAL.md"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": null,
-    "checkpoint_commit": "601be3c32447edf7100e9c727e40be538aafab67",
-    "dirty": null
+    "working_branch": "feat/absorcion-mensual-ventas-2024",
+    "checkpoint_commit": "664e7726348961ec8fc6908bc932650f2b20baad",
+    "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-01T05:16:00Z",
+    "last_checked_at": "2026-10-02T20:59:16Z",
     "tests": [
-      "GitHub CI run 181: success"
+      "35 passed: 13 PostgreSQL synthetic integration + 22 existing contract regressions"
     ],
     "notes": [
-      "NIGHT-001 completed and merged through PR #35.",
-      "First unattended production task is NIGHT-002."
+      "No local Medallio access; no production execution or merge. Prior NIGHT-002 queue unchanged."
     ]
   },
-  "updated_at": "2026-10-01T05:16:00Z"
+  "updated_at": "2026-10-02T20:59:16Z"
 }

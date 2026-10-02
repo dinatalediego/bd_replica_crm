@@ -151,3 +151,19 @@ The pilot targets approximately 90% primary work through ChatGPT/Work/Codex and 
 ### Rationale
 
 The second model adds more value by testing assumptions and finding failure modes than by duplicating the same implementation.
+
+---
+
+## MAP-ADR-011 — Stock reconstruido por altas de proyecto y ventas
+
+Date: 2026-10-02
+Status: ACCEPTED
+
+El usuario aprobó un cuadro adicional desde enero 2024: todas las unidades de
+departamentos ingresan el primer día del mes indicado en su CSV de 17 proyectos.
+Las separaciones y caídas no generan movimientos en este cuadro. Se conserva la
+regla canónica de fecha y el veto de respaldo de Venta para separaciones desde 2026.
+No se reemplazan ledger ni snapshots observados. Se reutilizan ventas reconciliadas;
+casos ambiguos siguen visibles y excluidos, sin redefinir anulación de ventas.
+La capa usa vistas sobre CORE/analytics y se instala mediante schema_sync, sin nuevas
+consultas a Redshift. Los saldos deben etiquetarse como reconstruidos, no observados.
