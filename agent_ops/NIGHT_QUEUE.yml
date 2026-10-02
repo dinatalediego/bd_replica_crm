@@ -53,7 +53,7 @@ tasks:
     priority: P0
     repo: dinatalediego/bd_replica_crm
     title: "Medallio low-impact refresh health checks"
-    status: READY
+    status: IN_PROGRESS
     primary_agent: chatgpt
     reviewer: claude
     risk: MEDIUM
@@ -73,7 +73,7 @@ tasks:
       - "health/watch evidence exists"
       - "no new high-frequency Redshift query path"
       - "tests or deterministic validation added"
-    next_action: "Inspect current refresh orchestration and implement only evidence-backed guards."
+    next_action: "Audit and regression test are committed on feat/night-002-refresh-health-guards; draft PR creation was blocked by connector safety checks, so retry only after an authorized interactive write context."
 
   - id: NIGHT-003
     date: "2026-10-02"
