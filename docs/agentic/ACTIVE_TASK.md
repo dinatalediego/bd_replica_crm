@@ -2,10 +2,10 @@
 
 Task ID: NIGHT-002  
 Title: Medallio low-impact refresh health checks  
-Status: READY  
+Status: IN_PROGRESS  
 Owner: chatgpt  
 Next agent: claude  
-Branch: to be created by the unattended worker  
+Branch: feat/night-002-refresh-health-guards  
 Base branch: main
 
 ## Objective
@@ -39,4 +39,4 @@ NIGHT-001 is complete:
 
 ## Next action
 
-The Night Shift Dispatcher should claim NIGHT-002, inspect the real refresh orchestration, create a feature branch, and implement only evidence-backed low-impact guards.
+A refresh-contract regression test and audit are committed. Open a draft PR and use GitHub CI as the validation boundary; do not claim tests pass before CI.
