@@ -20,12 +20,18 @@ def db():
         dsn = server.get_uri()
     with psycopg.connect(dsn) as conn:
         # Rollback isolates every test; refuse an existing schema rather than delete it.
-        conn.execute('CREATE SCHEMA analytics; CREATE SCHEMA core; CREATE SCHEMA observability')
+        conn.execute('CREATE SCHEMA analytics; CREATE SCHEMA core; CREATE SCHEMA observability; CREATE SCHEMA raw_cygnus; CREATE SCHEMA etl_control')
         conn.execute('''CREATE TABLE core.dim_unidad (
             codigo_unidad text PRIMARY KEY, codigo_proyecto text, nombre_unidad text,
             tipo_unidad text, estado_comercial text)''')
+        conn.execute('''CREATE TABLE raw_cygnus.procesos (
+            id bigserial PRIMARY KEY,codigo_proforma text,codigo_unidad text,
+            nombre text,estado text DEFAULT 'Activo',fecha_inicio date,nombre_flujo text);
+            CREATE TABLE raw_cygnus.datos_extras (id bigserial PRIMARY KEY,codigo text,
+            entidad text,nombre text,valor text,fecha_actualizacion timestamp)''')
         conn.execute('CREATE VIEW analytics.v_ciclo_comercial_reconciliado AS SELECT 1 AS legacy_column')
-        for path in ['sql/20_absorption_phase_b/02_tables.sql',
+        for path in ['sql/20_absorption_phase_b/01_control_and_functions.sql',
+                     'sql/20_absorption_phase_b/02_tables.sql',
                      'sql/96_absorcion_ventas/00_reconciliacion.sql',
                      'sql/96_absorcion_ventas/01_contract.sql']:
             conn.execute((ROOT/path).read_text(), prepare=False)
@@ -47,6 +53,12 @@ def cycle(db, unit='A', proforma='P', project='GY', sale='2024-05-10',
        primera_fecha_caida,venta_source_id)
       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1)''',
       (unit,proforma,project,separation,sale,ci,sale,method,result,fall))
+    db.execute('UPDATE analytics.int_ciclo_comercial_unidad SET fecha_separacion_raw=fecha_separacion WHERE codigo_proforma=%s', (proforma,))
+    db.execute("INSERT INTO raw_cygnus.procesos(codigo_proforma,codigo_unidad,nombre,fecha_inicio) VALUES (%s,%s,'Venta',%s)", (proforma,unit,sale))
+    if ci:
+        db.execute("INSERT INTO raw_cygnus.datos_extras(codigo,entidad,nombre,valor) VALUES (%s,'proforma','fecha_de_minuta',%s)", (proforma,ci))
+    if fall:
+        db.execute("INSERT INTO raw_cygnus.procesos(codigo_proforma,codigo_unidad,nombre,fecha_inicio) VALUES (%s,%s,'Anulacion',%s)", (proforma,unit,fall))
     event = 'CAIDA' if result=='CAIDA' else 'VENTA' if sale else 'SEPARACION'
     db.execute('''INSERT INTO analytics.fact_movimientos_stock
        (movement_id,source_table,source_event_key,codigo_proforma,codigo_unidad,
@@ -118,15 +130,26 @@ def test_conservation_and_idempotent_install(db):
     assert db.execute("SELECT count(*) FROM analytics.absorcion_ventas_mensual('2026-10-02')").fetchone()[0]==34
 
 
-@pytest.mark.parametrize('sale,separation,fall',[
-    ('2024-03-20','2024-03-01',None), # before project intake
-    ('2024-05-01','2024-05-02',None), # before separation
-    ('2024-05-01','2024-04-02','2024-05-01'), # sale/fall ambiguity
-])
-def test_invalid_or_ambiguous_sale_is_not_counted(db,sale,separation,fall):
-    unit(db); cycle(db,sale=sale,separation=separation,fall=fall)
+def test_pre_project_sale_advances_start_and_preserves_original(db):
+    unit(db); cycle(db,sale='2024-03-20',separation='2024-03-01')
+    assert monthly(db,'2024-03-01')==(0,1,1,0)
+    assert monthly(db,'2024-04-01')==(0,0,0,0)
+    assert db.execute("SELECT fecha_ingreso_stock,fecha_ingreso_efectiva FROM analytics.v_absorcion_inicio_proyecto WHERE codigo_proyecto='GY'").fetchone()==(date(2024,4,1),date(2024,3,1))
+
+
+def test_payment_before_separation_is_accepted_with_comment(db):
+    unit(db); cycle(db,sale='2026-01-01',separation='2026-01-24')
+    assert monthly(db,'2026-01-01')==(1,0,1,0)
+    assert 'anterior a separación original' in db.execute('SELECT observacion FROM analytics.v_absorcion_ventas_observaciones').fetchone()[0]
+
+
+@pytest.mark.parametrize('fall',['2024-05-01','2024-06-01'])
+def test_cancelled_sale_removed_retrospectively(db,fall):
+    unit(db); cycle(db,sale='2024-05-01',fall=fall)
     assert monthly(db,'2024-05-01')==(1,0,0,1)
-    assert db.execute('SELECT requiere_revision FROM analytics.v_absorcion_ventas_unidad').fetchone()[0]
+    assert not db.execute('SELECT requiere_revision FROM analytics.v_absorcion_ventas_unidad').fetchone()[0]
+    cycle(db,proforma='RESALE',sale='2024-07-01')
+    assert monthly(db,'2024-07-01')==(1,0,1,0)
 
 
 def test_sale_process_without_initial_payment_date_stays_pending(db):
@@ -138,8 +161,8 @@ def test_sale_process_without_initial_payment_date_stays_pending(db):
 
 def test_payment_date_priority_and_project_consistency(db):
     unit(db); cycle(db)
-    db.execute("UPDATE analytics.int_ciclo_comercial_unidad SET fecha_de_minuta='2024-06-01'")
-    assert db.execute('SELECT calidad_ciclo FROM analytics.v_absorcion_ventas_ciclos').fetchone()[0]=='PAGO_CI_NO_PRIORIZADO'
+    db.execute("UPDATE raw_cygnus.datos_extras SET valor='2024-06-01'")
+    assert db.execute('SELECT fecha_venta FROM analytics.v_absorcion_ventas_unidad').fetchone()[0]==date(2024,6,1)
     db.execute("UPDATE analytics.int_ciclo_comercial_unidad SET codigo_proyecto='CP'")
     assert db.execute('SELECT calidad_ciclo FROM analytics.v_absorcion_ventas_ciclos').fetchone()[0]=='PROYECTO_INCONSISTENTE'
 
@@ -154,3 +177,47 @@ def test_install_preserves_legacy_view_and_handles_appended_columns(db):
     after = db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='analytics' AND table_name='v_absorcion_ventas_reconciliado' ORDER BY ordinal_position").fetchall()
     assert before==after
     assert db.execute('SELECT * FROM analytics.v_ciclo_comercial_reconciliado').fetchone()==(1,)
+
+
+def test_recover_legacy_before_shifted_separation_without_ledger(db):
+    unit(db,project='CUBA'); cycle(db,project='CUBA',sale='2019-05-01',separation='2019-04-01',method='LEGACY_FECHA_FIRMA_PRE_2026')
+    db.execute("UPDATE analytics.int_ciclo_comercial_unidad SET fecha_separacion='2021-09-20',fecha_venta=NULL,fecha_firma_legacy=NULL,venta_source_id=NULL")
+    db.execute('DELETE FROM analytics.fact_movimientos_stock')
+    assert monthly(db,'2024-01-01','CUBA')==(0,0,0,0)
+    assert 'recuperada' in db.execute('SELECT observacion FROM analytics.v_absorcion_ventas_observaciones').fetchone()[0]
+
+
+def test_inactive_sale_does_not_supply_legacy_fallback(db):
+    unit(db); cycle(db,method='LEGACY_FECHA_FIRMA_PRE_2026')
+    db.execute("UPDATE raw_cygnus.procesos SET estado='Inactivo'")
+    assert monthly(db,'2024-05-01')==(1,0,0,1)
+
+
+def test_original_or_analytic_2026_boundary_blocks_fallback(db):
+    unit(db); cycle(db,sale='2026-02-01',separation='2025-12-01',method='LEGACY_FECHA_FIRMA_PRE_2026')
+    db.execute("UPDATE analytics.int_ciclo_comercial_unidad SET fecha_separacion='2026-01-01'")
+    assert monthly(db,'2026-02-01')==(1,0,0,1)
+
+
+def test_invalid_latest_payment_never_falls_back(db):
+    unit(db); cycle(db)
+    db.execute("INSERT INTO raw_cygnus.datos_extras(codigo,entidad,nombre,valor,fecha_actualizacion) VALUES ('P','proforma','fecha_de_minuta','bad date','2026-10-02')")
+    assert db.execute('SELECT calidad_ciclo FROM analytics.v_absorcion_ventas_ciclos').fetchone()[0]=='FECHA_PAGO_CI_INVALIDA'
+    assert monthly(db,'2024-05-01')==(1,0,0,1)
+
+
+def test_cancellation_before_shifted_separation_still_excludes(db):
+    unit(db); cycle(db,fall='2024-06-01')
+    db.execute("UPDATE analytics.int_ciclo_comercial_unidad SET fecha_separacion='2024-08-01'")
+    assert monthly(db,'2024-05-01')==(1,0,0,1)
+
+
+def test_business_exclusion_is_preserved(db):
+    unit(db); cycle(db,proforma='2026-0002275')
+    assert db.execute('SELECT count(*) FROM analytics.v_absorcion_ventas_ciclos').fetchone()[0]==0
+
+
+def test_cancelled_evidence_keeps_historical_project_start(db):
+    unit(db); cycle(db,sale='2024-02-01',fall='2024-03-01')
+    assert monthly(db,'2024-02-01')==(0,1,0,1)
+    assert monthly(db,'2024-04-01')==(1,0,0,1)

@@ -55,6 +55,8 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
             "analytics.v_absorcion_ventas_revision",
             "analytics.v_absorcion_proyectos_sin_inicio",
             "analytics.v_absorcion_ventas_reconciliado",
+            "analytics.v_absorcion_inicio_proyecto",
+            "analytics.v_absorcion_ventas_observaciones",
         ),
         expected_procedures=("analytics.absorcion_ventas_mensual(date)",),
     ),

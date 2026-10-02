@@ -167,3 +167,21 @@ No se reemplazan ledger ni snapshots observados. Se reutilizan ventas reconcilia
 casos ambiguos siguen visibles y excluidos, sin redefinir anulación de ventas.
 La capa usa vistas sobre CORE/analytics y se instala mediante schema_sync, sin nuevas
 consultas a Redshift. Los saldos deben etiquetarse como reconstruidos, no observados.
+
+
+## MAP-ADR-012 — Ventas vigentes retrospectivas y evidencia temporal
+
+Date: 2026-10-02
+Status: ACCEPTED — supersedes sales eligibility and project-start clauses of ADR-011
+
+El usuario aprobó adelantar el inicio al primer mes de venta documental cuando sea
+anterior al adjunto, manteniendo ambas fechas y comentarios. Aprobó aceptar fechas
+documentales anteriores a separación y excluir retrospectivamente proformas anuladas.
+El reporte no exige transición del ledger; utiliza ciclos existentes, extras y procesos
+de la réplica local. CI tiene prioridad; Venta Activo solo respalda separaciones
+originales Y analíticas anteriores a 2026. Un pago mal formado no habilita fallback.
+Anulaciones se enlazan por proforma/unidad hasta hoy, sin umbral de separación legacy.
+Más de una venta vigente por unidad queda pendiente. No se modifica Phase B ni sus
+controles. Los casos se entregan mediante una vista de observaciones sin PII.
+La tabla futura de seguimiento temporal de venta/anulación/reventa queda pendiente;
+este cuadro no sirve para reconstruir lo que se sabía en un corte pasado.

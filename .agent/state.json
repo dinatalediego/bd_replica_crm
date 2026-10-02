@@ -5,25 +5,26 @@
   "active_task": {
     "id": "ABS-2024-VENTAS",
     "title": "Stock pendiente de venta y absorción mensual por proyecto",
-    "status": "REVIEW_READY",
+    "status": "VALIDATION_REQUIRED",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "git pull --ff-only y repetir schema_sync.py --only absorcion_ventas_mensual; validar cuadro real"
+    "next_action": "Descargar PR36; schema_sync.py --only absorcion_ventas_mensual; exportar mensual, inicios y observaciones"
   },
   "git": {
     "base_branch": "main",
     "working_branch": "feat/absorcion-mensual-ventas-2024",
-    "checkpoint_commit": "b3da19a8c25e749c04552da87f7348905023d0df",
+    "checkpoint_commit": "9dbb6a83c7334587d6190ad72464bf46c39be754",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-02T21:09:59Z",
+    "last_checked_at": "2026-10-02T21:42:44Z",
     "tests": [
-      "36 passed: 14 synthetic PostgreSQL + 22 regression contracts; legacy-view compatibility covered"
+      "48 passed: PostgreSQL integration and existing contract regressions",
+      "Upgrade from published SQL preserves dependent consumer; diff check and Python compilation passed"
     ],
     "notes": [
-      "Fix screenshot InvalidTableDefinition: report-scoped reconciliation with explicit columns; no legacy view replacement."
+      "ADR-012: retrospective cancellation, earlier documentary dates with comments, effective project starts; 2026 veto preserved. Real totals pending local installation."
     ]
   },
-  "updated_at": "2026-10-02T21:09:59Z"
+  "updated_at": "2026-10-02T21:42:44Z"
 }

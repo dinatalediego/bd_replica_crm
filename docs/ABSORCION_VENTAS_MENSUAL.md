@@ -5,40 +5,66 @@
 Stock de departamentos pendiente de venta, reconstruido con todo el universo de
 `raw_cygnus.unidades` que ya replica `core.dim_unidad`. Incluye vendidos y no vendidos;
 no usa el estado comercial actual para fechar una venta ni para recortar el universo.
-El alta de TODO el proyecto es el primer día del mes del CSV `inicio por proyecto.csv`.
-Es un supuesto explícito de reconstrucción, no un snapshot histórico observado.
-Los 17 códigos se conservan como texto, incluido `001`. Los proyectos sin fecha del
-adjunto aparecen en `v_absorcion_proyectos_sin_inicio` y no se les inventa un alta.
+El alta de TODO el proyecto ocurre el primer día del mes de la fecha más antigua
+entre el adjunto y la primera venta documental permitida. La tabla original se
+conserva; `v_absorcion_inicio_proyecto` expone ambos valores y una observación.
+La evidencia de ventas posteriormente anuladas también puede acreditar un inicio
+anterior, aunque esas ventas no se descuenten. Es stock reconstruido, no observado.
+Los 17 códigos se conservan como texto, incluido `001`. Proyectos sin fecha del
+adjunto permanecen en `v_absorcion_proyectos_sin_inicio` para completar su configuración.
 
-Se reutiliza la regla de reconciliación mediante `analytics.v_absorcion_ventas_reconciliado`,
-una vista propia con proyección explícita que no reemplaza vistas legacy. No se duplica el cálculo de
-fecha de venta ni se vuelve a consultar Redshift. Se conservan los controles:
-`fecha_de_minuta` tiene prioridad; el respaldo `Venta.fecha_inicio` solo es válido
-para separaciones anteriores a 2026, conforme a `fecha_separacion` del ciclo vigente.
-Se exigen venta canónica reconciliada y fecha validada. Los casos temporales inválidos,
-venta/caída el mismo día o discrepancias continúan fuera del conteo y visibles en revisión.
-No cambia el tratamiento existente de anulaciones de ventas; no se introduce una
-nueva política de reversión. Las separaciones y caídas de separación no restan ni suman
-unidades en ESTE cuadro. Una caída anterior a una venta válida de otro ciclo no genera
-movimientos intermedios. El ledger operativo original conserva su propio significado.
+### Reglas ratificadas tras revisar los datos locales
 
-Más de una venta elegible por unidad requiere revisión: no se selecciona una al azar
-ni se descuenta dos veces. Ventas anteriores al ingreso del proyecto se exponen como
-incidencia. Una venta futura solo descuenta stock cuando alcanza el corte consultado.
-Las ventas anteriores a enero de 2024 sí reducen el stock inicial de enero.
+- `datos_extras` de entidad proforma, nombre `fecha_de_minuta`, relacionado por
+  `codigo = codigo_proforma` del ciclo de Separacion, tiene prioridad. Se reutiliza
+  el parser existente y se toma la última actualización/id. Un valor poblado inválido
+  queda excluido; nunca activa silenciosamente el respaldo.
+- Sin pago fechado, se permite la primera fecha del proceso Venta **Activo** de la
+  misma proforma/unidad, únicamente cuando tanto la separación original como la
+  analítica son anteriores a 2026. Se mantiene íntegro el veto vigente desde 2026.
+- Una fecha documental anterior a la separación se acepta, conservando la fecha
+  real y una observación. El desplazamiento legacy del stock no descarta ventas.
+  No se exige que el ledger haya aplicado una transición de venta.
+- Una Anulacion fechada hasta hoy de la misma proforma/unidad excluye el ciclo de
+  todos los meses, incluso si sucede después de la venta o el mismo día. Se conserva
+  el filtro existente que descarta el flujo `Desistimiento de visita`; no se filtra
+  estado de Anulacion, conforme a la fuente usada por Phase B. Una venta posterior
+  de otra proforma sí puede contar. Las caídas de separación no mueven stock.
+- La población de ciclos viene de Phase B y conserva las exclusiones de negocio.
+  Se consultan procesos y extras de la réplica PostgreSQL local, sin nuevas cargas
+  Redshift. Los controles y ledger globales permanecen intactos.
+
+Más de una venta vigente elegible por unidad permanece pendiente, sin elegir una
+arbitrariamente. Una venta futura solo descuenta al alcanzar su fecha. Las ventas
+previas a enero de 2024 reducen el saldo inicial de enero. El estado comercial actual
+solo ayuda a detectar pendientes; no sustituye la fecha documental.
+
+`v_absorcion_ventas_observaciones` entrega los casos resueltos y pendientes con unidad,
+proforma, fechas, IDs de origen y comentarios, sin información personal. Los campos `resultado_canonico` y `reconciliation_status` conservan el diagnóstico
+del modelo anterior; `calidad_ciclo` determina la elegibilidad de ESTE reporte. La vista
+`v_absorcion_ventas_revision` contiene los pendientes; una excepción aceptada con
+comentario ya no es automáticamente un pendiente. Las anulaciones se conservan como
+evidencia aunque su venta no figure en los totales.
+
+Este cuadro es retrospectivo: una anulación conocida hoy cambia meses anteriores,
+incluso al consultar un corte antiguo. La futura tabla de seguimiento por eventos
+(venta, anulación, reventa y vigencia temporal) queda como ampliación pendiente. No
+se presenta el ledger existente como sustituto de ese seguimiento de anulaciones.
 
 ## Objetos para Power BI
 
 | Objeto en analytics | Grano / propósito |
 | --- | --- |
-| `absorcion_inicio_proyecto` | Tabla editable de supuestos de ingreso por proyecto |
+| `absorcion_inicio_proyecto` | Fechas originales del adjunto |
+| `v_absorcion_inicio_proyecto` | Inicio efectivo, primera evidencia y observación |
+| `v_absorcion_ventas_observaciones` | Casos documentados, aceptados o excluidos |
 | `v_absorcion_ventas_unidad` | Un departamento, fecha de alta, fecha de venta, proforma, método y revisión |
 | `v_absorcion_ventas_mensual` | Proyecto/mes desde enero 2024 hasta hoy, zona America/Lima |
 | `v_absorcion_ventas_ciclos` | Evidencia por proforma/unidad; motivo de exclusión y IDs de origen |
 | `v_absorcion_ventas_revision` | Unidades que requieren revisión |
 | `v_absorcion_proyectos_sin_inicio` | Proyectos con departamentos que no figuran en el adjunto |
 
-Las vistas leen los resultados vigentes; no requieren un segundo backfill ni otro
+Las vistas leen los ciclos procesados y la evidencia RAW local vigente; no requieren un segundo backfill ni otro
 job de refresh. `schema_sync.py` instala el componente con checksum dentro del flujo
 normal antes del refresh de CORE y Phase B. Al terminar el refresh normal, las vistas
 reflejan las fuentes procesadas. En Import, Power BI necesita su propia actualización.
@@ -108,3 +134,17 @@ columnas explícitas, conservando la semántica de reconciliación. No renombrar
 columnas ni usar DROP CASCADE sobre la vista legacy. Tras descargar la corrección,
 repetir `schema_sync.py --only absorcion_ventas_mensual`; el checksum y el estado
 FAILED anterior provocan el reintento automático.
+
+## Consultas de entrega y revisión
+
+```sql
+SELECT * FROM analytics.v_absorcion_inicio_proyecto ORDER BY nombre_proyecto;
+SELECT * FROM analytics.v_absorcion_ventas_observaciones
+ORDER BY codigo_proyecto, codigo_unidad, codigo_proforma;
+SELECT * FROM analytics.v_absorcion_ventas_revision ORDER BY codigo_proyecto,codigo_unidad;
+```
+
+Exportar la segunda consulta a CSV para conservar los casos comentados en una fecha.
+Las vistas son vivas; no constituyen un historial inmutable de cambios de la fuente.
+La validación sintética comprueba reglas y saldos. Los nuevos totales reales requieren
+reinstalar el componente en Medallio y ejecutar `02_validation.sql`.

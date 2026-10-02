@@ -1,17 +1,17 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-02T21:09:59Z
+Generated at: 2026-10-02T21:42:44Z
 Task: ABS-2024-VENTAS — Stock pendiente de venta y absorción mensual por proyecto
 From: chatgpt
 To: human
-Status: REVIEW_READY
+Status: VALIDATION_REQUIRED
 Branch: feat/absorcion-mensual-ventas-2024
-Commit at checkpoint: b3da19a8c25e749c04552da87f7348905023d0df
+Commit at checkpoint: 9dbb6a83c7334587d6190ad72464bf46c39be754
 
 ## Exact next action
 
-git pull --ff-only y repetir schema_sync.py --only absorcion_ventas_mensual; validar cuadro real
+Descargar PR36; schema_sync.py --only absorcion_ventas_mensual; exportar mensual, inicios y observaciones
 
 ## Working-tree state
 
@@ -21,20 +21,23 @@ Dirty: yes
 
 - M docs/ABSORCION_VENTAS_MENSUAL.md
 - M docs/agentic/ACTIVE_TASK.md
+- M docs/agentic/DECISIONS.md
 - M scripts/schema_sync.py
 - M sql/96_absorcion_ventas/01_contract.sql
+- M sql/96_absorcion_ventas/02_validation.sql
 - M tests/integration/test_absorcion_ventas_postgres.py
-- ?? sql/96_absorcion_ventas/00_reconciliacion.sql
 
 ### Diff stat
 
 ```text
-docs/ABSORCION_VENTAS_MENSUAL.md                    | 13 ++++++++++++-
- docs/agentic/ACTIVE_TASK.md                         |  4 +++-
- scripts/schema_sync.py                              |  4 ++--
- sql/96_absorcion_ventas/01_contract.sql             |  2 +-
- tests/integration/test_absorcion_ventas_postgres.py | 15 ++++++++++++++-
- 5 files changed, 32 insertions(+), 6 deletions(-)
+docs/ABSORCION_VENTAS_MENSUAL.md                   |  86 ++++++++----
+ docs/agentic/ACTIVE_TASK.md                        |  37 +++---
+ docs/agentic/DECISIONS.md                          |  18 +++
+ scripts/schema_sync.py                             |   2 +
+ sql/96_absorcion_ventas/01_contract.sql            | 146 ++++++++++++++++-----
+ sql/96_absorcion_ventas/02_validation.sql          |  14 +-
+ .../integration/test_absorcion_ventas_postgres.py  |  91 +++++++++++--
+ 7 files changed, 306 insertions(+), 88 deletions(-)
 ```
 
 ### Staged diff stat
@@ -45,19 +48,20 @@ docs/ABSORCION_VENTAS_MENSUAL.md                    | 13 ++++++++++++-
 
 ## Validation / tests recorded for this checkpoint
 
-- 36 passed: 14 synthetic PostgreSQL + 22 regression contracts; legacy-view compatibility covered
+- 48 passed: PostgreSQL integration and existing contract regressions
+- Upgrade from published SQL preserves dependent consumer; diff check and Python compilation passed
 
 ## Notes
 
-- Fix screenshot InvalidTableDefinition: report-scoped reconciliation with explicit columns; no legacy view replacement.
+- ADR-012: retrospective cancellation, earlier documentary dates with comments, effective project starts; 2026 veto preserved. Real totals pending local installation.
 
 ## Recent commits
 
+- 9dbb6a8 fix: preserve legacy reconciliation views during absorption install
 - b3da19a feat: reconstruct monthly apartment stock from canonical sales
 - 664e772 chore(map): hand off first unattended task
 - d88ad9a chore(map): checkpoint Night Shift preflight
 - 5978944 chore(map): activate NIGHT-002
-- c88ca34 chore(night-shift): align seven-day production plan
 
 ## Handoff rule
 
