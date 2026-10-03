@@ -1,43 +1,39 @@
 # Active Task
 
-Task ID: ABS-2024-VENTAS
-Title: Stock pendiente de venta y absorción mensual por proyecto
-Status: VALIDATION_REQUIRED
+Task ID: FORECAST-EVIDENCE-001
+Title: Forecasting comercial con entrenamiento y evidencia
+Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/absorcion-mensual-ventas-2024
+Branch: feat/forecasting-evidence-pilot
 Base branch: main
 
 ## Objective
 
-Cuadro mensual desde enero 2024 de departamentos y ventas vigentes retrospectivas,
-con detalle por unidad y casos comentados. Publicación autorizada en PR #36.
+Implementar dataset/diagnóstico, entrenamiento, evaluación temporal, predicciones
+versionadas y seguimiento comercial usando Medallio local.
 
-## Decisions and scope
+## Scope and decisions
 
-ADR-012 sustituye elegibilidad e inicio de ADR-011 por instrucciones explícitas del
-usuario. Inicio efectivo = mes más antiguo entre adjunto y evidencia de venta.
-Pago CI anterior a separación se acepta con observación. Proformas anuladas se
-excluyen retrospectivamente. Venta Activo solo respalda separaciones originales Y
-analíticas anteriores a 2026. No cambiar Phase B, controles CI ni ledger global.
-Reutilizar CORE, ciclos y RAW locales; sin nueva carga Redshift.
-Seguimiento por eventos y versiones temporales queda como ampliación posterior.
+ADR-013. Histórico retrospectivo es diagnóstico; snapshots/predicciones/outcomes
+append-only. Cuatro modelos, candidatos elegidos en validación, prueba final
+reservada, bandas empíricas sin garantía de cobertura. Ventas acumuladas del
+stock existente; sin carga Redshift, cambios de CI/canónico o promoción automática.
+No hay acceso al PostgreSQL real del usuario.
 
 ## Evidence
 
-48 pruebas aprobadas: integración PostgreSQL sintética y regresión de contratos.
-Migración desde contrato publicado probada en PostgreSQL desechable, conservando
-una vista consumidora dependiente. git diff --check y compilación Python limpios.
-CSV locales anteriores permitieron detectar ventas omitidas por separación legacy;
-los nuevos totales reales aún deben consultarse en Medallio después de instalar.
-No almacenar CSV ni datos personales en el repositorio.
+238 pruebas locales aprobadas, 24 omitidas por falta de PostgreSQL desechable.
+Demo ejecutada: entrenamiento, artefactos y predicciones SYNTHETIC_ONLY.
+Integración PostgreSQL se ejecuta en CI; estado final registrado en HANDOFF.
 
 ## Next action
 
-Descargar rama, ejecutar schema_sync.py --only absorcion_ventas_mensual y consultar
-sql/96_absorcion_ventas/02_validation.sql. Exportar mensual, inicios y observaciones.
-No hay conexión directa a Medallio local desde esta sesión. No fusionar main.
+Ejecutar scripts/64_forecasting_medallio.bat en PC con .env PostgreSQL y fuente
+actualizada. Inspeccionar report.html, registrar metas/acciones y conectar vistas
+Power BI según docs/COMMERCIAL_FORECASTING.md.
 
-## Other work
+## Previous task
 
-NIGHT-002 permanece independiente; no se cambia cola ni políticas nocturnas.
+ABS-2024-VENTAS queda con validación real local pendiente; se conservan reglas
+ADR-012 y contrato de absorción. No se altera cola nocturna.

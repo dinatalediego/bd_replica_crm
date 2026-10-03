@@ -3,28 +3,28 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "ABS-2024-VENTAS",
+    "id": "FORECAST-EVIDENCE-001",
     "title": "Stock pendiente de venta y absorción mensual por proyecto",
-    "status": "VALIDATION_REQUIRED",
+    "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Descargar PR36; schema_sync.py --only absorcion_ventas_mensual; exportar mensual, inicios y observaciones"
+    "next_action": "Ejecutar forecasting en Medallio local; revisar evidencia y registrar metas/acciones"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/absorcion-mensual-ventas-2024",
-    "checkpoint_commit": "9dbb6a83c7334587d6190ad72464bf46c39be754",
+    "working_branch": "feat/forecasting-evidence-pilot",
+    "checkpoint_commit": "c4fb51f9304ccf76fd329387fb1728fa1b3dfa9c",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-02T21:42:44Z",
+    "last_checked_at": "2026-10-03T19:59:34Z",
     "tests": [
-      "48 passed: PostgreSQL integration and existing contract regressions",
-      "Upgrade from published SQL preserves dependent consumer; diff check and Python compilation passed"
+      "238 passed, 24 skipped locally; PostgreSQL tests pending CI",
+      "Synthetic demo executed: fitted models, backtest and new predictions"
     ],
     "notes": [
-      "ADR-012: retrospective cancellation, earlier documentary dates with comments, effective project starts; 2026 veto preserved. Real totals pending local installation."
+      "No access to real Medallio; reconstructed history is diagnostic, no automatic promotion"
     ]
   },
-  "updated_at": "2026-10-02T21:42:44Z"
+  "updated_at": "2026-10-03T19:59:34Z"
 }

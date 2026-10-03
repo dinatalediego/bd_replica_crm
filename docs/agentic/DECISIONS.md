@@ -185,3 +185,19 @@ Más de una venta vigente por unidad queda pendiente. No se modifica Phase B ni 
 controles. Los casos se entregan mediante una vista de observaciones sin PII.
 La tabla futura de seguimiento temporal de venta/anulación/reventa queda pendiente;
 este cuadro no sirve para reconstruir lo que se sabía en un corte pasado.
+
+
+## MAP-ADR-013 — Forecasting comercial con evidencia prospectiva
+
+Date: 2026-10-03
+Status: ACCEPTED
+
+El usuario autorizó implementar el piloto completo en bd_replica_crm. Se añade
+un producto independiente usando el contrato confirmado de absorción, sin tocar
+CI/ventas canónicas ni generar carga Redshift. Histórico revisado se identifica
+como diagnóstico; snapshots y predicciones nuevas se preservan append-only y
+los primeros resultados maduros se congelan. Comparar promedio, ETS, GMM y bosque;
+seleccionar en validación separada de prueba final, sin promoción automática.
+Horizontes acumulados sobre stock existente, sin elasticidad causal ni caja.
+La ampliación de señales CRM con fechas históricas verificables permanece
+pendiente de contratos; no se inventan variables en SQL.

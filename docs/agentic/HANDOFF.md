@@ -1,17 +1,17 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-02T21:42:44Z
-Task: ABS-2024-VENTAS — Stock pendiente de venta y absorción mensual por proyecto
+Generated at: 2026-10-03T19:59:34Z
+Task: FORECAST-EVIDENCE-001 — Stock pendiente de venta y absorción mensual por proyecto
 From: chatgpt
 To: human
-Status: VALIDATION_REQUIRED
-Branch: feat/absorcion-mensual-ventas-2024
-Commit at checkpoint: 9dbb6a83c7334587d6190ad72464bf46c39be754
+Status: REVIEW_READY
+Branch: feat/forecasting-evidence-pilot
+Commit at checkpoint: c4fb51f9304ccf76fd329387fb1728fa1b3dfa9c
 
 ## Exact next action
 
-Descargar PR36; schema_sync.py --only absorcion_ventas_mensual; exportar mensual, inicios y observaciones
+Ejecutar forecasting en Medallio local; revisar evidencia y registrar metas/acciones
 
 ## Working-tree state
 
@@ -19,25 +19,30 @@ Dirty: yes
 
 ### Changed files
 
-- M docs/ABSORCION_VENTAS_MENSUAL.md
+- M .github/workflows/ci.yml
+- M README.md
 - M docs/agentic/ACTIVE_TASK.md
 - M docs/agentic/DECISIONS.md
-- M scripts/schema_sync.py
-- M sql/96_absorcion_ventas/01_contract.sql
-- M sql/96_absorcion_ventas/02_validation.sql
-- M tests/integration/test_absorcion_ventas_postgres.py
+- ?? docs/COMMERCIAL_FORECASTING.md
+- ?? notebooks/11_commercial_forecasting_evidence.ipynb
+- ?? scripts/63_forecasting_demo.bat
+- ?? scripts/64_forecasting_medallio.bat
+- ?? scripts/65_forecasting_measure.bat
+- ?? scripts/66_install_forecasting_task.ps1
+- ?? scripts/commercial_forecasting.py
+- ?? sql/97_commercial_forecasting/
+- ?? src/replica_cygnus/commercial_forecasting/
+- ?? tests/integration/test_commercial_forecasting_postgres.py
+- ?? tests/test_commercial_forecasting.py
 
 ### Diff stat
 
 ```text
-docs/ABSORCION_VENTAS_MENSUAL.md                   |  86 ++++++++----
- docs/agentic/ACTIVE_TASK.md                        |  37 +++---
- docs/agentic/DECISIONS.md                          |  18 +++
- scripts/schema_sync.py                             |   2 +
- sql/96_absorcion_ventas/01_contract.sql            | 146 ++++++++++++++++-----
- sql/96_absorcion_ventas/02_validation.sql          |  14 +-
- .../integration/test_absorcion_ventas_postgres.py  |  91 +++++++++++--
- 7 files changed, 306 insertions(+), 88 deletions(-)
+.github/workflows/ci.yml    | 10 ++++++++++
+ README.md                   |  5 +++++
+ docs/agentic/ACTIVE_TASK.md | 46 +++++++++++++++++++++------------------------
+ docs/agentic/DECISIONS.md   | 16 ++++++++++++++++
+ 4 files changed, 52 insertions(+), 25 deletions(-)
 ```
 
 ### Staged diff stat
@@ -48,20 +53,16 @@ docs/ABSORCION_VENTAS_MENSUAL.md                   |  86 ++++++++----
 
 ## Validation / tests recorded for this checkpoint
 
-- 48 passed: PostgreSQL integration and existing contract regressions
-- Upgrade from published SQL preserves dependent consumer; diff check and Python compilation passed
+- 238 passed, 24 skipped locally; PostgreSQL tests pending CI
+- Synthetic demo executed: fitted models, backtest and new predictions
 
 ## Notes
 
-- ADR-012: retrospective cancellation, earlier documentary dates with comments, effective project starts; 2026 veto preserved. Real totals pending local installation.
+- No access to real Medallio; reconstructed history is diagnostic, no automatic promotion
 
 ## Recent commits
 
-- 9dbb6a8 fix: preserve legacy reconciliation views during absorption install
-- b3da19a feat: reconstruct monthly apartment stock from canonical sales
-- 664e772 chore(map): hand off first unattended task
-- d88ad9a chore(map): checkpoint Night Shift preflight
-- 5978944 chore(map): activate NIGHT-002
+- c4fb51f Corregir nombres vacíos de raw_mercado.unidades para Power BI (#37)
 
 ## Handoff rule
 

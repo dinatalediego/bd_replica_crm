@@ -49,6 +49,16 @@ jobs:
           ABSORCION_TEST_DSN: postgresql://postgres:synthetic_ci_only@localhost:5432/absorption_test
         run: python -m pytest tests
 
+      - name: Train synthetic forecasting evidence
+        run: python scripts/commercial_forecasting.py demo
+
+      - name: Upload synthetic forecasting evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: forecasting-synthetic-evidence
+          path: artifacts/commercial_forecasting/
+          retention-days: 14
+
       - name: Decision engine tests
         run: python -m pytest decision_engine/tests
 
