@@ -151,3 +151,37 @@ The pilot targets approximately 90% primary work through ChatGPT/Work/Codex and 
 ### Rationale
 
 The second model adds more value by testing assumptions and finding failure modes than by duplicating the same implementation.
+
+---
+
+## MAP-ADR-011 — Stock reconstruido por altas de proyecto y ventas
+
+Date: 2026-10-02
+Status: ACCEPTED
+
+El usuario aprobó un cuadro adicional desde enero 2024: todas las unidades de
+departamentos ingresan el primer día del mes indicado en su CSV de 17 proyectos.
+Las separaciones y caídas no generan movimientos en este cuadro. Se conserva la
+regla canónica de fecha y el veto de respaldo de Venta para separaciones desde 2026.
+No se reemplazan ledger ni snapshots observados. Se reutilizan ventas reconciliadas;
+casos ambiguos siguen visibles y excluidos, sin redefinir anulación de ventas.
+La capa usa vistas sobre CORE/analytics y se instala mediante schema_sync, sin nuevas
+consultas a Redshift. Los saldos deben etiquetarse como reconstruidos, no observados.
+
+
+## MAP-ADR-012 — Ventas vigentes retrospectivas y evidencia temporal
+
+Date: 2026-10-02
+Status: ACCEPTED — supersedes sales eligibility and project-start clauses of ADR-011
+
+El usuario aprobó adelantar el inicio al primer mes de venta documental cuando sea
+anterior al adjunto, manteniendo ambas fechas y comentarios. Aprobó aceptar fechas
+documentales anteriores a separación y excluir retrospectivamente proformas anuladas.
+El reporte no exige transición del ledger; utiliza ciclos existentes, extras y procesos
+de la réplica local. CI tiene prioridad; Venta Activo solo respalda separaciones
+originales Y analíticas anteriores a 2026. Un pago mal formado no habilita fallback.
+Anulaciones se enlazan por proforma/unidad hasta hoy, sin umbral de separación legacy.
+Más de una venta vigente por unidad queda pendiente. No se modifica Phase B ni sus
+controles. Los casos se entregan mediante una vista de observaciones sin PII.
+La tabla futura de seguimiento temporal de venta/anulación/reventa queda pendiente;
+este cuadro no sirve para reconstruir lo que se sabía en un corte pasado.

@@ -1,42 +1,43 @@
 # Active Task
 
-Task ID: NIGHT-002  
-Title: Medallio low-impact refresh health checks  
-Status: READY  
-Owner: chatgpt  
-Next agent: claude  
-Branch: to be created by the unattended worker  
+Task ID: ABS-2024-VENTAS
+Title: Stock pendiente de venta y absorción mensual por proyecto
+Status: VALIDATION_REQUIRED
+Owner: chatgpt
+Next agent: human
+Branch: feat/absorcion-mensual-ventas-2024
 Base branch: main
 
 ## Objective
 
-Audit the canonical Medallio refresh path for low-impact Redshift usage and add observability/tests without increasing source load.
+Cuadro mensual desde enero 2024 de departamentos y ventas vigentes retrospectivas,
+con detalle por unidad y casos comentados. Publicación autorizada en PR #36.
 
-## Prior task evidence
+## Decisions and scope
 
-NIGHT-001 is complete:
+ADR-012 sustituye elegibilidad e inicio de ADR-011 por instrucciones explícitas del
+usuario. Inicio efectivo = mes más antiguo entre adjunto y evidencia de venta.
+Pago CI anterior a separación se acepta con observación. Proformas anuladas se
+excluyen retrospectivamente. Venta Activo solo respalda separaciones originales Y
+analíticas anteriores a 2026. No cambiar Phase B, controles CI ni ledger global.
+Reutilizar CORE, ciclos y RAW locales; sin nueva carga Redshift.
+Seguimiento por eventos y versiones temporales queda como ampliación posterior.
 
-- Night Shift OS merged through PR #35;
-- GitHub CI run 181 completed successfully;
-- the previous matplotlib collection failure was fixed by installing the required dev dependency;
-- the seven-day dispatcher and morning-report automations are configured for the pilot.
+## Evidence
 
-## Constraints
-
-- do not increase Redshift polling frequency;
-- prefer Medallio/local replica evidence;
-- no production DB writes;
-- no merge to main from unattended execution;
-- at most one automatic rework cycle;
-- leave a draft PR or justified blocker.
-
-## Acceptance criteria
-
-- canonical refresh entrypoint documented;
-- health/watch evidence exists;
-- no new high-frequency Redshift query path;
-- tests or deterministic validation added.
+48 pruebas aprobadas: integración PostgreSQL sintética y regresión de contratos.
+Migración desde contrato publicado probada en PostgreSQL desechable, conservando
+una vista consumidora dependiente. git diff --check y compilación Python limpios.
+CSV locales anteriores permitieron detectar ventas omitidas por separación legacy;
+los nuevos totales reales aún deben consultarse en Medallio después de instalar.
+No almacenar CSV ni datos personales en el repositorio.
 
 ## Next action
 
-The Night Shift Dispatcher should claim NIGHT-002, inspect the real refresh orchestration, create a feature branch, and implement only evidence-backed low-impact guards.
+Descargar rama, ejecutar schema_sync.py --only absorcion_ventas_mensual y consultar
+sql/96_absorcion_ventas/02_validation.sql. Exportar mensual, inicios y observaciones.
+No hay conexión directa a Medallio local desde esta sesión. No fusionar main.
+
+## Other work
+
+NIGHT-002 permanece independiente; no se cambia cola ni políticas nocturnas.
