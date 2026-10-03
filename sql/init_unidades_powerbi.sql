@@ -4,6 +4,18 @@
 
 CREATE SCHEMA IF NOT EXISTS analytics;
 
+-- El CSV de Amma trae nombre vacío. El último segmento numérico de codigo
+-- identifica el departamento (AMMA-T1-X02-25-2502 -> Departamento 2502).
+-- Solo completa nombres vacíos; la carga futura aplica la misma regla.
+UPDATE raw_mercado.unidades AS u
+SET nombre = COALESCE(NULLIF(BTRIM(u.tipo_unidad::text), ''), 'Unidad') || ' ' ||
+    CASE WHEN BTRIM(u.codigo::text) ~ '-[0-9]+$'
+         THEN SUBSTRING(BTRIM(u.codigo::text) FROM '[0-9]+$')
+         ELSE BTRIM(u.codigo::text)
+    END
+WHERE NULLIF(BTRIM(u.nombre::text), '') IS NULL
+  AND NULLIF(BTRIM(u.codigo::text), '') IS NOT NULL;
+
 ALTER TABLE raw_mercado.unidades
     ADD COLUMN IF NOT EXISTS tipologia_ubicacion text;
 

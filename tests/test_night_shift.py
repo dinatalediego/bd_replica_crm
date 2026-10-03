@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from pathlib import Path
 
 import yaml
@@ -16,6 +17,10 @@ def test_queue_yaml_parses_and_has_unique_ids():
     queue = yaml.safe_load((ROOT / "agent_ops" / "NIGHT_QUEUE.yml").read_text(encoding="utf-8"))
     ids = [task["id"] for task in queue["tasks"]]
     assert len(ids) == len(set(ids))
+    first = date.fromisoformat(queue["pilot_window"]["start"])
+    last = date.fromisoformat(queue["pilot_window"]["end"])
+    expected_nights = {(first + timedelta(days=i)).isoformat() for i in range((last - first).days + 1)}
+    assert {task["date"] for task in queue["tasks"]} == expected_nights
     assert ids
 
 
