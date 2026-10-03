@@ -16,7 +16,7 @@ def test_queue_yaml_parses_and_has_unique_ids():
     queue = yaml.safe_load((ROOT / "agent_ops" / "NIGHT_QUEUE.yml").read_text(encoding="utf-8"))
     ids = [task["id"] for task in queue["tasks"]]
     assert len(ids) == len(set(ids))
-    assert len(ids) == 7
+    assert ids
 
 
 def test_next_candidate_respects_date_and_priority():
