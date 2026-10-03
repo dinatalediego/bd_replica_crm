@@ -99,3 +99,8 @@ NO debe programarse `TRUNCATE + INSERT` cada hora.
 
 La Fase D implementará recalculation windows por proyecto/fecha mínima afectada
 después de validar los resultados reales de esta fase.
+
+
+## Forecasting comercial con evidencia
+
+Piloto adicional: promedio reciente, ETS, GMM con análogos y Random Forest, evaluación temporal, snapshots/predicciones append-only y seguimiento de acciones. [Guía de ejecución y límites](docs/COMMERCIAL_FORECASTING.md). Demo: `scripts/63_forecasting_demo.bat`; Medallio: `scripts/64_forecasting_medallio.bat`. [Notebook de exposición](notebooks/11_commercial_forecasting_evidence.ipynb). Sin carga adicional a Redshift ni promoción automática.
