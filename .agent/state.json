@@ -3,28 +3,28 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "NIGHT-002",
-    "title": "Medallio low-impact refresh health checks",
-    "status": "READY",
+    "id": "ABS-2024-VENTAS",
+    "title": "Stock pendiente de venta y absorción mensual por proyecto",
+    "status": "VALIDATION_REQUIRED",
     "owner": "chatgpt",
-    "next_agent": "claude",
-    "next_action": "Claim NIGHT-002 and audit the real refresh orchestration for low-impact Redshift guards"
+    "next_agent": "human",
+    "next_action": "Descargar PR36; schema_sync.py --only absorcion_ventas_mensual; exportar mensual, inicios y observaciones"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": null,
-    "checkpoint_commit": "601be3c32447edf7100e9c727e40be538aafab67",
-    "dirty": null
+    "working_branch": "feat/absorcion-mensual-ventas-2024",
+    "checkpoint_commit": "9dbb6a83c7334587d6190ad72464bf46c39be754",
+    "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-01T05:16:00Z",
+    "last_checked_at": "2026-10-02T21:42:44Z",
     "tests": [
-      "GitHub CI run 181: success"
+      "48 passed: PostgreSQL integration and existing contract regressions",
+      "Upgrade from published SQL preserves dependent consumer; diff check and Python compilation passed"
     ],
     "notes": [
-      "NIGHT-001 completed and merged through PR #35.",
-      "First unattended production task is NIGHT-002."
+      "ADR-012: retrospective cancellation, earlier documentary dates with comments, effective project starts; 2026 veto preserved. Real totals pending local installation."
     ]
   },
-  "updated_at": "2026-10-01T05:16:00Z"
+  "updated_at": "2026-10-02T21:42:44Z"
 }

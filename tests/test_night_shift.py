@@ -21,6 +21,7 @@ def test_queue_yaml_parses_and_has_unique_ids():
     last = date.fromisoformat(queue["pilot_window"]["end"])
     expected_nights = {(first + timedelta(days=i)).isoformat() for i in range((last - first).days + 1)}
     assert {task["date"] for task in queue["tasks"]} == expected_nights
+    assert ids
 
 
 def test_next_candidate_respects_date_and_priority():
