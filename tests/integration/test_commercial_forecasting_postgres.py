@@ -76,3 +76,19 @@ def test_prediction_action_and_first_mature_outcome_roundtrip(db,tmp_path):
     save_snapshot(db,revised,q3)
     assert measure(db)==0
     assert db.execute('SELECT actual FROM analytics.commercial_forecast_outcomes').fetchone()[0]==3
+
+
+
+def test_source_adapter_excludes_partial_month_and_cam(db):
+    from replica_cygnus.commercial_forecasting.service import read_source
+    db.execute('''CREATE VIEW analytics.v_absorcion_ventas_mensual AS
+      SELECT * FROM (VALUES
+        (DATE '2026-09-01','GY',2::bigint,10::bigint,8::bigint,0::bigint,0::bigint,false),
+        (DATE '2026-10-01','GY',1::bigint,8::bigint,7::bigint,0::bigint,0::bigint,true),
+        (DATE '2026-09-01','CAM',1::bigint,3::bigint,2::bigint,0::bigint,0::bigint,false)
+      ) AS v(periodo_mes,codigo_proyecto,ventas_mes,stock_inicial,stock_final,
+             ingresos_mes,unidades_revision,mes_parcial)''')
+    panel=read_source(db)
+    assert len(panel)==1 and panel.project.iloc[0]=='GY'
+    clean,q=validate_panel(panel)
+    assert clean.month.iloc[0]==pd.Timestamp('2026-09-01')

@@ -25,7 +25,9 @@ No hay acceso al PostgreSQL real del usuario.
 
 238 pruebas locales aprobadas, 24 omitidas por falta de PostgreSQL desechable.
 Demo ejecutada: entrenamiento, artefactos y predicciones SYNTHETIC_ONLY.
-Integración PostgreSQL se ejecuta en CI; estado final registrado en HANDOFF.
+CI 37150045806: 156 pruebas de plataforma + 106 de motor aprobadas.
+Revisión final agrega embargo, serialización ETS y prueba del adaptador.
+Notebook ejecutado de extremo a extremo. CI final pendiente.
 
 ## Next action
 

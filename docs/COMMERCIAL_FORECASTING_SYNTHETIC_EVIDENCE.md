@@ -2,10 +2,10 @@
 
 **No son resultados de Cygnus.** Se ejecutó el piloto completo con seis proyectos ficticios y 42 meses por proyecto.
 
-Run: `306a610c-52f4-440e-a5aa-57d09490876c`. Dataset SHA256: `87faaf8a55eafb4efdf7e13a3e25ec06f4ba1733e96d5ed5542554592d76f7bf`.
-Filas maduras en entrenamiento final: 204. Selección en validación: `mean3`.
+Run: `a50e1b98-a4d3-4153-b9b1-870cae2d2074`. Dataset SHA256: `87faaf8a55eafb4efdf7e13a3e25ec06f4ba1733e96d5ed5542554592d76f7bf`.
+Filas maduras en entrenamiento final: 204. Selección en validación: `random_forest`.
 
-Se guardaron estimadores ajustados, probabilidades GMM, perfiles, backtest, predicciones nuevas y reporte HTML. El método sencillo ganó el criterio de selección de esta demo; no se fuerza una mejora de ML.
+Se guardaron estimadores ajustados, probabilidades GMM, perfiles, backtest, predicciones nuevas y reporte HTML. La selección utiliza validación con desenlaces maduros antes del primer corte de prueba; las ventanas solapadas quedan en embargo. En la demo final se seleccionó Random Forest, sin usar la prueba final para elegirlo.
 
 | Modelo | Horizonte acumulado | Casos de prueba | MAE (departamentos) | WAPE |
 |---|---:|---:|---:|---:|

@@ -76,8 +76,8 @@ Un lanzamiento con poca historia recibe promedio reciente, explícitamente.
 
 Cada origen recalcula todo a partir de los meses <= corte. Solo se usan desenlaces
 que ya maduraron allí. Hasta 12 orígenes móviles con seis meses posteriores
-completos; últimos tres reservados a prueba final. Los anteriores seleccionan
-candidatos comparando MAE sobre las mismas filas que la referencia. Se exige
+completos; últimos tres reservados a prueba final. Los anteriores cuyos desenlaces maduraron antes del primer corte de prueba
+seleccionan candidatos; las ventanas que se superponen se etiquetan `embargo`. Se compara MAE sobre las mismas filas que la referencia. Se exige
 al menos tres orígenes y 5% de mejora para seleccionar otra alternativa; si no,
 se mantiene promedio. Es un filtro preliminar de seguimiento, no un certificado
 estadístico ni una autorización de producción. El holdout final se reporta y
@@ -128,7 +128,7 @@ Carpeta `artifacts/commercial_forecasting/<run_id>/` (excluida de Git):
 |---|---|
 | panel.csv y quality.json | Dataset agregado, incidencias y fingerprint SHA256 |
 | features.csv | Matriz de entradas y objetivos maduros |
-| trained_models.joblib | Bosque, escalador, mezcla y tasas realmente ajustados |
+| trained_models.joblib | Bosque, ETS por proyecto, escalador, mezcla y tasas ajustados |
 | training_cuts.json | Entrenamiento y último desenlace utilizado en cada origen |
 | model_profiles.json | Componentes GMM, soporte, perfiles y relevancias del bosque |
 | backtest.csv y metrics.csv | Predicciones fuera de muestra, validación/prueba y errores |

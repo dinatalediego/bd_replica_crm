@@ -195,6 +195,7 @@ def fit_predict(panel: pd.DataFrame, origin: pd.Timestamp, cfg: Config):
                     series = pd.Series(g.sales.to_numpy(float), index=pd.DatetimeIndex(g.month, freq='MS'))
                     ets = ExponentialSmoothing(series, trend='add', seasonal=None,
                                                initialization_method='estimated').fit(optimized=True)
+                    models.setdefault('_ets_bundles', {})[r.project] = ets
                     paths['ets'] = np.maximum(ets.forecast(cfg.horizon).to_numpy(), 0).cumsum()
                 except (ValueError, FloatingPointError) as exc:
                     meta['unavailable'][f'ets:{r.project}'] = type(exc).__name__
@@ -250,6 +251,7 @@ def evaluate(panel: pd.DataFrame, cfg: Config):
                       if pd.Timestamp(m)+pd.DateOffset(months=cfg.horizon) <= latest)
     origins = eligible[-cfg.backtest_origins:]
     test_set = set(origins[-cfg.test_origins:])
+    test_start = pd.Timestamp(min(test_set)) if test_set else latest
     rows, evidence = [], []
     for month in origins:
         origin = pd.Timestamp(month)
@@ -265,7 +267,8 @@ def evaluate(panel: pd.DataFrame, cfg: Config):
                 continue
             record = r.to_dict()
             record.update(actual=float(future.sales.sum()), outcome_month=future.month.max(),
-                          partition='test' if month in test_set else 'validation')
+                          partition=('test' if month in test_set else
+                                     'validation' if future.month.max() <= test_start else 'embargo'))
             rows.append(record)
     bt = pd.DataFrame(rows)
     if bt.empty:

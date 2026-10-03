@@ -1,69 +1,26 @@
 # Latest Handoff
 
-Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-03T19:59:34Z
-Task: FORECAST-EVIDENCE-001 — Stock pendiente de venta y absorción mensual por proyecto
-From: chatgpt
-To: human
-Status: REVIEW_READY
+Task: FORECAST-EVIDENCE-001 — Forecasting comercial con entrenamiento y evidencia
+Owner: chatgpt
+Next agent: human
 Branch: feat/forecasting-evidence-pilot
-Commit at checkpoint: c4fb51f9304ccf76fd329387fb1728fa1b3dfa9c
+Status: REVIEW_READY
+Published PR: https://github.com/dinatalediego/bd_replica_crm/pull/39
 
-## Exact next action
+## Evidence
+- CI 37150045806: 156 platform + 106 decision engine tests passed, including PostgreSQL.
+- Final unit tests passed after embargo and ETS serialization.
+- Demo and notebook executed; final synthetic selection Random Forest.
+- Final CI includes one additional PostgreSQL source-adapter test.
 
-Ejecutar forecasting en Medallio local; revisar evidencia y registrar metas/acciones
+## Next action
+Execute scripts/64_forecasting_medallio.bat on the user's PC after updating Medallio.
+Open report.html; register targets/actions and connect Power BI views.
+Actual Cygnus model metrics are not known; local DB is not available in this session.
+Historical revised absorption remains diagnostic, predictions remain shadow.
+No merge to main, no source load to Redshift and no changes to canonical sales rules.
 
-## Working-tree state
-
-Dirty: yes
-
-### Changed files
-
-- M .github/workflows/ci.yml
-- M README.md
-- M docs/agentic/ACTIVE_TASK.md
-- M docs/agentic/DECISIONS.md
-- ?? docs/COMMERCIAL_FORECASTING.md
-- ?? notebooks/11_commercial_forecasting_evidence.ipynb
-- ?? scripts/63_forecasting_demo.bat
-- ?? scripts/64_forecasting_medallio.bat
-- ?? scripts/65_forecasting_measure.bat
-- ?? scripts/66_install_forecasting_task.ps1
-- ?? scripts/commercial_forecasting.py
-- ?? sql/97_commercial_forecasting/
-- ?? src/replica_cygnus/commercial_forecasting/
-- ?? tests/integration/test_commercial_forecasting_postgres.py
-- ?? tests/test_commercial_forecasting.py
-
-### Diff stat
-
-```text
-.github/workflows/ci.yml    | 10 ++++++++++
- README.md                   |  5 +++++
- docs/agentic/ACTIVE_TASK.md | 46 +++++++++++++++++++++------------------------
- docs/agentic/DECISIONS.md   | 16 ++++++++++++++++
- 4 files changed, 52 insertions(+), 25 deletions(-)
-```
-
-### Staged diff stat
-
-```text
-(none)
-```
-
-## Validation / tests recorded for this checkpoint
-
-- 238 passed, 24 skipped locally; PostgreSQL tests pending CI
-- Synthetic demo executed: fitted models, backtest and new predictions
-
-## Notes
-
-- No access to real Medallio; reconstructed history is diagnostic, no automatic promotion
-
-## Recent commits
-
-- c4fb51f Corregir nombres vacíos de raw_mercado.unidades para Power BI (#37)
-
-## Handoff rule
-
-The receiving agent must inspect the real repository state and diff before trusting this summary. Code/runtime evidence and tests outrank this file.
+## Contracts
+ADR-013. Immutable snapshots, predictions and first mature outcomes.
+Validation outcome windows overlapping final test origins are embargoed.
+Forecasts are cumulative over existing inventory; no causal pricing or cash forecast.

@@ -4,7 +4,7 @@
   "project": "bd_replica_crm",
   "active_task": {
     "id": "FORECAST-EVIDENCE-001",
-    "title": "Stock pendiente de venta y absorción mensual por proyecto",
+    "title": "Forecasting comercial con entrenamiento y evidencia",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
@@ -13,18 +13,18 @@
   "git": {
     "base_branch": "main",
     "working_branch": "feat/forecasting-evidence-pilot",
-    "checkpoint_commit": "c4fb51f9304ccf76fd329387fb1728fa1b3dfa9c",
+    "checkpoint_commit": "148f39f32c410eebc30d5f9919d786cfc0f267fa",
     "dirty": true
   },
   "validation": {
     "last_checked_at": "2026-10-03T19:59:34Z",
     "tests": [
-      "238 passed, 24 skipped locally; PostgreSQL tests pending CI",
-      "Synthetic demo executed: fitted models, backtest and new predictions"
+      "CI 37150045806 passed: 156 platform + 106 decision engine tests",
+      "Final leakage/embargo unit tests passed; notebook executed end-to-end"
     ],
     "notes": [
       "No access to real Medallio; reconstructed history is diagnostic, no automatic promotion"
     ]
   },
-  "updated_at": "2026-10-03T19:59:34Z"
+  "updated_at": "2026-10-03T20:09:08.723Z"
 }

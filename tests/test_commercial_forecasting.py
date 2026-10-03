@@ -40,7 +40,8 @@ def test_cam_is_excluded_and_reviews_are_quarantined():
 
 def test_outcomes_must_be_mature_and_no_future_enters_training(panel):
     origin=pd.Timestamp('2025-03-01')
-    a,meta,_=fit_predict(panel,origin,Config())
+    a,meta,bundles=fit_predict(panel,origin,Config())
+    assert len(bundles['_ets_bundles'])==panel.project.nunique()
     changed=panel.copy()
     changed.loc[changed.month.gt(origin),'sales']=9999
     changed.loc[changed.month.gt(origin),'stock_close']=99999
@@ -93,6 +94,7 @@ def test_intervals_use_only_previously_mature_out_of_sample_errors():
 def test_backtest_partitions_and_all_fits_have_purged_targets(panel):
     bt,summary,evidence,selected=evaluate(panel,Config(backtest_origins=7,test_origins=2))
     assert bt[bt.partition.eq('validation')].origin.max()<bt[bt.partition.eq('test')].origin.min()
+    assert bt[bt.partition.eq('validation')].outcome_month.max()<=bt[bt.partition.eq('test')].origin.min()
     for fit in evidence:
         if fit['train_outcome_max']:
             assert pd.Timestamp(fit['train_outcome_max'])<=pd.Timestamp(fit['origin'])
