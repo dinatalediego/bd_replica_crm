@@ -3,28 +3,30 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "FORECAST-EVIDENCE-001",
-    "title": "Forecasting comercial con entrenamiento y evidencia",
+    "id": "CLIENTES-DQ-INCREMENTAL-001",
+    "title": "DQ incremental y recuperación de 02b",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Ejecutar forecasting en Medallio local; revisar evidencia y registrar metas/acciones"
+    "next_action": "Aplicar commit 09c97cd del PR 40 y validar/activar 02b según docs/CLIENTES_CALIDAD_INCREMENTAL.md"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/forecasting-evidence-pilot",
-    "checkpoint_commit": "148f39f32c410eebc30d5f9919d786cfc0f267fa",
-    "dirty": true
+    "working_branch": "feat/clientes-calidad-incremental",
+    "checkpoint_commit": "9e05af8e698fabcce0476c6ecd9a1e430fd50644",
+    "dirty": false
   },
   "validation": {
-    "last_checked_at": "2026-10-03T19:59:34Z",
+    "last_checked_at": "2026-10-04T13:12:22Z",
     "tests": [
-      "CI 37150045806 passed: 156 platform + 106 decision engine tests",
-      "Final leakage/embargo unit tests passed; notebook executed end-to-end"
+      "135 platform tests passed locally",
+      "106 decision engine tests passed locally",
+      "PGlite SQL scenarios passed; 141773 synthetic rows: rebuild 13.7s, no-op 4.2s, one change 4.5s"
     ],
     "notes": [
-      "No access to real Medallio; reconstructed history is diagnostic, no automatic promotion"
+      "PR 40 publicado; validación PostgreSQL CI en progreso",
+      "Sin acceso a Medallio/Windows real; helper conserva reparaciones locales de portal"
     ]
   },
-  "updated_at": "2026-10-03T20:09:08.723Z"
+  "updated_at": "2026-10-04T13:12:22Z"
 }

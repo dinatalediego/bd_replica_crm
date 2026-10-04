@@ -86,6 +86,7 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         files=("sql/90_clientes_calidad/01_clientes_calidad.sql",),
         expected_relations=(
             "staging.clientes_calidad",
+            "staging.clientes_calidad_refresh_runs",
             "staging.v_clientes_calidad_health",
         ),
         expected_procedures=("staging.refresh_clientes_calidad()",),

@@ -1,26 +1,31 @@
 # Latest Handoff
 
-Task: FORECAST-EVIDENCE-001 — Forecasting comercial con entrenamiento y evidencia
+Task: CLIENTES-DQ-INCREMENTAL-001 — DQ incremental y recuperación de 02b
 Owner: chatgpt
 Next agent: human
-Branch: feat/forecasting-evidence-pilot
+Branch: feat/clientes-calidad-incremental
 Status: REVIEW_READY
-Published PR: https://github.com/dinatalediego/bd_replica_crm/pull/39
+Published PR: https://github.com/dinatalediego/bd_replica_crm/pull/40
 
 ## Evidence
-- CI 37150045806: 156 platform + 106 decision engine tests passed, including PostgreSQL.
-- Final unit tests passed after embargo and ETS serialization.
-- Demo and notebook executed; final synthetic selection Random Forest.
-- Final CI includes one additional PostgreSQL source-adapter test.
+
+135 platform + 106 decision engine tests passed locally. SQL scenarios executed
+in PGlite, including full parity, hashes/IDs, DQ rules, migration and rollback.
+141773 synthetic rows: initial rebuild 13.7s, no-op 4.2s, one change 4.5s.
+CI 37204692789: 172 passed; only concurrent test reconnect failed because
+Connection.info.dsn removes passwords. Fixed by reusing disposable test DSN;
+final PostgreSQL CI pending. Production code did not need changing for that failure.
 
 ## Next action
-Execute scripts/64_forecasting_medallio.bat on the user's PC after updating Medallio.
-Open report.html; register targets/actions and connect Power BI views.
-Actual Cygnus model metrics are not known; local DB is not available in this session.
-Historical revised absorption remains diagnostic, predictions remain shadow.
-No merge to main, no source load to Redshift and no changes to canonical sales rules.
 
-## Contracts
-ADR-013. Immutable snapshots, predictions and first mature outcomes.
-Validation outcome windows overlapping final test origins are embargoed.
-Forecasts are cumulative over existing inventory; no causal pricing or cash forecast.
+Apply PR commits while preserving local portal/config/orchestrator fixes.
+Follow docs/CLIENTES_CALIDAD_INCREMENTAL.md: install schema component, run DQ
+twice, enable only known commented 02b via backup/AST helper, run local DW,
+then enable Scheduler and confirm next LastTaskResult=0.
+
+## Limits and contracts
+
+ADR-014. Compare local RAW ID/hash excluding verified ETL metadata. O(n) local
+scan; transform only changes. Raw deletions propagated; no new Redshift queries.
+No access to actual Medallio or Windows; real activation/performance pending.
+FORECAST-EVIDENCE-001 / PR 39 keeps its own local validation pending.
