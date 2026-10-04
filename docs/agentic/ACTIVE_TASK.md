@@ -1,41 +1,32 @@
 # Active Task
 
-Task ID: FORECAST-EVIDENCE-001
-Title: Forecasting comercial con entrenamiento y evidencia
+Task ID: CLIENTES-DQ-INCREMENTAL-001
+Title: Refresh incremental de clientes_calidad y recuperación de 02b
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/forecasting-evidence-pilot
+Branch: feat/clientes-calidad-incremental
 Base branch: main
 
 ## Objective
 
-Implementar dataset/diagnóstico, entrenamiento, evaluación temporal, predicciones
-versionadas y seguimiento comercial usando Medallio local.
-
-## Scope and decisions
-
-ADR-013. Histórico retrospectivo es diagnóstico; snapshots/predicciones/outcomes
-append-only. Cuatro modelos, candidatos elegidos en validación, prueba final
-reservada, bandas empíricas sin garantía de cobertura. Ventas acumuladas del
-stock existente; sin carga Redshift, cambios de CI/canónico o promoción automática.
-No hay acceso al PostgreSQL real del usuario.
+Procesar solo altas/cambios desde RAW PostgreSQL y volver a activar 02b en la PC,
+conservando reglas DQ y reparaciones locales de portal/config/orquestador.
 
 ## Evidence
 
-238 pruebas locales aprobadas, 24 omitidas por falta de PostgreSQL desechable.
-Demo ejecutada: entrenamiento, artefactos y predicciones SYNTHETIC_ONLY.
-CI 37150045806: 156 pruebas de plataforma + 106 de motor aprobadas.
-Revisión final agrega embargo, serialización ETS y prueba del adaptador.
-Notebook ejecutado de extremo a extremo. CI final pendiente.
+135 pruebas locales de plataforma y 106 de motor aprobadas. Pruebas SQL
+sintéticas en PGlite: DQ, cambios/bajas/no-op, hash sin metadatos, rollback,
+paridad full, reglas y migración. CI PostgreSQL y validación PC pendientes.
+No se accedió al PostgreSQL real ni al Scheduler Windows.
 
 ## Next action
 
-Ejecutar scripts/64_forecasting_medallio.bat en PC con .env PostgreSQL y fuente
-actualizada. Inspeccionar report.html, registrar metas/acciones y conectar vistas
-Power BI según docs/COMMERCIAL_FORECASTING.md.
+Seguir docs/CLIENTES_CALIDAD_INCREMENTAL.md: aplicar commit, instalar componente,
+ejecutar DQ dos veces, habilitar 02b con helper, validar DW_REFRESH_OK y reactivar
+el trigger. Verificar LastTaskResult=0 en siguiente ejecución Windows.
 
 ## Previous task
 
-ABS-2024-VENTAS queda con validación real local pendiente; se conservan reglas
-ADR-012 y contrato de absorción. No se altera cola nocturna.
+FORECAST-EVIDENCE-001 quedó publicado en PR #39. Mantiene validación real local
+pendiente y decisiones ADR-013. No se modifica cola nocturna ni ventas canónicas.

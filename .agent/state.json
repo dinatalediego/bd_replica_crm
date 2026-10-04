@@ -3,28 +3,23 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "FORECAST-EVIDENCE-001",
-    "title": "Forecasting comercial con entrenamiento y evidencia",
+    "id": "CLIENTES-DQ-INCREMENTAL-001",
+    "title": "DQ incremental y recuperación de 02b",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Ejecutar forecasting en Medallio local; revisar evidencia y registrar metas/acciones"
+    "next_action": "Validar y activar 02b incremental según docs/CLIENTES_CALIDAD_INCREMENTAL.md"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/forecasting-evidence-pilot",
-    "checkpoint_commit": "148f39f32c410eebc30d5f9919d786cfc0f267fa",
+    "working_branch": "feat/clientes-calidad-incremental",
+    "checkpoint_commit": "580803704a7e30c783084e59a21b426677e960bd",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-03T19:59:34Z",
-    "tests": [
-      "CI 37150045806 passed: 156 platform + 106 decision engine tests",
-      "Final leakage/embargo unit tests passed; notebook executed end-to-end"
-    ],
-    "notes": [
-      "No access to real Medallio; reconstructed history is diagnostic, no automatic promotion"
-    ]
+    "last_checked_at": "2026-10-04T13:09:51Z",
+    "tests": [],
+    "notes": []
   },
-  "updated_at": "2026-10-03T20:09:08.723Z"
+  "updated_at": "2026-10-04T13:09:51Z"
 }
