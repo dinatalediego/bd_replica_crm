@@ -61,6 +61,21 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_procedures=("analytics.absorcion_ventas_mensual(date)",),
     ),
     SchemaComponent(
+        name="ml_impact",
+        files=("sql/98_ml_impact/01_contract.sql",),
+        expected_relations=(
+            "decision_intelligence.ml_impact_snapshot",
+            "decision_intelligence.ml_impact_metric",
+            "decision_intelligence.ml_impact_scenario",
+            "decision_intelligence.v_ml_impact_baseline",
+            "decision_intelligence.v_ml_impact_proyecto",
+            "decision_intelligence.v_ml_impact_portafolio",
+            "decision_intelligence.v_ml_impact_proyecto_actual",
+            "decision_intelligence.v_ml_impact_portafolio_actual",
+            "decision_intelligence.v_ml_impact_vs_absorcion",
+        ),
+    ),
+    SchemaComponent(
         name="core_commercial_lifecycle",
         files=("sql/init_core_commercial_lifecycle.sql",),
         expected_relations=(
