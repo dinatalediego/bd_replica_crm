@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from html import escape
 from importlib.metadata import version
 import json
@@ -28,7 +28,7 @@ def json_safe(value):
         return {str(k): json_safe(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [json_safe(v) for v in value]
-    if isinstance(value, (pd.Timestamp, datetime)):
+    if isinstance(value, (pd.Timestamp, datetime, date)):
         return value.isoformat()
     if isinstance(value, np.generic):
         value = value.item()
@@ -51,6 +51,38 @@ def read_source(conn):
             ORDER BY codigo_proyecto,periodo_mes''')
         return pd.DataFrame(cur.fetchall(), columns=['month', 'project', 'sales',
                             'stock_open', 'stock_close', 'inflows', 'review_units'])
+
+
+def read_review_cases(conn, projects):
+    """Read unit/cycle evidence from the local absorption contract; no DB writes."""
+    if not projects:
+        raise ValueError('Supply at least one project')
+    with conn.cursor() as cur:
+        cur.execute('''SELECT codigo_proyecto AS project,nombre_proyecto,codigo_unidad,
+            nombre_unidad,estado_comercial_actual,fecha_venta,ventas_elegibles,
+            ciclos_revision,ultima_actualizacion_ciclos,
+            (ventas_elegibles > 1) AS duplicidad_venta_vigente,
+            (ciclos_revision > 0) AS ciclo_pendiente,
+            (fecha_venta IS NULL AND lower(coalesce(estado_comercial_actual,'')) LIKE '%%vendid%%')
+                AS vendida_sin_venta_validada
+            FROM analytics.v_absorcion_ventas_revision
+            WHERE codigo_proyecto=ANY(%s)
+            ORDER BY codigo_proyecto,codigo_unidad''', (projects,))
+        unit_columns=[c.name for c in cur.description]
+        units=[dict(zip(unit_columns,row)) for row in cur.fetchall()]
+        cur.execute('''SELECT u.codigo_proyecto AS project,u.codigo_unidad,
+            c.codigo_proyecto AS proyecto_del_ciclo,c.codigo_proforma,c.calidad_ciclo,
+            c.metodo_fecha_venta,c.fecha_de_minuta,c.fecha_firma_legacy,
+            c.fecha_venta_documental,c.fecha_anulacion,c.reconciliation_status,
+            c.observacion
+            FROM analytics.v_absorcion_ventas_revision u
+            JOIN analytics.v_absorcion_ventas_ciclos c USING (codigo_unidad)
+            WHERE u.codigo_proyecto=ANY(%s)
+            ORDER BY u.codigo_proyecto,u.codigo_unidad,c.codigo_proforma''', (projects,))
+        cycle_columns=[c.name for c in cur.description]
+        cycles=[dict(zip(cycle_columns,row)) for row in cur.fetchall()]
+    return dict(projects=projects, distinct_review_units=len(units), units=units,
+                cycles=cycles, source='LIVE_LOCAL_ABSORPTION_VIEWS')
 
 
 def ensure_schema(conn, root):

@@ -1,5 +1,6 @@
 """Disposable PostgreSQL only; mirrors the existing absorption integration fixture."""
 from datetime import date, datetime, timezone
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -9,7 +10,7 @@ import pandas as pd
 import pytest
 
 from replica_cygnus.commercial_forecasting.service import (
-    ensure_schema, measure, save_snapshot, store_run,
+    ensure_schema, measure, read_review_cases, save_snapshot, store_run,
 )
 from replica_cygnus.commercial_forecasting.core import validate_panel
 
@@ -152,3 +153,46 @@ def test_prospective_flags_use_lima_timestamp_and_legacy_outcomes_are_not_certif
         VALUES (%s,'DEMO',1,'mean3',%s,3,true)''',(legacy,sid))
     assert db.execute('''SELECT eligibility_reason,eligible_for_operational_scoring
         FROM analytics.v_commercial_forecast_performance WHERE run_id=%s''',(legacy,)).fetchone()==('LEGACY_UNASSESSED',False)
+
+
+def _powerbi_query(name):
+    """Run the exact SQL pasted by the Power Query templates, not a duplicate."""
+    source=(ROOT/'powerbi/M'/f'{name}.m').read_text(encoding='utf-8')
+    block=source.split('[Query = Text.Combine({',1)[1].split('}, " ")]',1)[0]
+    return ' '.join(json.loads(line.strip().rstrip(',')) for line in block.splitlines() if line.strip())
+
+
+def test_forecasting_powerbi_queries_on_disposable_postgres(db,tmp_path):
+    rid,_,_=insert_pending(db,tmp_path)
+    coverage=db.execute(_powerbi_query('qForecastCoverage')).fetchall()
+    assert len(coverage)==1 and coverage[0][0]==rid and coverage[0][1]=='DEMO'
+    current=db.execute(_powerbi_query('qForecastCurrent')).fetchall()
+    assert len(current)==1 and current[0][0]==rid and current[0][4]=='mean3'
+    candidates=db.execute(_powerbi_query('qForecastCandidateStatus')).fetchall()
+    assert len(candidates)==1 and candidates[0][1:4]==('mean3',1,1)
+    issued=db.execute(_powerbi_query('qForecastAsIssued')).fetchall()
+    assert len(issued)==1 and issued[0][9] is None  # No mature outcome yet.
+
+    db.execute('''CREATE VIEW analytics.v_absorcion_ventas_revision AS
+      SELECT 'NP'::text AS codigo_proyecto,'Nápoles'::text AS nombre_proyecto,
+      'N-101'::text AS codigo_unidad,'101'::text AS nombre_unidad,
+      'Vendido'::text AS estado_comercial_actual,NULL::date AS fecha_venta,
+      0::bigint AS ventas_elegibles,1::bigint AS ciclos_revision,
+      now() AS ultima_actualizacion_ciclos''')
+    db.execute('''CREATE VIEW analytics.v_absorcion_ventas_ciclos AS
+      SELECT 'NP'::text AS codigo_proyecto, v.codigo_unidad, v.codigo_proforma,
+             v.calidad_ciclo, 'NO_CONFIRMADA'::text AS metodo_fecha_venta,
+             NULL::date AS fecha_de_minuta, NULL::date AS fecha_firma_legacy,
+             NULL::date AS fecha_venta_documental, NULL::date AS fecha_anulacion,
+             'DOCUMENTAL_VS_INVENTARIO'::text AS reconciliation_status,
+             'Revisar'::text AS observacion
+      FROM (VALUES ('N-101','P-1','FECHA_PAGO_CI_INVALIDA'),
+                   ('N-101','P-2','LEGACY_2026_PROHIBIDO'))
+           AS v(codigo_unidad,codigo_proforma,calidad_ciclo)''')
+    review=db.execute(_powerbi_query('qForecastReviewQueue')).fetchall()
+    assert len(review)==1 and review[0][0]=='NP' and review[0][-1]=='CICLO_PENDIENTE'
+    assert 'P-1' in review[0][-2] and 'P-2' in review[0][-2]
+    cases=read_review_cases(db,['NP','SL','TZ'])
+    assert cases['distinct_review_units']==1 and len(cases['cycles'])==2
+    assert cases['units'][0]['codigo_unidad']=='N-101'
+    assert cases['units'][0]['ciclo_pendiente'] is True

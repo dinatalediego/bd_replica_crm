@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -107,6 +108,7 @@ def test_zero_actual_wape_is_undefined():
     frame=pd.DataFrame(dict(actual=[0.],prediction=[1.],origin=[pd.Timestamp('2024-01-01')]))
     assert metrics(frame)['wape'] is None
     assert json_safe({'a':np.nan})=={'a':None}
+    assert json_safe({'fecha':date(2026,10,4)})=={'fecha':'2026-10-04'}
 
 
 def test_executable_artifacts_are_explicitly_synthetic(tmp_path,panel):

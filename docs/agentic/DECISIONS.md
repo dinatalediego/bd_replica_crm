@@ -223,3 +223,25 @@ Se distinguen emisión antes del inicio de la ventana y emisión durante ella, u
 America/Lima; outcomes legacy no se recertifican retroactivamente. No se modifican
 ventas canónicas, no se consulta Redshift, no se promueve ni fusiona automáticamente.
 Los datos comerciales adjuntos se auditan de forma privada; no se publican en GitHub.
+
+
+## MAP-ADR-016 — Revisión por unidad y presentación de evidencia emitida
+
+Date: 2026-10-04
+Status: ACCEPTED — adds a read-only diagnostic and Power BI layer to ADR-015
+
+El panel comercial suministrado tiene filas mensuales con revisión para NP, SL
+y TZ, pero la función mensual cruza cada mes con el mismo estado ACTUAL de las
+unidades. Cada proyecto marca una unidad en todos sus meses: son tres unidades
+actuales por investigar, sin asumir el motivo documental de ninguna. Se entregan
+consultas de lectura a las vistas unitarias y de ciclos existentes. No se cambia
+requiere_revision ni se reduce retrospectivamente el stock para ocultar el caso;
+la resolución exige fuente/documentación local y una nueva versión de pronóstico.
+
+El tablero usa vistas ya instaladas con grano explícito: cobertura solo del último
+run, pronóstico seleccionado por horizonte, fila de revisión por unidad y resultado
+emitido por run/proyecto/horizonte. MAE, sesgo y WAPE se calculan con el mismo filtro
+de elegibilidad y quedan vacíos hasta que exista resultado maduro compatible; un
+horizonte acumulado único evita sumar varias ventanas superpuestas. Los modelos
+candidatos se muestran como entrenamiento/propuesta aunque no sean seleccionados.
+No hay acceso a PostgreSQL real ni modificación automática de la fuente de Medallio.

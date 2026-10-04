@@ -3,29 +3,28 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "FORECAST-ROBUSTNESS-002",
-    "title": "Arquitectura robusta y evidencia comparable de forecasting",
+    "id": "FORECAST-BI-003",
+    "title": "Diagnóstico de unidades en revisión y tablero de forecasting Cygnus",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Revisar PR/CI y ejecutar nueva arquitectura en Medallio según docs/COMMERCIAL_FORECASTING_ROBUSTNESS.md"
+    "next_action": "Revisar CI; ejecutar commercial_forecasting.py review en medallio_dw y corregir evidencia por unidad; construir tablero según COMMERCIAL_FORECASTING_POWERBI.md"
   },
   "git": {
     "base_branch": "main",
     "working_branch": "feat/forecasting-robustness",
-    "checkpoint_commit": "580803704a7e30c783084e59a21b426677e960bd",
+    "checkpoint_commit": "781ba8aed07152a98c5a77c5eb6cc29849685efc",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-04T18:21:16Z",
+    "last_checked_at": "2026-10-04T20:08:43Z",
     "tests": [
-      "144 platform unit tests passed; 106 decision engine tests passed",
-      "compileall passed; synthetic notebook and private legacy artifact audit executed; new artifact integrity VERIFIED"
+      "22 local forecasting tests passed; compileall passed; five Power Query SQL strings reconstructed and structurally checked"
     ],
     "notes": [
-      "PostgreSQL integration pending CI; local disposable server unavailable. No real Medallio access or automatic promotion.",
-      "Raw commercial data remain private; historical test is development diagnostic, not virgin confirmation."
+      "New Power BI query and review command integration test is pending GitHub CI with disposable PostgreSQL",
+      "One current reviewed unit in each of NP, SL, TZ is repeated across project months; no unit IDs/proformas accessible without user local Medallio"
     ]
   },
-  "updated_at": "2026-10-04T18:21:16Z"
+  "updated_at": "2026-10-04T20:08:43Z"
 }

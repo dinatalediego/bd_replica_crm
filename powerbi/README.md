@@ -22,3 +22,9 @@ El loop Lead Scoring v0.2 agrega dos consultas listas para pegar en Power Query:
 - `M/qLeadActionOutcomePerformance.m`: cohortes observacionales por banda y acción.
 
 El diseño evita falsos KPIs: una página futura puede estar vacía hasta que el proceso de negocio realmente genere esos eventos.
+
+Forecasting Cygnus: consultas `M/qForecast*.m`, medidas
+`DAX/05_Forecasting_Cygnus.dax` y guía de revisión de unidades y tablero en
+[`docs/COMMERCIAL_FORECASTING_POWERBI.md`](../docs/COMMERCIAL_FORECASTING_POWERBI.md).
+Las métricas prospectivas se muestran únicamente cuando maduren resultados
+compatibles de un run y horizonte seleccionados.

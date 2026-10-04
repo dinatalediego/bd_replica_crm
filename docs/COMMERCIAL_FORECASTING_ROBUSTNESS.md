@@ -163,6 +163,10 @@ En Power BI agregar `analytics.v_commercial_forecast_coverage` y
 `analytics.v_commercial_forecast_monitoring`. La cobertura es del último run v2; un run
 legacy sin metadatos de cobertura no produce filas en esa vista.
 
+Para localizar las unidades que excluyen stock y construir las dos páginas de
+Power BI con consultas M, relaciones y medidas que respeten run y horizonte,
+seguir [Revisión de unidades y tablero](COMMERCIAL_FORECASTING_POWERBI.md).
+
 ## Trabajo que requiere más datos
 
 No está implementada una predicción causal de descuentos ni recaudación. Leads,

@@ -1,7 +1,7 @@
 # Active Task
 
-Task ID: FORECAST-ROBUSTNESS-002
-Title: Arquitectura robusta y evidencia comparable de forecasting
+Task ID: FORECAST-BI-003
+Title: Diagnóstico de unidades en revisión y tablero de forecasting Cygnus
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
@@ -10,31 +10,33 @@ Base branch: main
 
 ## Objective
 
-Fortalecer la arquitectura del piloto ya fusionado en PR #39 con controles
- ejecutables de selección, soporte temporal, cobertura y trazabilidad.
+Identificar los casos unitarios que ponen NP, SL y TZ en cuarentena y entregar
+consultas Power BI para mostrar cobertura de stock, pronóstico, propuestas ML y
+resultados medidos por horizonte con población comparable.
 
 ## Scope and decisions
 
-ADR-015. Selección en validación por proyecto; políticas completas comparadas con
-la misma población y fallback explícito. Stock cubierto y cuarentenas visibles.
-Snapshot revisions, código/hashes archivados, medición con ámbito compatible y
-fechas de emisión en Lima. GMM/RF permanecen candidatos shadow; conservar mean3
-cuando la evidencia no cumple los umbrales. No se modifican ventas canónicas ni
-se consulta Redshift. No hay acceso a PostgreSQL real del usuario.
+ADR-016. Las filas mensuales con review_units=1 representan la repetición
+del estado de una unidad actual en cada uno de los tres proyectos; el panel
+agregado no contiene codigo_unidad ni causa documental. Consultas SQL locales
+a v_absorcion_ventas_revision y v_absorcion_ventas_ciclos determinan qué corregir.
+No se altera la fuente ni se certifica que los casos ya estén resueltos.
+Queries M de Power BI son de lectura; indicadores por run/horizonte seleccionados
+y outcome compatible, sin mezclar horizontes ni backtest retrospectivo.
 
 ## Evidence
 
-- 144 pruebas unitarias de plataforma y 106 de decision_engine aprobadas.
-- Compilación Python y notebook sintético ejecutados de extremo a extremo.
-- Auditoría privada de artifacts anteriores ejecutada sin cargar joblib; integridad
-  de nuevos artifacts verificada. Datos comerciales no publicados en GitHub.
-- Integración PostgreSQL pendiente de CI; el entorno local no permite iniciar
-  el servidor desechable como usuario sin privilegios.
-- La prueba histórica inspeccionada sigue siendo diagnóstico de desarrollo;
-  no se afirma ganancia de precisión futura.
+- 22 pruebas locales de forecasting aprobadas; consultas M reconstruidas y
+  verificadas estáticamente. CI con PostgreSQL desechable ejecutará la nueva
+  prueba de las consultas reales al publicar esta revisión.
+- El run anterior fue verificado en la computadora del usuario; su cobertura
+  y sus resultados maduros son visibles en las vistas y artifacts locales.
+- Faltan filas unitarias de la base local para determinar la proforma y el
+  motivo particular de NP, SL y TZ. No se publica ningún dato comercial real.
 
 ## Next action
 
-Revisar PR y CI. Usar docs/COMMERCIAL_FORECASTING_ROBUSTNESS.md para instalar en una
-carpeta independiente, auditar runs anteriores y emitir nuevas versiones en Medallio.
-Medir futuros resultados congelados; resolver cuarentenas con evidencia documental.
+Revisar CI y ejecutar sql/97_commercial_forecasting/02_review_diagnostics.sql en
+medallio_dw. Resolver cada unidad con evidencia documental en el origen; actualizar
+la réplica local, emitir otro run y construir las dos páginas según
+COMMERCIAL_FORECASTING_POWERBI.md. Conservar el run anterior para comparación.

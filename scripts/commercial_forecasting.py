@@ -11,7 +11,8 @@ import pandas as pd
 
 from replica_cygnus.commercial_forecasting.core import Config, validate_panel
 from replica_cygnus.commercial_forecasting.service import (
-    audit_artifacts, dumps, ensure_schema, execute, measure, read_source, save_snapshot, store_run, synthetic_panel,
+    audit_artifacts, dumps, ensure_schema, execute, measure, read_review_cases, read_source,
+    save_snapshot, store_run, synthetic_panel,
 )
 from replica_cygnus.commercial_forecasting.robustness import verify_integrity
 from replica_cygnus.connections import connect_postgres
@@ -36,6 +37,9 @@ def parser():
     sub.add_parser('capture')
     sub.add_parser('measure')
     sub.add_parser('status')
+    review = sub.add_parser('review', help='Unidades y ciclos en revisión de la absorción local; solo lectura')
+    review.add_argument('--project', action='append', dest='review_projects',
+                        help='Código de proyecto; repetir para varios (por defecto NP, SL, TZ)')
     audit = sub.add_parser('audit')
     audit.add_argument('--artifacts', type=Path, required=True)
     audit.add_argument('--output', type=Path, default=ROOT/'artifacts/commercial_forecasting_audits')
@@ -78,6 +82,9 @@ def main(argv=None):
         return 0
     settings = load_settings(ROOT, require_source=False)
     with connect_postgres(settings) as conn:
+        if args.command == 'review':
+            print(dumps(read_review_cases(conn, args.review_projects or ['NP','SL','TZ'])))
+            return 0
         ensure_schema(conn, ROOT)
         if args.command == 'init':
             print('Esquema de evidencia listo. Sin consultas a Redshift.')
