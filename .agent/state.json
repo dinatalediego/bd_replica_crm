@@ -3,28 +3,29 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "FORECAST-EVIDENCE-001",
-    "title": "Forecasting comercial con entrenamiento y evidencia",
+    "id": "FORECAST-ROBUSTNESS-002",
+    "title": "Arquitectura robusta y evidencia comparable de forecasting",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Ejecutar forecasting en Medallio local; revisar evidencia y registrar metas/acciones"
+    "next_action": "Revisar PR/CI y ejecutar nueva arquitectura en Medallio según docs/COMMERCIAL_FORECASTING_ROBUSTNESS.md"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/forecasting-evidence-pilot",
-    "checkpoint_commit": "148f39f32c410eebc30d5f9919d786cfc0f267fa",
+    "working_branch": "feat/forecasting-robustness",
+    "checkpoint_commit": "580803704a7e30c783084e59a21b426677e960bd",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-03T19:59:34Z",
+    "last_checked_at": "2026-10-04T18:21:16Z",
     "tests": [
-      "CI 37150045806 passed: 156 platform + 106 decision engine tests",
-      "Final leakage/embargo unit tests passed; notebook executed end-to-end"
+      "144 platform unit tests passed; 106 decision engine tests passed",
+      "compileall passed; synthetic notebook and private legacy artifact audit executed; new artifact integrity VERIFIED"
     ],
     "notes": [
-      "No access to real Medallio; reconstructed history is diagnostic, no automatic promotion"
+      "PostgreSQL integration pending CI; local disposable server unavailable. No real Medallio access or automatic promotion.",
+      "Raw commercial data remain private; historical test is development diagnostic, not virgin confirmation."
     ]
   },
-  "updated_at": "2026-10-03T20:09:08.723Z"
+  "updated_at": "2026-10-04T18:21:16Z"
 }

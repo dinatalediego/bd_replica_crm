@@ -201,3 +201,25 @@ seleccionar en validación separada de prueba final, sin promoción automática.
 Horizontes acumulados sobre stock existente, sin elasticidad causal ni caja.
 La ampliación de señales CRM con fechas históricas verificables permanece
 pendiente de contratos; no se inventan variables en SQL.
+
+
+## MAP-ADR-015 — Selección conservadora y evidencia comparable
+
+Date: 2026-10-04
+Status: ACCEPTED — strengthens evaluation and monitoring in ADR-013
+
+El usuario pidió fortalecer la arquitectura con sus artifacts reales. La selección
+usa únicamente trayectorias completas de validación, controles por proyecto y
+políticas con fallback comparadas sobre la misma población. Se exige soporte
+temporal no solapado, cobertura e incremento mínimo de rendimiento; esos umbrales
+son configurables y no prueban significancia. Con evidencia insuficiente se conserva
+mean3 y los candidatos ML siguen shadow. La prueba histórica ya inspeccionada
+sirve como diagnóstico de desarrollo, no como confirmación virgen de esta versión.
+
+Cada run registra cobertura por proyecto y stock, revisiones del snapshot, rangos
+de entrenamiento, calibración, bytes de código y hashes. La medición congela el
+primer snapshot completo por proyecto y verifica compatibilidad con el stock emitido.
+Se distinguen emisión antes del inicio de la ventana y emisión durante ella, usando
+America/Lima; outcomes legacy no se recertifican retroactivamente. No se modifican
+ventas canónicas, no se consulta Redshift, no se promueve ni fusiona automáticamente.
+Los datos comerciales adjuntos se auditan de forma privada; no se publican en GitHub.

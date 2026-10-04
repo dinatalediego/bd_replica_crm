@@ -1,5 +1,7 @@
 # Forecasting comercial Cygnus: implementación y evidencia
 
+Arquitectura v2 y nuevos controles: [robustez y evaluación](COMMERCIAL_FORECASTING_ROBUSTNESS.md).
+
 Producto adicional en Medallio. Pronostica ventas acumuladas de departamentos del
 stock existente, para los siguientes 1–6 meses. Usa PostgreSQL local; no agrega
 consultas ni credenciales de Redshift. No altera ventas canónicas, CI, RAW, CORE,
@@ -11,7 +13,7 @@ En la carpeta de `bd_replica_crm`, con la rama de este cambio descargada:
 
 ```powershell
 git fetch origin
-git switch feat/forecasting-evidence-pilot
+git switch feat/forecasting-robustness
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\scripts\63_forecasting_demo.bat
 ```
@@ -75,11 +77,13 @@ al stock inicial no sirven como análogos de este escenario. Proyectos con
 Un lanzamiento con poca historia recibe promedio reciente, explícitamente.
 
 Cada origen recalcula todo a partir de los meses <= corte. Solo se usan desenlaces
-que ya maduraron allí. Hasta 12 orígenes móviles con seis meses posteriores
-completos; últimos tres reservados a prueba final. Los anteriores cuyos desenlaces maduraron antes del primer corte de prueba
+que ya maduraron allí. En v2 hasta 24 orígenes móviles con seis meses posteriores
+completos, con los últimos seis reservados a prueba final. Los anteriores cuyos desenlaces maduraron antes del primer corte de prueba
 seleccionan candidatos; las ventanas que se superponen se etiquetan `embargo`. Se compara MAE sobre las mismas filas que la referencia. Se exige
 al menos tres orígenes y 5% de mejora para seleccionar otra alternativa; si no,
-se mantiene promedio. Es un filtro preliminar de seguimiento, no un certificado
+se mantiene promedio. En v2 se añade cobertura por proyecto, dos orígenes no solapados,
+trayectorias completas y comparación de políticas con fallback sobre la misma población.
+Es un filtro preliminar de seguimiento, no un certificado
 estadístico ni una autorización de producción. El holdout final se reporta y
 no se usa para elegir parámetros/modelo.
 

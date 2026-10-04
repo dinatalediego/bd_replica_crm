@@ -6,6 +6,8 @@ from html import escape
 from importlib.metadata import version
 import json
 from pathlib import Path
+import platform
+import shutil
 import subprocess
 from uuid import uuid4
 
@@ -14,6 +16,8 @@ import numpy as np
 import pandas as pd
 
 from .core import Config, FEATURES, attach_intervals, design, evaluate, fit_predict, validate_panel
+from .evaluation import apply_policy, select_policy
+from .robustness import diagnostics, outcome_scope, sha256, snapshot_revisions, verify_integrity, write_integrity
 
 SEMANTICS = 'RECONSTRUCTED_REVISED_HISTORY'
 
@@ -58,6 +62,12 @@ def save_snapshot(conn, panel, quality):
     snapshot_id = str(uuid4())
     from psycopg.types.json import Jsonb
     with conn.cursor() as cur:
+        cur.execute('''SELECT snapshot_id,panel FROM features.commercial_forecast_snapshots
+                       ORDER BY captured_at DESC,snapshot_id DESC LIMIT 1''')
+        previous = cur.fetchone()
+        quality['snapshot_comparison'] = (dict(previous_snapshot_id=str(previous[0]),
+            **snapshot_revisions(pd.DataFrame(previous[1]), panel)) if previous else
+            dict(previous_snapshot_id=None, status='FIRST_CAPTURE'))
         cur.execute('''INSERT INTO features.commercial_forecast_snapshots
             (snapshot_id,complete_through,source_semantics,data_sha256,panel,quality)
             VALUES (%s,%s,%s,%s,%s,%s)''', (snapshot_id, panel.month.max().date(), SEMANTICS,
@@ -65,25 +75,23 @@ def save_snapshot(conn, panel, quality):
     return snapshot_id
 
 
-def execute(panel, root: Path, output: Path, cfg: Config, *, synthetic=False, snapshot_id=None):
+def execute(panel, root: Path, output: Path, cfg: Config, *, synthetic=False, snapshot_id=None, snapshot_context=None):
     clean, quality = validate_panel(panel)
+    if snapshot_context:
+        quality['snapshot_comparison'] = snapshot_context
     bt, summary, evidence, selected = evaluate(clean, cfg)
     origin = clean.month.max()
     future, final_fit, bundles = fit_predict(clean, origin, cfg)
     if future.empty:
         raise ValueError('No current eligible project forecasts; inspect quality report')
     future = attach_intervals(future, bt, cfg)
-    # Candidate may not be available for new/zero-inventory projects: transparent baseline fallback.
-    future['is_selected'] = future.model.eq(selected)
-    for project, g in future.groupby('project'):
-        if not g.is_selected.any():
-            future.loc[g.index, 'is_selected'] = g.model.eq('mean3')
+    policy = select_policy(bt, cfg)
+    future = apply_policy(future, policy, cfg.horizon)
     future['monthly_increment'] = future.groupby(['project', 'model']).prediction.diff().fillna(future.prediction)
-    future['selection_reason'] = np.where(future.model.eq(selected), 'VALIDATION_SELECTION',
-                                         np.where(future.is_selected, 'PROJECT_BASELINE_FALLBACK', 'SHADOW_CANDIDATE'))
     run_id = str(uuid4())
     directory = output/run_id
     directory.mkdir(parents=True, exist_ok=False)
+    robust, coverage, paired, policy_rows, calibration = diagnostics(clean, future, bt, cfg, policy)
     created = datetime.now(timezone.utc)
     try:
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
@@ -94,9 +102,11 @@ def execute(panel, root: Path, output: Path, cfg: Config, *, synthetic=False, sn
         source_semantics='SYNTHETIC_DEMO' if synthetic else SEMANTICS,
         evidence_level='SYNTHETIC_ONLY' if synthetic else 'HISTORICAL_DIAGNOSTIC_SHADOW',
         deployment_status='SHADOW_NO_AUTOMATIC_PROMOTION', selected_model=selected,
-        selected_on='validation paired MAE; final test not used for selection',
+        selected_on='complete validation paths, project guards, identical baseline/fallback population; no test selection',
         config=asdict(cfg), data_quality=quality, git_commit=commit, git_dirty=dirty,
-        libraries={p: version(p) for p in ('numpy', 'pandas', 'scikit-learn', 'statsmodels')},
+        libraries={p: version(p) for p in ('numpy', 'pandas', 'scikit-learn', 'statsmodels', 'scipy', 'joblib')},
+        python=platform.python_version(), architecture_version='2.0',
+        selection_policy=policy, robustness=robust, coverage_projects=coverage.to_dict('records'),
         features=FEATURES, origin=str(origin.date()), final_training=final_fit,
         limitations=['Historical source revised retrospectively: not point-in-time backtest',
             'Existing inventory scenario: no additions, reinstatements or other exits',
@@ -104,6 +114,17 @@ def execute(panel, root: Path, output: Path, cfg: Config, *, synthetic=False, sn
             'Empirical error intervals: temporal dependence may alter nominal coverage',
             'Forecast window starts after origin; issuance may occur after window start',
             'Cluster IDs local to each training run; no stable regime names asserted'])
+    # A dirty commit alone is not reproducible: preserve the actual forecasting source bytes.
+    code_paths = [*sorted((root/'src/replica_cygnus/commercial_forecasting').glob('*.py')),
+                  root/'scripts/commercial_forecasting.py', root/'sql/97_commercial_forecasting/01_evidence.sql',
+                  root/'pyproject.toml']
+    manifest['source_files'] = {}
+    for source in code_paths:
+        relative = source.relative_to(root)
+        target = directory/'source_code'/relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+        manifest['source_files'][relative.as_posix()] = sha256(target)
     clean.to_csv(directory/'panel.csv', index=False)
     design(clean, cfg).to_csv(directory/'features.csv', index=False)
     bt.to_csv(directory/'backtest.csv', index=False)
@@ -115,8 +136,16 @@ def execute(panel, root: Path, output: Path, cfg: Config, *, synthetic=False, sn
     # Persist fitted estimators, transforms and rates for reproducibility, not just metrics.
     joblib.dump(bundles, directory/'trained_models.joblib')
     (directory/'model_profiles.json').write_text(dumps(final_fit), encoding='utf-8')
+    coverage.to_csv(directory/'project_coverage.csv', index=False)
+    paired.to_csv(directory/'paired_comparisons.csv', index=False)
+    policy_rows.to_csv(directory/'policy_backtest.csv', index=False)
+    calibration.to_csv(directory/'interval_calibration.csv', index=False)
+    (directory/'selection_policy.json').write_text(dumps(policy), encoding='utf-8')
+    (directory/'robustness.json').write_text(dumps(robust), encoding='utf-8')
     selected_rows = future[future.is_selected].copy()
-    tables = [('Predicciones acumuladas por horizonte', selected_rows),
+    tables = [('Cobertura: cada proyecto tiene un estado explícito', coverage),
+              ('Prueba final: candidatos sobre los mismos casos que su referencia', paired[paired.partition.eq('test') & paired.horizon.eq(0)] if len(paired) else paired),
+              ('Predicciones acumuladas por horizonte', selected_rows),
               ('Evaluación: validación y prueba final separadas', summary),
               ('Detalle de modelos entrenados', pd.DataFrame(final_fit.get('clusters', [])))]
     body = ''.join(f'<h2>{escape(title)}</h2>{table.to_html(index=False, escape=True, na_rep="Sin evidencia suficiente")}'
@@ -128,10 +157,15 @@ def execute(panel, root: Path, output: Path, cfg: Config, *, synthetic=False, sn
 Los resultados históricos reconstruidos no certifican predicción con información disponible en el pasado.</p>
 <p>Modelo seleccionado en validación: <b>{escape(selected)}</b>. Ventas acumuladas de departamentos del stock actual.
 No sumar horizontes 1, 3 y 6: se superponen. Las bandas vacías indican falta de errores anteriores maduros.</p>
+<p>Cobertura: {robust['projects_forecast']} de {robust['projects_total']} proyectos;
+stock cubierto {robust['stock_forecast']:g} de {robust['stock_total']:g}.
+Evidencia temporal de prueba: {escape(robust['test_temporal_uncertainty']['status'])}.
+Los modelos se comparan con fallback incluido en policy_backtest.csv. Los cortes solapados no son ensayos independientes.</p>
 {body}<h2>Qué aporta la inteligencia</h2><p>Aprende patrones de absorción y oferta; reconoce estados similares;
 compara sus predicciones con alternativas y conserva evidencia. Las alertas de brecha requieren metas registradas.
 Las asociaciones no demuestran efectos causales ni recaudación.</p></html>'''
     (directory/'report.html').write_text(html, encoding='utf-8')
+    write_integrity(directory)
     return directory, manifest, future, bt
 
 
@@ -171,21 +205,84 @@ def measure(conn):
             end = pd.Timestamp(origin)+pd.DateOffset(months=h)
             cur.execute('''SELECT snapshot_id,panel FROM features.commercial_forecast_snapshots
                 WHERE complete_through >= %s AND captured_at > %s
-                ORDER BY captured_at,snapshot_id LIMIT 1''', (end.date(), created))
-            snapshot = cur.fetchone()
-            if snapshot is None:
+                ORDER BY captured_at,snapshot_id''', (end.date(), created))
+            selected_snapshot, assessed = None, None
+            for snapshot in cur.fetchall():
+                panel = pd.DataFrame(snapshot[1]); panel['month'] = pd.to_datetime(panel.month)
+                window = panel[panel.project.eq(project) & panel.month.gt(pd.Timestamp(origin)) & panel.month.le(end)]
+                result = outcome_scope(window, origin, h, stock)
+                if result['complete']:
+                    selected_snapshot, assessed = snapshot[0], result
+                    break
+            if selected_snapshot is None:
                 continue
-            panel = pd.DataFrame(snapshot[1]); panel['month'] = pd.to_datetime(panel.month)
-            window = panel[panel.project.eq(project) & panel.month.gt(pd.Timestamp(origin)) & panel.month.le(end)]
-            if len(window) != h:
-                continue
-            eligible = bool(window.inflows.sum()==0 and window.review_units.sum()==0 and window.sales.sum() <= float(stock))
             cur.execute('''INSERT INTO analytics.commercial_forecast_outcomes
-              (run_id,project,horizon,model,outcome_snapshot_id,actual,eligible_scope)
-              VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING''',
-              (run_id, project, h, model, snapshot[0], float(window.sales.sum()), eligible))
+              (run_id,project,horizon,model,outcome_snapshot_id,actual,eligible_scope,eligibility_reason)
+              VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING''',
+              (run_id, project, h, model, selected_snapshot, assessed['actual'], assessed['eligible_scope'], assessed['reason']))
             count += cur.rowcount
     return count
+
+
+def audit_artifacts(source: Path, output: Path):
+    """Audit old runs without loading joblib, refitting models or rewriting evidence."""
+    integrity = verify_integrity(source)
+    if integrity['status'] == 'FAILED':
+        raise ValueError('Artifact integrity failed; preserve and investigate the original evidence')
+    manifest = json.loads((source/'manifest.json').read_text(encoding='utf-8'))
+    cfg = Config(**manifest['config'])
+    cfg.validate()
+    panel, _ = validate_panel(pd.read_csv(source/'panel.csv', dtype={'project': str}))
+    bt = pd.read_csv(source/'backtest.csv', dtype={'project': str}, parse_dates=['origin', 'outcome_month'])
+    future = pd.read_csv(source/'predictions.csv', dtype={'project': str}, parse_dates=['origin'])
+    policy = select_policy(bt, cfg)
+    robust, coverage, paired, policy_rows, calibration = diagnostics(panel, future, bt, cfg, policy)
+    robust['audit_only'] = True
+    robust['original_selected_model'] = manifest['selected_model']
+    robust['source_integrity'] = integrity
+    robust['input_sha256'] = {name: sha256(source/name) for name in ('panel.csv', 'backtest.csv', 'predictions.csv', 'manifest.json')}
+    robust['source_run_id'] = manifest['run_id']
+    directory = output/str(uuid4()); directory.mkdir(parents=True, exist_ok=False)
+    for name, frame in [('project_coverage', coverage), ('paired_comparisons', paired),
+                        ('policy_backtest', policy_rows), ('interval_calibration', calibration)]:
+        frame.to_csv(directory/f'{name}.csv', index=False)
+    (directory/'robustness.json').write_text(dumps(robust), encoding='utf-8')
+    (directory/'selection_policy.json').write_text(dumps(policy), encoding='utf-8')
+    comparable = paired[paired.partition.eq('test') & paired.horizon.eq(0)] if len(paired) else paired
+    comparable = comparable.reindex(columns=['model','rows','projects','origins','mae','baseline_mae','wape','relative_improvement'])
+    decisions = pd.DataFrame(policy['project_decisions'])
+    reasons = decisions.groupby(['candidate','decision']).size().reset_index(name='projects') if len(decisions) else decisions
+    stock_pct = 100 * robust['stock_coverage'] if robust['stock_coverage'] is not None else 0.
+    html = f'''<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cygnus · Auditoría de robustez</title><style>
+body{{font:16px/1.55 system-ui,sans-serif;color:#173447;background:#f1f5f7;margin:0}}
+main{{max-width:1180px;margin:35px auto;padding:32px;background:white}}h1,h2{{line-height:1.2}}
+.cards{{display:flex;flex-wrap:wrap;gap:16px}}.card{{background:#eaf3f5;padding:20px;flex:1;min-width:210px}}
+.card strong{{font-size:30px;display:block}}.note{{background:#fff3d6;border-left:5px solid #b57a12;padding:18px}}
+.table{{overflow:auto;margin:18px 0}}table{{border-collapse:collapse;min-width:100%;font-size:13px}}th,td{{text-align:left;padding:10px;border-bottom:1px solid #dce4e8}}th{{background:#173447;color:white}}
+.track{{background:#dce4e8;height:16px;margin-top:12px}}.fill{{background:#21878d;height:100%}}small{{color:#536d79}}@media print{{main{{margin:0;padding:12px}}.table{{overflow:visible}}}}
+</style></head><body><main><small>CYGNUS · FORECASTING COMERCIAL · AUDITORÍA V2</small>
+<h1>Qué evidencia respalda el pronóstico</h1><p>Run original: {escape(manifest['run_id'])}. Corte: {escape(manifest['origin'])}.</p>
+<div class="cards"><div class="card"><strong>{robust['projects_forecast']} / {robust['projects_total']}</strong>proyectos con pronóstico original</div>
+<div class="card"><strong>{stock_pct:.1f}%</strong>del stock del panel cubierto ({robust['stock_forecast']:g} / {robust['stock_total']:g})<div class="track"><div class="fill" style="width:{stock_pct:.1f}%"></div></div></div>
+<div class="card"><strong>{robust['test_temporal_uncertainty']['independent_origins']}</strong>cortes de prueba no solapados al horizonte completo</div></div>
+<h2>Decisión de las nuevas reglas</h2><p>Selección emitida: <b>{escape(manifest['selected_model'])}</b>.
+Política que propondrían los controles v2 sobre la validación disponible: <b>{escape(policy['selected_model'])}</b>.</p>
+<p class="note">La auditoría no reentrena ni reemplaza el pronóstico original. Una mejora histórica no demuestra todavía precisión operativa.
+El histórico revisado sigue siendo diagnóstico. La cobertura incompleta y los cortes solapados limitan las conclusiones.</p>
+<h2>Cobertura del run original</h2><p>Los proyectos en cuarentena conservan una razón visible. Las cantidades pronosticadas son acumuladas hasta el horizonte indicado.</p>
+<div class="table">{coverage.to_html(index=False,escape=True,na_rep='Sin pronóstico',float_format=lambda x:f'{x:.2f}')}</div>
+<h2>Comparación histórica sobre los mismos casos</h2><p>MAE en unidades por proyecto/origen/horizonte. WAPE y mejora son fracciones; no equivalen a una tasa de acierto. Cada candidato se empareja con la referencia.</p>
+<div class="table">{comparable.to_html(index=False,escape=True,na_rep='Sin evidencia',float_format=lambda x:f'{x:.4f}')}</div>
+<h2>Por qué se conserva o cambia la referencia por proyecto</h2><div class="table">{reasons.to_html(index=False,escape=True)}</div>
+<h2>Prioridades para la siguiente medición</h2><ol><li>Resolver la evidencia de los proyectos en cuarentena sin alterar las reglas canónicas.</li>
+<li>Emitir y conservar nuevas versiones; medir resultados cuando cierre cada ventana.</li>
+<li>Revisar error, sesgo, cobertura e intervalos por proyecto y horizonte; distinguir emisión antes del inicio y durante la ventana.</li></ol>
+<small>Integridad de archivos originales: {escape(integrity['status'])}. Los hashes del análisis y la política completa se conservan en los JSON del mismo directorio.
+No se certifican versiones históricas inexistentes ni se promueve automáticamente un modelo.</small></main></body></html>'''
+    (directory/'report.html').write_text(html, encoding='utf-8')
+    write_integrity(directory)
+    return directory, robust
 
 
 def synthetic_panel(seed=42):

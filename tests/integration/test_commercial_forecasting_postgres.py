@@ -92,3 +92,63 @@ def test_source_adapter_excludes_partial_month_and_cam(db):
     assert len(panel)==1 and panel.project.iloc[0]=='GY'
     clean,q=validate_panel(panel)
     assert clean.month.iloc[0]==pd.Timestamp('2026-09-01')
+
+
+def insert_pending(db, tmp_path, *, created_at=None):
+    panel,q=validate_panel(pd.DataFrame([dict(month='2020-09-01',project='DEMO',sales=2,
+        stock_open=10,stock_close=8,inflows=0,review_units=0)]))
+    sid=save_snapshot(db,panel,q); rid=str(uuid4())
+    manifest=dict(run_id=rid,snapshot_id=sid,selected_model='mean3',evidence_level='HISTORICAL_DIAGNOSTIC_SHADOW',
+                  coverage_projects=[dict(project='DEMO',status='FORECAST_AVAILABLE',stock=8,has_forecast=True)])
+    if created_at:
+        from psycopg.types.json import Jsonb
+        db.execute('''INSERT INTO model_control.commercial_forecast_runs
+            (run_id,snapshot_id,created_at,manifest,selected_model,evidence_level,artifact_path)
+            VALUES (%s,%s,%s,%s,'mean3','HISTORICAL_DIAGNOSTIC_SHADOW',%s)''',
+            (rid,sid,created_at,Jsonb(manifest),str(tmp_path)))
+        db.execute('''INSERT INTO analytics.commercial_forecast_predictions
+            (run_id,project,origin,horizon,model,prediction,stock,is_selected)
+            VALUES (%s,'DEMO','2020-09-01',1,'mean3',2,8,true)''',(rid,))
+    else:
+        forecast=pd.DataFrame([dict(project='DEMO',origin=pd.Timestamp('2020-09-01'),horizon=1,model='mean3',
+            prediction=2.,stock=8.,lower80=1.,upper80=3.,lower95=0.,upper95=4.,is_selected=True,state_probabilities=None)])
+        store_run(db,tmp_path,manifest,forecast,pd.DataFrame())
+    return rid,sid,panel
+
+
+def test_measure_skips_incomplete_project_snapshot_but_freezes_revised_stock_reason(db,tmp_path):
+    rid,sid,panel=insert_pending(db,tmp_path)
+    missing=pd.DataFrame([dict(month='2020-10-01',project='OTHER',sales=1,stock_open=5,stock_close=4,inflows=0,review_units=0)])
+    missing,q=validate_panel(missing); save_snapshot(db,missing,q)
+    assert measure(db)==0
+    revised=panel.copy(); revised.loc[0,'sales']=1; revised.loc[0,'stock_close']=9
+    october=pd.DataFrame([dict(month='2020-10-01',project='DEMO',sales=3,stock_open=9,stock_close=6,inflows=0,review_units=0)])
+    revised,q=validate_panel(pd.concat([revised,october],ignore_index=True))
+    sid2=save_snapshot(db,revised,q)
+    assert measure(db)==1
+    actual,eligible,reason,observed=db.execute('''SELECT actual,eligible_scope,eligibility_reason,outcome_snapshot_id
+        FROM analytics.commercial_forecast_outcomes WHERE run_id=%s''',(rid,)).fetchone()
+    assert actual==3 and not eligible and reason=='ISSUANCE_STOCK_REVISED' and str(observed)==sid2
+    assert measure(db)==0
+    assert db.execute('SELECT count(*) FROM analytics.v_commercial_forecast_coverage').fetchone()[0]==1
+
+
+def test_prospective_flags_use_lima_timestamp_and_legacy_outcomes_are_not_certified(db,tmp_path):
+    before,sid,_=insert_pending(db,tmp_path,created_at=datetime(2020,10,1,4,59,59,tzinfo=timezone.utc))
+    after,_,_=insert_pending(db,tmp_path,created_at=datetime(2020,10,1,5,0,1,tzinfo=timezone.utc))
+    for rid in [before,after]:
+        db.execute('''INSERT INTO analytics.commercial_forecast_outcomes
+          (run_id,project,horizon,model,outcome_snapshot_id,actual,eligible_scope,eligibility_reason)
+          VALUES (%s,'DEMO',1,'mean3',%s,3,true,'COMPATIBLE_SCOPE')''',(rid,sid))
+    flags=db.execute('''SELECT run_id,issued_before_window_start,eligible_for_operational_scoring,eligible_for_strict_prospective_scoring
+                       FROM analytics.v_commercial_forecast_performance''').fetchall()
+    flags={str(r[0]):r[1:] for r in flags}
+    assert flags[before]==(True,True,True) and flags[after]==(False,True,False)
+    assert db.execute('''SELECT strictly_prospective_outcomes,strictly_prospective_mae,as_issued_wape
+      FROM analytics.v_commercial_forecast_monitoring WHERE run_id=%s''',(before,)).fetchone()[0:2]==(1,1)
+    legacy,_,_=insert_pending(db,tmp_path,created_at=datetime(2020,9,30,tzinfo=timezone.utc))
+    db.execute('''INSERT INTO analytics.commercial_forecast_outcomes
+        (run_id,project,horizon,model,outcome_snapshot_id,actual,eligible_scope)
+        VALUES (%s,'DEMO',1,'mean3',%s,3,true)''',(legacy,sid))
+    assert db.execute('''SELECT eligibility_reason,eligible_for_operational_scoring
+        FROM analytics.v_commercial_forecast_performance WHERE run_id=%s''',(legacy,)).fetchone()==('LEGACY_UNASSESSED',False)

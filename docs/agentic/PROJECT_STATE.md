@@ -19,6 +19,14 @@ The current default-branch README identifies the repository state as:
 
 This file intentionally does not attempt to summarize every feature branch.
 
+## Forecasting robustness branch — 2026-10-04
+
+FORECAST-ROBUSTNESS-002 extends the merged forecasting pilot from PR #39.
+The branch adds guarded validation policies, equal-population comparisons,
+inventory coverage, temporal support checks, source fingerprints and stricter
+as-issued outcome measurement. Reconstructed history remains diagnostic;
+confirmation requires future frozen results. See ADR-015 and ACTIVE_TASK.md.
+
 ## Current MAP status
 
 MAP v1.0 is being introduced as a coordination layer only.
