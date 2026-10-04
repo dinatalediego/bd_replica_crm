@@ -104,3 +104,10 @@ después de validar los resultados reales de esta fase.
 ## Forecasting comercial con evidencia
 
 Piloto adicional: promedio reciente, ETS, GMM con análogos y Random Forest, evaluación temporal, snapshots/predicciones append-only y seguimiento de acciones. [Guía de ejecución y límites](docs/COMMERCIAL_FORECASTING.md). Demo: `scripts/63_forecasting_demo.bat`; Medallio: `scripts/64_forecasting_medallio.bat`. [Notebook de exposición](notebooks/11_commercial_forecasting_evidence.ipynb). Sin carga adicional a Redshift ni promoción automática.
+
+## Escenarios monetarios de impacto ML
+
+Importación local y versionada del Excel agregado de metas, colocado y stock;
+vistas por proyecto/portafolio para tres sensibilidades y comparación adicional
+excluyendo stock bloqueado. Son hipótesis económicas, no ventas causadas por ML.
+[Contrato, controles y pasos para VS Code](docs/ML_IMPACT_SCENARIOS.md).
