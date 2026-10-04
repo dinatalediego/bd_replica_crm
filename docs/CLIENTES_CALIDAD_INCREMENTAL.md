@@ -72,7 +72,7 @@ Enable-ScheduledTask -TaskName $TaskName
 
 El helper habilita únicamente el bloque comentado conocido de 02b, valida AST,
 respalda `dw_refresh.py` y conserva el resto. Si 02b ya está activo, no escribe.
-Si encuentra un formato distinto o un archivo contaminado, frena para revisión.
+Si encuentra un formato distinto o no encuentra _steps, frena para revisión.
 Si alguna validación falla, el trigger queda deshabilitado para resolver la falla;
 no declarar la automatización restaurada todavía.
 

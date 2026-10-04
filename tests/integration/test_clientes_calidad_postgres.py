@@ -165,7 +165,9 @@ def test_python_gate_rolls_back_changes_before_commit(db):
 def test_advisory_lock_rejects_concurrent_refresh(db):
     import psycopg
     add(db)
-    with psycopg.connect(db.info.dsn) as other:
+    # Connection.info.dsn deliberately redacts the password. Reuse the test DSN.
+    dsn = os.environ.get('CLIENTES_CALIDAD_TEST_DSN') or os.environ.get('ABSORCION_TEST_DSN') or db.info.dsn
+    with psycopg.connect(dsn) as other:
         other.execute('SELECT pg_advisory_xact_lock(9042026,2)')
         with pytest.raises(psycopg.Error, match='otro refresh sigue activo'):
             with db.transaction():
