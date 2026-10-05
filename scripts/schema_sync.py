@@ -19,6 +19,22 @@ class SchemaComponent:
 
 COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
+        name="commercial_forecasting",
+        files=(
+            "sql/97_commercial_forecasting/01_evidence.sql",
+            "sql/97_commercial_forecasting/02_monthly_projection.sql",
+        ),
+        expected_relations=(
+            "features.commercial_forecast_snapshots",
+            "model_control.commercial_forecast_runs",
+            "analytics.commercial_forecast_predictions",
+            "analytics.v_commercial_forecast_current",
+            "analytics.v_commercial_forecast_monthly",
+            "analytics.v_commercial_forecast_performance",
+            "analytics.v_commercial_forecast_coverage",
+        ),
+    ),
+    SchemaComponent(
         name="core_commercial",
         files=("sql/init_core_commercial.sql",),
         expected_relations=("core.dim_proyecto", "core.dim_unidad"),
@@ -61,21 +77,6 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_procedures=("analytics.absorcion_ventas_mensual(date)",),
     ),
     SchemaComponent(
-        name="ml_impact",
-        files=("sql/98_ml_impact/01_contract.sql",),
-        expected_relations=(
-            "decision_intelligence.ml_impact_snapshot",
-            "decision_intelligence.ml_impact_metric",
-            "decision_intelligence.ml_impact_scenario",
-            "decision_intelligence.v_ml_impact_baseline",
-            "decision_intelligence.v_ml_impact_proyecto",
-            "decision_intelligence.v_ml_impact_portafolio",
-            "decision_intelligence.v_ml_impact_proyecto_actual",
-            "decision_intelligence.v_ml_impact_portafolio_actual",
-            "decision_intelligence.v_ml_impact_vs_absorcion",
-        ),
-    ),
-    SchemaComponent(
         name="core_commercial_lifecycle",
         files=("sql/init_core_commercial_lifecycle.sql",),
         expected_relations=(
@@ -101,7 +102,6 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         files=("sql/90_clientes_calidad/01_clientes_calidad.sql",),
         expected_relations=(
             "staging.clientes_calidad",
-            "staging.clientes_calidad_refresh_runs",
             "staging.v_clientes_calidad_health",
         ),
         expected_procedures=("staging.refresh_clientes_calidad()",),

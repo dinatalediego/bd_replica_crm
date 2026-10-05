@@ -59,6 +59,7 @@ avanzado y pegar su contenido. Nombrar las consultas como el archivo sin `.m`:
 | `qForecastReviewQueue.m` | Una unidad con revisión, estado y evidencias de ciclo. Fuente viva. |
 | `qForecastCoverage.m` | Un proyecto del último run; stock cubierto o en cuarentena. |
 | `qForecastCurrent.m` | Una predicción seleccionada por proyecto y horizonte, último run. |
+| `qForecastMonthly.m` | Convierte el pronóstico acumulado en ventas proyectadas por mes futuro. |
 | `qForecastCandidateStatus.m` | Disponibilidad y selección de cada modelo en el último run. |
 | `qForecastAsIssued.m` | Una predicción seleccionada **por run/proyecto/horizonte**, con el primer resultado maduro congelado si existe. Historial. |
 
@@ -86,6 +87,12 @@ Armar una página **Cobertura y pronóstico** con:
    Disponibilidad del bosque/GMM acredita entrenamiento y propuesta; selección
    cero significa que no superaron el control de validación. No mostrar su
    importancia de variables como causalidad.
+
+Para el gráfico de columnas por mes, usar `qForecastMonthly`: `forecast_month` en
+el eje, `monthly_prediction` en valores y `project` como leyenda. `prediction`
+continúa siendo acumulado por horizonte; no debe sumarse para construir las
+columnas mensuales. La vista PostgreSQL que alimenta esta consulta es
+`analytics.v_commercial_forecast_monthly`.
 
 Armar otra página **Pronóstico emitido vs resultado** con segmentadores de
 `run_id` y horizonte único, y:

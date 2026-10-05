@@ -26,6 +26,12 @@ Para usar Medallio real, primero actualizar el DW por el procedimiento habitual.
 Se requiere instalada `analytics.v_absorcion_ventas_mensual` con el contrato de
 `sql/96_absorcion_ventas`. Si falta, instalar el contrato publicado antes:
 `python scripts/schema_sync.py --only absorcion_ventas_mensual` (con el entorno activo).
+Para instalar las tablas y vistas de evidencia del forecasting, ejecutar:
+`python scripts/schema_sync.py --only commercial_forecasting`. La vista
+`analytics.v_commercial_forecast_monthly` transforma los horizontes acumulados
+en ventas proyectadas por mes para Power BI. En Windows se puede ejecutar
+`scripts\\66_forecasting_prepare.bat`, que valida ambos contratos y muestra las
+unidades en revisión de NP, SL y TZ.
 El `.env` existente debe tener `POSTGRES_*`:
 
 ```powershell

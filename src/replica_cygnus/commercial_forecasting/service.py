@@ -87,7 +87,8 @@ def read_review_cases(conn, projects):
 
 def ensure_schema(conn, root):
     with conn.cursor() as cur:
-        cur.execute((root/'sql/97_commercial_forecasting/01_evidence.sql').read_text(encoding='utf-8'))
+        for relative in ('01_evidence.sql', '02_monthly_projection.sql'):
+            cur.execute((root/'sql/97_commercial_forecasting'/relative).read_text(encoding='utf-8'))
 
 
 def save_snapshot(conn, panel, quality):
