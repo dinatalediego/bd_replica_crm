@@ -203,6 +203,22 @@ La ampliación de señales CRM con fechas históricas verificables permanece
 pendiente de contratos; no se inventan variables en SQL.
 
 
+## MAP-ADR-014 — DQ incremental local por identidad/hash
+
+Date: 2026-10-04
+Status: ACCEPTED
+
+El usuario pidió rediseñar clientes_calidad y recuperar 02b. Se preservan reglas
+y campos DQ; se compara id/hash en snapshot RAW local excluyendo solo metadatos
+ETL verificados. Se reemplazan únicamente identidades nuevas/modificadas y se
+propagan bajas presentes en RAW. Detección O(n) local, sin nuevas consultas
+Redshift. Bootstrap/cambio de definición recalcula una vez; runs agregados
+registran evidencia sin PII. Gate SQL y Python anterior a commit, locks y timeout.
+Se conserva Step 02b existente en Git y se añade helper para habilitar únicamente
+el bloque comentado conocido del PC, respaldando y preservando otras reparaciones.
+Activación real Windows y duración sobre Medallio requieren verificación local.
+
+
 ## MAP-ADR-015 — Selección conservadora y evidencia comparable
 
 Date: 2026-10-04

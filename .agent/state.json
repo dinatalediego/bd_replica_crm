@@ -13,8 +13,8 @@
   "git": {
     "base_branch": "main",
     "working_branch": "feat/forecasting-robustness",
-    "checkpoint_commit": "781ba8aed07152a98c5a77c5eb6cc29849685efc",
-    "dirty": true
+    "checkpoint_commit": "8c88ea532ba1e8662a5ca9a20125af0d22beacbe",
+    "dirty": false
   },
   "validation": {
     "last_checked_at": "2026-10-04T20:08:43Z",
@@ -23,8 +23,9 @@
     ],
     "notes": [
       "New Power BI query and review command integration test is pending GitHub CI with disposable PostgreSQL",
-      "One current reviewed unit in each of NP, SL, TZ is repeated across project months; no unit IDs/proformas accessible without user local Medallio"
+      "One current reviewed unit in each of NP, SL, TZ is repeated across project months; no unit IDs/proformas accessible without user local Medallio",
+      "Integración de los cambios ya presentes en main: DQ incremental (ADR-014) y escenarios de impacto; CI PostgreSQL de este merge pendiente."
     ]
   },
-  "updated_at": "2026-10-04T20:08:43Z"
+  "updated_at": "2026-10-05T02:12:59.938Z"
 }

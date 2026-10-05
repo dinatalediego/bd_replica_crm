@@ -40,3 +40,9 @@ Revisar CI y ejecutar sql/97_commercial_forecasting/02_review_diagnostics.sql en
 medallio_dw. Resolver cada unidad con evidencia documental en el origen; actualizar
 la réplica local, emitir otro run y construir las dos páginas según
 COMMERCIAL_FORECASTING_POWERBI.md. Conservar el run anterior para comparación.
+
+## Concurrent work already on main
+
+PR #40 (DQ incremental, ADR-014) y PR #42 (escenarios monetarios ML) se
+integraron en esta rama. Sus pasos de instalación local permanecen en
+`docs/CLIENTES_CALIDAD_INCREMENTAL.md` y `docs/ML_IMPACT_SCENARIOS.md`.

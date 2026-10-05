@@ -105,4 +105,11 @@ después de validar los resultados reales de esta fase.
 
 Piloto adicional: promedio reciente, ETS, GMM con análogos y Random Forest, evaluación temporal, snapshots/predicciones append-only y seguimiento de acciones. [Guía de ejecución y límites](docs/COMMERCIAL_FORECASTING.md). Demo: `scripts/63_forecasting_demo.bat`; Medallio: `scripts/64_forecasting_medallio.bat`. [Notebook de exposición](notebooks/11_commercial_forecasting_evidence.ipynb). Sin carga adicional a Redshift ni promoción automática.
 
-[Arquitectura de robustez v2](docs/COMMERCIAL_FORECASTING_ROBUSTNESS.md): selección por proyecto sobre la misma población, cobertura de stock, soporte temporal, auditoría de artifacts e integridad del código y los resultados.
+## Escenarios monetarios de impacto ML
+
+Importación local y versionada del Excel agregado de metas, colocado y stock;
+vistas por proyecto/portafolio para tres sensibilidades y comparación adicional
+excluyendo stock bloqueado. Son hipótesis económicas, no ventas causadas por ML.
+[Contrato, controles y pasos para VS Code](docs/ML_IMPACT_SCENARIOS.md).
+
+[Guía de Power BI para cobertura, pronóstico y resultados maduros](docs/COMMERCIAL_FORECASTING_POWERBI.md). [Arquitectura de robustez v2](docs/COMMERCIAL_FORECASTING_ROBUSTNESS.md).
