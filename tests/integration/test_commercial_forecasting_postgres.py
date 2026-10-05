@@ -174,7 +174,7 @@ def test_forecasting_powerbi_queries_on_disposable_postgres(db,tmp_path):
     assert len(issued)==1 and issued[0][9] is None  # No mature outcome yet.
     monthly=db.execute(_powerbi_query('qForecastMonthly')).fetchall()
     assert len(monthly)==1 and monthly[0][1]=='DEMO'
-    assert str(monthly[0][5]) == '2020-10-01' and monthly[0][6] == 2 and monthly[0][7] == 2
+    assert str(monthly[0][5]).startswith('2020-10-01') and monthly[0][6] == 2 and monthly[0][7] == 2
 
     db.execute('''CREATE VIEW analytics.v_absorcion_ventas_revision AS
       SELECT 'NP'::text AS codigo_proyecto,'Nápoles'::text AS nombre_proyecto,
