@@ -29,3 +29,20 @@ ADR-014. Compare local RAW ID/hash excluding verified ETL metadata. O(n) local
 scan; transform only changes. Raw deletions propagated; no new Redshift queries.
 No access to actual Medallio or Windows; real activation/performance pending.
 FORECAST-EVIDENCE-001 / PR 39 keeps its own local validation pending.
+
+## Night Shift checkpoint — NIGHT-002
+
+Date: 2026-10-05
+Branch: `feat/night-002-refresh-health-guards-v2`
+Draft PR: #45
+Status: REVIEW_READY once CI is green; CI was not yet present immediately after PR creation.
+
+The previously stranded NIGHT-002 work was reconciled onto current `main` without
+bringing stale MAP state forward. The PR adds only `docs/NIGHT_002_REFRESH_AUDIT.md`
+and `tests/test_refresh_contract.py`: one canonical hourly entrypoint, exactly one
+`sync --due-only`, and no source sync under `--local-only`. No polling interval,
+Redshift query, production data, or deployment behavior changed.
+
+Exact next action: inspect PR #45 CI. If green, review the diff and move NIGHT-002
+toward human approval; if failing, allow at most one evidence-backed rework cycle.
+No Claude review is claimed.
