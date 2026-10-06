@@ -32,17 +32,19 @@ FORECAST-EVIDENCE-001 / PR 39 keeps its own local validation pending.
 
 ## Night Shift checkpoint — NIGHT-002
 
-Date: 2026-10-05
+Date: 2026-10-06
 Branch: `feat/night-002-refresh-health-guards-v2`
 Draft PR: #45
-Status: REVIEW_READY once CI is green; CI was not yet present immediately after PR creation.
+Status: REVIEW_READY
+CI: PASS — GitHub Actions CI run 37267247058, run number 213, completed successfully on head `7bab14618bacbfb4695ef633963129dc5931d72b`.
 
 The previously stranded NIGHT-002 work was reconciled onto current `main` without
-bringing stale MAP state forward. The PR adds only `docs/NIGHT_002_REFRESH_AUDIT.md`
-and `tests/test_refresh_contract.py`: one canonical hourly entrypoint, exactly one
-`sync --due-only`, and no source sync under `--local-only`. No polling interval,
-Redshift query, production data, or deployment behavior changed.
+bringing stale MAP state forward. The PR adds `docs/NIGHT_002_REFRESH_AUDIT.md`,
+`tests/test_refresh_contract.py`, and this handoff evidence: one canonical hourly
+entrypoint, exactly one `sync --due-only`, and no source sync under `--local-only`.
+No polling interval, Redshift query, production data, or deployment behavior changed.
 
-Exact next action: inspect PR #45 CI. If green, review the diff and move NIGHT-002
-toward human approval; if failing, allow at most one evidence-backed rework cycle.
-No Claude review is claimed.
+Exact next action: review Draft PR #45. If accepted, a human may decide whether to
+merge it; unattended agents must not merge `main`. If review finds a concrete defect,
+allow at most one evidence-backed rework cycle. Do not start another Night Shift task
+while NIGHT-002 remains the in-flight pilot item. No Claude review is claimed.
