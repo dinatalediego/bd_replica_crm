@@ -3,30 +3,28 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "CLIENTES-DQ-INCREMENTAL-001",
-    "title": "DQ incremental y recuperación de 02b",
+    "id": "ABSORCION-NP-A-001",
+    "title": "Torre Nápoles solo NP-A en absorción reconstruida",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Aplicar commit 09c97cd del PR 40 y validar/activar 02b según docs/CLIENTES_CALIDAD_INCREMENTAL.md"
+    "next_action": "Aplicar commit NP-A, schema_sync del componente y validar SQL/Power BI local"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/clientes-calidad-incremental",
-    "checkpoint_commit": "9e05af8e698fabcce0476c6ecd9a1e430fd50644",
-    "dirty": false
+    "working_branch": "fix/absorcion-np-a",
+    "checkpoint_commit": "3287d20560124b3fb2c5a7e55223c79a4a22804a",
+    "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-04T13:12:22Z",
+    "last_checked_at": "2026-10-07T04:42:02Z",
     "tests": [
-      "135 platform tests passed locally",
-      "106 decision engine tests passed locally",
-      "PGlite SQL scenarios passed; 141773 synthetic rows: rebuild 13.7s, no-op 4.2s, one change 4.5s"
+      "27 escenarios de absorción ejecutados y aprobados en PGlite PostgreSQL WASM"
     ],
     "notes": [
-      "PR 40 publicado; validación PostgreSQL CI en progreso",
-      "Sin acceso a Medallio/Windows real; helper conserva reparaciones locales de portal"
+      "pytest PostgreSQL nativo bloqueado por restricciones de usuario del entorno; mismos 27 escenarios ejecutados mediante adaptador PGlite temporal",
+      "Sin acceso a Medallio real. RAW/CORE/ledger y predicciones emitidas conservados."
     ]
   },
-  "updated_at": "2026-10-04T13:12:22Z"
+  "updated_at": "2026-10-07T04:42:02Z"
 }
