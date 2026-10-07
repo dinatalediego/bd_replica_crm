@@ -49,6 +49,7 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         ),
         expected_relations=(
             "analytics.absorcion_inicio_proyecto",
+            "analytics.v_absorcion_unidades_habilitadas",
             "analytics.v_absorcion_ventas_unidad",
             "analytics.v_absorcion_ventas_mensual",
             "analytics.v_absorcion_ventas_ciclos",

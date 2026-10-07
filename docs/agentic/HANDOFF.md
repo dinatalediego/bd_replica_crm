@@ -1,31 +1,72 @@
 # Latest Handoff
 
-Task: CLIENTES-DQ-INCREMENTAL-001 — DQ incremental y recuperación de 02b
-Owner: chatgpt
-Next agent: human
-Branch: feat/clientes-calidad-incremental
+Protocol: MEDALLIO AGENT PROTOCOL 1.0
+Generated at: 2026-10-07T04:42:02Z
+Task: ABSORCION-NP-A-001 — Torre Nápoles solo NP-A en absorción reconstruida
+From: chatgpt
+To: human
 Status: REVIEW_READY
-Published PR: https://github.com/dinatalediego/bd_replica_crm/pull/40
+Branch: fix/absorcion-np-a
+Commit at checkpoint: 3287d20560124b3fb2c5a7e55223c79a4a22804a
 
-## Evidence
+## Exact next action
 
-135 platform + 106 decision engine tests passed locally. SQL scenarios executed
-in PGlite, including full parity, hashes/IDs, DQ rules, migration and rollback.
-141773 synthetic rows: initial rebuild 13.7s, no-op 4.2s, one change 4.5s.
-CI 37204692789: 172 passed; only concurrent test reconnect failed because
-Connection.info.dsn removes passwords. Fixed by reusing disposable test DSN;
-final PostgreSQL CI pending. Production code did not need changing for that failure.
+Aplicar commit NP-A, schema_sync del componente y validar SQL/Power BI local
 
-## Next action
+## Working-tree state
 
-Apply PR commits while preserving local portal/config/orchestrator fixes.
-Follow docs/CLIENTES_CALIDAD_INCREMENTAL.md: install schema component, run DQ
-twice, enable only known commented 02b via backup/AST helper, run local DW,
-then enable Scheduler and confirm next LastTaskResult=0.
+Dirty: yes
 
-## Limits and contracts
+### Changed files
 
-ADR-014. Compare local RAW ID/hash excluding verified ETL metadata. O(n) local
-scan; transform only changes. Raw deletions propagated; no new Redshift queries.
-No access to actual Medallio or Windows; real activation/performance pending.
-FORECAST-EVIDENCE-001 / PR 39 keeps its own local validation pending.
+- M .agent/state.json
+- M docs/ABSORCION_VENTAS_MENSUAL.md
+- M docs/agentic/ACTIVE_TASK.md
+- M docs/agentic/DECISIONS.md
+- M docs/agentic/HANDOFF.md
+- M scripts/schema_sync.py
+- M sql/96_absorcion_ventas/01_contract.sql
+- M sql/96_absorcion_ventas/02_validation.sql
+- M tests/integration/test_absorcion_ventas_postgres.py
+
+### Diff stat
+
+```text
+.agent/state.json                                  | 25 +++----
+ docs/ABSORCION_VENTAS_MENSUAL.md                   | 35 +++++++++
+ docs/agentic/ACTIVE_TASK.md                        | 24 ++-----
+ docs/agentic/DECISIONS.md                          | 11 +++
+ docs/agentic/HANDOFF.md                            | 82 ++++++++++++++++------
+ scripts/schema_sync.py                             |  1 +
+ sql/96_absorcion_ventas/01_contract.sql            | 13 +++-
+ sql/96_absorcion_ventas/02_validation.sql          | 15 ++++
+ .../integration/test_absorcion_ventas_postgres.py  | 33 +++++++--
+ 9 files changed, 178 insertions(+), 61 deletions(-)
+```
+
+### Staged diff stat
+
+```text
+(none)
+```
+
+## Validation / tests recorded for this checkpoint
+
+- 27 escenarios de absorción ejecutados y aprobados en PGlite PostgreSQL WASM
+
+## Notes
+
+- pytest PostgreSQL nativo bloqueado por restricciones de usuario del entorno; mismos 27 escenarios ejecutados mediante adaptador PGlite temporal
+- Sin acceso a Medallio real. RAW/CORE/ledger y predicciones emitidas conservados.
+
+## Recent commits
+
+- 3287d20 Pause automatic CI; keep manual workflow dispatch
+- c00d525 Incorporar cortes comerciales y escenarios de impacto ML en Medallio (#42)
+- 0c1b83b Clientes calidad incremental: recuperar 02b sin reconstruir todos los clientes cada hora (#40)
+- 5808037 Forecasting comercial: entrenamiento reproducible y evidencia prospectiva (#39)
+- c4fb51f Corregir nombres vacíos de raw_mercado.unidades para Power BI (#37)
+
+## Handoff rule
+
+The receiving agent must inspect the real repository state and diff before trusting this summary. Code/runtime evidence and tests outrank this file.

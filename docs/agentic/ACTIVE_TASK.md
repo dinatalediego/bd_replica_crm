@@ -1,32 +1,22 @@
 # Active Task
 
-Task ID: CLIENTES-DQ-INCREMENTAL-001
-Title: Refresh incremental de clientes_calidad y recuperación de 02b
+Task ID: ABSORCION-NP-A-001
+Title: Torre Nápoles solo subdivisión NP-A en absorción reconstruida
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/clientes-calidad-incremental
+Branch: fix/absorcion-np-a
 Base branch: main
 
 ## Objective
 
-Procesar solo altas/cambios desde RAW PostgreSQL y volver a activar 02b en la PC,
-conservando reglas DQ y reparaciones locales de portal/config/orquestador.
-
-## Evidence
-
-135 pruebas locales de plataforma y 106 de motor aprobadas. Pruebas SQL
-sintéticas en PGlite: DQ, cambios/bajas/no-op, hash sin metadatos, rollback,
-paridad full, reglas y migración. CI PostgreSQL y validación PC pendientes.
-No se accedió al PostgreSQL real ni al Scheduler Windows.
+Excluir subdivisiones no habilitadas de NP de stock y ventas reconstruidos.
 
 ## Next action
 
-Seguir docs/CLIENTES_CALIDAD_INCREMENTAL.md: aplicar commit, instalar componente,
-ejecutar DQ dos veces, habilitar 02b con helper, validar DW_REFRESH_OK y reactivar
-el trigger. Verificar LastTaskResult=0 en siguiente ejecución Windows.
+Aplicar commit y schema_sync --only absorcion_ventas_mensual en Medallio local;
+validar SQL y actualizar Power BI. Ver docs/ABSORCION_VENTAS_MENSUAL.md.
 
 ## Previous task
 
-FORECAST-EVIDENCE-001 quedó publicado en PR #39. Mantiene validación real local
-pendiente y decisiones ADR-013. No se modifica cola nocturna ni ventas canónicas.
+CLIENTES-DQ-INCREMENTAL-001 conserva su verificación Windows pendiente en PR 40.

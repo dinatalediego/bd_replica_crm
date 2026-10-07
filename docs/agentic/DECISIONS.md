@@ -217,3 +217,14 @@ registran evidencia sin PII. Gate SQL y Python anterior a commit, locks y timeou
 Se conserva Step 02b existente en Git y se añade helper para habilitar únicamente
 el bloque comentado conocido del PC, respaldando y preservando otras reparaciones.
 Activación real Windows y duración sobre Medallio requieren verificación local.
+
+
+## MAP-ADR-015 — Universo habilitado Torre Nápoles
+
+Date: 2026-10-07
+Status: ACCEPTED — supersedes NP population clause of ADR-011
+
+Usuario confirma que NP-B no fue liberada. Absorción reconstruida admite solo
+NP-A para NP (incluidas sus ventas históricas), sin alterar otros proyectos.
+Filtro compartido anterior a ciclos, primera venta documental y saldos mensuales.
+RAW/CORE/ledger y snapshots emitidos se preservan. Sin nueva carga Redshift.
