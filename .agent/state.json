@@ -3,28 +3,27 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "ABSORCION-NP-A-001",
-    "title": "Torre Nápoles solo NP-A en absorción reconstruida",
+    "id": "EVOLUCION-COMERCIAL-001",
+    "title": "Panel por edad comercial, composición y precios normalizados",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Aplicar commit NP-A, schema_sync del componente y validar SQL/Power BI local"
+    "next_action": "Aplicar rama y ejecutar docs/EVOLUCION_COMERCIAL.md en Medallio local"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "fix/absorcion-np-a",
-    "checkpoint_commit": "3287d20560124b3fb2c5a7e55223c79a4a22804a",
+    "working_branch": "feat/evolucion-comercial",
+    "checkpoint_commit": "a5cfe11c524fa30be8084858b048cbf7b2fbf1a2",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-07T04:42:02Z",
+    "last_checked_at": "2026-10-07T20:18:51Z",
     "tests": [
-      "27 escenarios de absorción ejecutados y aprobados en PGlite PostgreSQL WASM"
+      "16 aserciones SQL aprobadas en PostgreSQL WASM PGlite; instalación repetida aprobada; compilación Python aprobada"
     ],
     "notes": [
-      "pytest PostgreSQL nativo bloqueado por restricciones de usuario del entorno; mismos 27 escenarios ejecutados mediante adaptador PGlite temporal",
-      "Sin acceso a Medallio real. RAW/CORE/ledger y predicciones emitidas conservados."
+      "Sin acceso a Medallio real; pytest nativo skipped sin DSN; captura de precios comienza al ejecutar refresh local"
     ]
   },
-  "updated_at": "2026-10-07T04:42:02Z"
+  "updated_at": "2026-10-07T20:18:51Z"
 }

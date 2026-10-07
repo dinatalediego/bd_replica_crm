@@ -62,6 +62,19 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_procedures=("analytics.absorcion_ventas_mensual(date)",),
     ),
     SchemaComponent(
+        name="evolucion_comercial",
+        files=("sql/99_evolucion_comercial/01_contract.sql",),
+        expected_relations=(
+            "analytics.comercial_precio_observado",
+            "analytics.comercial_unidad_mes",
+            "analytics.comercial_proyecto_mes",
+            "analytics.v_comercial_composicion_mes",
+            "analytics.v_comercial_calendario",
+            "analytics.v_comercial_indice_precios",
+        ),
+        expected_procedures=("analytics.refresh_evolucion_comercial()",),
+    ),
+    SchemaComponent(
         name="ml_impact",
         files=("sql/98_ml_impact/01_contract.sql",),
         expected_relations=(

@@ -228,3 +228,18 @@ Usuario confirma que NP-B no fue liberada. Absorción reconstruida admite solo
 NP-A para NP (incluidas sus ventas históricas), sin alterar otros proyectos.
 Filtro compartido anterior a ciclos, primera venta documental y saldos mensuales.
 RAW/CORE/ledger y snapshots emitidos se preservan. Sin nueva carga Redshift.
+
+## MAP-ADR-016 — Panel comercial por edad y precios observados
+
+Date: 2026-10-07
+Status: ACCEPTED
+
+Nueva capa local independiente: panel unidad-mes y proyecto-mes desde inicio efectivo
+hasta agotamiento/presente, heredando NP-A y ventas vigentes retrospectivas. Stock
+inicial de mes 1 incluye alta inicial. Exposición en días y atributos actuales
+permiten comparar composición con limitaciones explícitas. Precios de lista se
+observan desde instalación, primera captura diaria preservada; variables predictoras
+usan observación anterior al mes. Índice geométrico nominal base 100 de cesta fija
+por proyecto/moneda, NULL si cobertura incompleta. No se inventa historia ni se
+estima elasticidad causal. Estacionalidad y estacionariedad requieren análisis
+posterior sobre el panel. Sin nuevas consultas Redshift ni programación automática.
