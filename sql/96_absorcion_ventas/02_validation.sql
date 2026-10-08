@@ -32,3 +32,18 @@ WHERE calidad_ciclo='ELEGIBLE' AND metodo_fecha_venta='LEGACY_FECHA_FIRMA_PRE_20
   AND (fecha_separacion >= DATE '2026-01-01' OR fecha_separacion_raw >= DATE '2026-01-01');
 SELECT * FROM analytics.v_absorcion_ventas_ciclos
 WHERE calidad_ciclo='ELEGIBLE' AND fecha_anulacion IS NOT NULL;
+
+-- Torre Nápoles: ambas consultas deben devolver cero filas.
+SELECT a.codigo_unidad,u.codigo_subdivision
+FROM analytics.v_absorcion_ventas_unidad a
+JOIN core.dim_unidad u USING (codigo_unidad)
+WHERE a.codigo_proyecto='NP' AND btrim(u.codigo_subdivision) IS DISTINCT FROM 'NP-A';
+SELECT c.codigo_unidad,u.codigo_subdivision
+FROM analytics.v_absorcion_ventas_ciclos c
+JOIN core.dim_unidad u USING (codigo_unidad)
+WHERE u.codigo_proyecto='NP' AND btrim(u.codigo_subdivision) IS DISTINCT FROM 'NP-A';
+
+-- Comparar universo original con universo habilitado; RAW/CORE permanecen completos.
+SELECT codigo_subdivision,count(*) AS unidades_originales
+FROM core.dim_unidad WHERE codigo_proyecto='NP'
+GROUP BY codigo_subdivision ORDER BY codigo_subdivision;

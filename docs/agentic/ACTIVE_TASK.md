@@ -1,32 +1,21 @@
 # Active Task
 
-Task ID: CLIENTES-DQ-INCREMENTAL-001
-Title: Refresh incremental de clientes_calidad y recuperación de 02b
+Task ID: PR-CONFLICTS-041-045-048
+Title: Resolver conflictos de integración con main
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/clientes-calidad-incremental
+Branch: feat/night-002-refresh-health-guards-v2
 Base branch: main
 
-## Objective
+## Result
 
-Procesar solo altas/cambios desde RAW PostgreSQL y volver a activar 02b en la PC,
-conservando reglas DQ y reparaciones locales de portal/config/orquestador.
-
-## Evidence
-
-135 pruebas locales de plataforma y 106 de motor aprobadas. Pruebas SQL
-sintéticas en PGlite: DQ, cambios/bajas/no-op, hash sin metadatos, rollback,
-paridad full, reglas y migración. CI PostgreSQL y validación PC pendientes.
-No se accedió al PostgreSQL real ni al Scheduler Windows.
+PR #45: integrar main 62e784e preservando cambios funcionales de ambas ramas.
+15 pruebas de contrato de refresh aprobadas.
+PR #48 cerrado como duplicado: incorporado en main por #49; árbol idéntico.
 
 ## Next action
 
-Seguir docs/CLIENTES_CALIDAD_INCREMENTAL.md: aplicar commit, instalar componente,
-ejecutar DQ dos veces, habilitar 02b con helper, validar DW_REFRESH_OK y reactivar
-el trigger. Verificar LastTaskResult=0 en siguiente ejecución Windows.
-
-## Previous task
-
-FORECAST-EVIDENCE-001 quedó publicado en PR #39. Mantiene validación real local
-pendiente y decisiones ADR-013. No se modifica cola nocturna ni ventas canónicas.
+Revisar PR #45, ahora actualizado con main. No se fusionó a main.
+La activación local de los datasets econométricos sigue pendiente según
+`docs/DATASETS_ECONOMETRICOS.md`; no se reactivaron GitHub Actions.

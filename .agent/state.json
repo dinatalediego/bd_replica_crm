@@ -3,30 +3,27 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "CLIENTES-DQ-INCREMENTAL-001",
-    "title": "DQ incremental y recuperación de 02b",
+    "id": "PR-CONFLICTS-041-045-048",
+    "title": "Resolver conflictos de integración con main",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Aplicar commit 09c97cd del PR 40 y validar/activar 02b según docs/CLIENTES_CALIDAD_INCREMENTAL.md"
+    "next_action": "Revisar PR actualizado con main; conflicto resuelto, sin fusionar main"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/clientes-calidad-incremental",
-    "checkpoint_commit": "9e05af8e698fabcce0476c6ecd9a1e430fd50644",
-    "dirty": false
+    "working_branch": "HEAD",
+    "checkpoint_commit": "e902a0cc08d6a66e98ebe9934d6ea16d6b154f32",
+    "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-04T13:12:22Z",
+    "last_checked_at": "2026-10-08T14:42:01Z",
     "tests": [
-      "135 platform tests passed locally",
-      "106 decision engine tests passed locally",
-      "PGlite SQL scenarios passed; 141773 synthetic rows: rebuild 13.7s, no-op 4.2s, one change 4.5s"
+      "15 pruebas de contrato de refresh aprobadas"
     ],
     "notes": [
-      "PR 40 publicado; validación PostgreSQL CI en progreso",
-      "Sin acceso a Medallio/Windows real; helper conserva reparaciones locales de portal"
+      "PR48 cerrado: incorporado en PR49. Actions automáticas siguen pausadas."
     ]
   },
-  "updated_at": "2026-10-04T13:12:22Z"
+  "updated_at": "2026-10-08T14:42:01Z"
 }
