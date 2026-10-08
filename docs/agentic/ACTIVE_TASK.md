@@ -1,22 +1,32 @@
 # Active Task
 
-Task ID: ABSORCION-NP-A-001
-Title: Torre Nápoles solo subdivisión NP-A en absorción reconstruida
+Task ID: ECONOMETRIA-DATASETS-001
+Title: Datasets históricos y captura diaria para predicción comercial
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: fix/absorcion-np-a
+Branch: feat/datasets-econometricos
 Base branch: main
 
 ## Objective
 
-Excluir subdivisiones no habilitadas de NP de stock y ventas reconstruidos.
+Implementar tablas y actualización para las siete recomendaciones econométricas,
+con historia revisada separada de evidencia observada e integración al job local.
 
 ## Next action
 
-Aplicar commit y schema_sync --only absorcion_ventas_mensual en Medallio local;
-validar SQL y actualizar Power BI. Ver docs/ABSORCION_VENTAS_MENSUAL.md.
+Ejecutar scripts/67_install_econometric_datasets.ps1 en Medallio local y comprobar
+status/cobertura. Guía: docs/DATASETS_ECONOMETRICOS.md. Incluye cambios de PR 48.
 
-## Previous task
+## Validation
 
-CLIENTES-DQ-INCREMENTAL-001 conserva su verificación Windows pendiente en PR 40.
+19 tests Python aprobados. 23 aserciones SQL y tres controles de rechazo ejecutados
+con PostgreSQL WASM/PGlite; instalación y reinstalación aprobadas.
+PostgreSQL nativo omitido sin DSN descartable. Windows/Medallio real no accesibles.
+
+## Limits
+
+Tasas, inversión y ofertas/cierres sin evidencia quedan pendientes de importación;
+visitas requieren etiquetas verificadas. No se inventa historia point-in-time.
+Captura observada comienza al ejecutar localmente; programación preparada, no
+instalada en el PC desde este entorno. Modelos existentes no se reentrenan aquí.

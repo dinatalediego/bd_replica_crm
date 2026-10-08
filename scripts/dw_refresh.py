@@ -95,6 +95,10 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
             (py, str(ROOT / "scripts" / "refresh_pricing_projection.py")),
         ),
         Step(
+            "07b_econometric_datasets",
+            (py, str(ROOT / "scripts" / "econometric_datasets.py"), "refresh", "--once-per-day"),
+        ),
+        Step(
             "08_materialized_views",
             (py, str(ROOT / "scripts" / "refresh_materialized_views.py")),
         ),

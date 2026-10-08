@@ -62,6 +62,48 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_procedures=("analytics.absorcion_ventas_mensual(date)",),
     ),
     SchemaComponent(
+        name="evolucion_comercial",
+        files=("sql/99_evolucion_comercial/01_contract.sql",),
+        expected_relations=(
+            "analytics.comercial_precio_observado",
+            "analytics.comercial_unidad_mes",
+            "analytics.comercial_proyecto_mes",
+            "analytics.v_comercial_composicion_mes",
+            "analytics.v_comercial_calendario",
+            "analytics.v_comercial_indice_precios",
+        ),
+        expected_procedures=("analytics.refresh_evolucion_comercial()",),
+    ),
+    SchemaComponent(
+        name="econometric_datasets",
+        files=(
+            "sql/97_commercial_forecasting/01_evidence.sql",
+            "sql/100_econometria/01_tables.sql",
+            "sql/100_econometria/02_capture.sql",
+            "sql/100_econometria/03_datasets.sql",
+            "sql/100_econometria/04_evaluation.sql",
+        ),
+        expected_relations=(
+            "analytics.fact_evento_comercial", "analytics.snapshot_unidad_diario",
+            "analytics.historial_oferta_unidad", "analytics.historial_etapa_proyecto",
+            "analytics.intervencion_comercial", "analytics.contexto_mercado_mes",
+            "analytics.panel_demanda_proyecto_semana",
+            "features.dataset_unidad_prediccion", "features.unidad_prediccion_resultado",
+            "features.unidad_resultado_version", "model_control.prediccion_unidad",
+            "analytics.registro_prediccion_resultado", "analytics.v_econometria_cobertura",
+            "analytics.v_econometria_serie_precios", "features.v_estacionalidad_panel",
+            "features.v_dataset_unidad_entrenamiento", "features.v_contexto_mercado_por_corte",
+            "model_control.econometria_runs", "model_control.econometria_fuentes",
+            "analytics.v_prediccion_unidad_evaluacion", "analytics.v_econometria_precios_relativos",
+            "analytics.v_evento_comercial_actual", "analytics.proyecto_mercado_econometria",
+        ),
+        expected_procedures=(
+            "analytics.capture_econometric_events()", "analytics.capture_econometric_current()",
+            "analytics.backfill_econometric_prices()", "analytics.backfill_econometric_stock()",
+            "analytics.build_econometric_datasets(boolean)",
+        ),
+    ),
+    SchemaComponent(
         name="ml_impact",
         files=("sql/98_ml_impact/01_contract.sql",),
         expected_relations=(
