@@ -3,27 +3,29 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "PR-CONFLICTS-041-045-048",
-    "title": "Resolver conflictos de integración con main",
+    "id": "MEDALLIO-OS-MVP-001",
+    "title": "Construir Medallio OS local sobre kernels, notebooks y Ambassador",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Revisar PR actualizado con main; conflicto resuelto, sin fusionar main"
+    "next_action": "Revisar PR, preservar working tree local y ejecutar smoke test de Streamlit"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "HEAD",
-    "checkpoint_commit": "90c314229d85921517e2818131c512c3c4b5a7df",
-    "dirty": true
+    "working_branch": "feat/medallio-os-mvp",
+    "checkpoint_commit": "8d43666c0299016cf868f0c94b83417533be40b6",
+    "dirty": false
   },
   "validation": {
-    "last_checked_at": "2026-10-08T14:42:01Z",
+    "last_checked_at": "2026-10-08T17:51:18Z",
     "tests": [
-      "41 pruebas Python y migración SQL PGlite aprobadas"
+      "12 pruebas enfocadas de Medallio OS aprobadas en entorno aislado",
+      "Compilación Python de runtime, analytics, app y tests sin errores"
     ],
     "notes": [
-      "PR48 cerrado: incorporado en PR49. Actions automáticas siguen pausadas."
+      "CI completo del repositorio no ejecutado desde este entorno.",
+      "Ambassador y notebooks CEO/Control Tower observados en el working tree local del usuario no estaban en main; la app los descubre dinámicamente."
     ]
   },
-  "updated_at": "2026-10-08T14:42:01Z"
+  "updated_at": "2026-10-08T17:51:18Z"
 }
