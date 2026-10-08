@@ -219,7 +219,51 @@ el bloque comentado conocido del PC, respaldando y preservando otras reparacione
 Activación real Windows y duración sobre Medallio requieren verificación local.
 
 
-## MAP-ADR-015 — Selección conservadora y evidencia comparable
+## MAP-ADR-015 — Universo habilitado Torre Nápoles
+
+Date: 2026-10-07
+Status: ACCEPTED — supersedes NP population clause of ADR-011
+
+Usuario confirma que NP-B no fue liberada. Absorción reconstruida admite solo
+NP-A para NP (incluidas sus ventas históricas), sin alterar otros proyectos.
+Filtro compartido anterior a ciclos, primera venta documental y saldos mensuales.
+RAW/CORE/ledger y snapshots emitidos se preservan. Sin nueva carga Redshift.
+
+## MAP-ADR-016 — Panel comercial por edad y precios observados
+
+Date: 2026-10-07
+Status: ACCEPTED
+
+Nueva capa local independiente: panel unidad-mes y proyecto-mes desde inicio efectivo
+hasta agotamiento/presente, heredando NP-A y ventas vigentes retrospectivas. Stock
+inicial de mes 1 incluye alta inicial. Exposición en días y atributos actuales
+permiten comparar composición con limitaciones explícitas. Precios de lista se
+observan desde instalación, primera captura diaria preservada; variables predictoras
+usan observación anterior al mes. Índice geométrico nominal base 100 de cesta fija
+por proyecto/moneda, NULL si cobertura incompleta. No se inventa historia ni se
+estima elasticidad causal. Estacionalidad y estacionariedad requieren análisis
+posterior sobre el panel. Sin nuevas consultas Redshift ni programación automática.
+
+## MAP-ADR-017 — Datasets econométricos históricos y captura programada
+
+Date: 2026-10-07
+Status: ACCEPTED
+
+Usuario autoriza tablas para las siete recomendaciones, cálculo histórico y captura
+programada. Nueva capa local integra eventos versionados, snapshots diarios, ofertas,
+etapas, demanda, contexto importable, predictores y objetivos por corte/horizonte.
+Reconstruido se revisa sin presentarlo como evidencia histórica conocida. Observado
+es inmutable; resultados revisados dejan versiones. Primer resultado maduro sin
+alertas/fresco se usa en evaluación prospectiva. Fuentes externas sin contrato no
+se inventan: importadores documentados y estados de cobertura. Se reutilizan
+registros forecasting existentes; no se entrenan/promocionan nuevos modelos.
+El paso 07b del maestro horario procesa una vez al día tras CORE/ventas. Instalador
+local con alternativa de tarea Windows explícita; no ejecución remota del PC.
+Sin consultas Redshift añadidas ni reactivación de Actions. NP-A se conserva.
+
+
+<!-- PR #41 decisions formerly numbered 015/016; renumbered 018/019 to retain main decisions without collisions. -->
+## MAP-ADR-018 — Selección conservadora y evidencia comparable
 
 Date: 2026-10-04
 Status: ACCEPTED — strengthens evaluation and monitoring in ADR-013
@@ -241,10 +285,10 @@ ventas canónicas, no se consulta Redshift, no se promueve ni fusiona automátic
 Los datos comerciales adjuntos se auditan de forma privada; no se publican en GitHub.
 
 
-## MAP-ADR-016 — Revisión por unidad y presentación de evidencia emitida
+## MAP-ADR-019 — Revisión por unidad y presentación de evidencia emitida
 
 Date: 2026-10-04
-Status: ACCEPTED — adds a read-only diagnostic and Power BI layer to ADR-015
+Status: ACCEPTED — adds a read-only diagnostic and Power BI layer to ADR-018
 
 El panel comercial suministrado tiene filas mensuales con revisión para NP, SL
 y TZ, pero la función mensual cruza cada mes con el mismo estado ACTUAL de las

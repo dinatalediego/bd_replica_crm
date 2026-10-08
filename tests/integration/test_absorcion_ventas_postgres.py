@@ -23,7 +23,7 @@ def db():
         conn.execute('CREATE SCHEMA analytics; CREATE SCHEMA core; CREATE SCHEMA observability; CREATE SCHEMA raw_cygnus; CREATE SCHEMA etl_control')
         conn.execute('''CREATE TABLE core.dim_unidad (
             codigo_unidad text PRIMARY KEY, codigo_proyecto text, nombre_unidad text,
-            tipo_unidad text, estado_comercial text)''')
+            tipo_unidad text, estado_comercial text, codigo_subdivision text)''')
         conn.execute('''CREATE TABLE raw_cygnus.procesos (
             id bigserial PRIMARY KEY,codigo_proforma text,codigo_unidad text,
             nombre text,estado text DEFAULT 'Activo',fecha_inicio date,nombre_flujo text);
@@ -39,9 +39,9 @@ def db():
         conn.rollback()
 
 
-def unit(db, code='A', project='GY', kind='departamento flat'):
-    db.execute('INSERT INTO core.dim_unidad VALUES (%s,%s,%s,%s,%s)',
-               (code,project,code,kind,'Disponible'))
+def unit(db, code='A', project='GY', kind='departamento flat', subdivision=None):
+    db.execute('INSERT INTO core.dim_unidad VALUES (%s,%s,%s,%s,%s,%s)',
+               (code,project,code,kind,'Disponible',subdivision))
 
 
 def cycle(db, unit='A', proforma='P', project='GY', sale='2024-05-10',
@@ -221,3 +221,28 @@ def test_cancelled_evidence_keeps_historical_project_start(db):
     unit(db); cycle(db,sale='2024-02-01',fall='2024-03-01')
     assert monthly(db,'2024-02-01')==(0,1,0,1)
     assert monthly(db,'2024-04-01')==(1,0,0,1)
+
+
+@pytest.mark.parametrize('subdivision', ['NP-B', None, '', 'NP-C'])
+def test_napoles_only_enabled_subdivision_counts(db, subdivision):
+    unit(db, code='ENABLED', project='NP', subdivision='NP-A')
+    unit(db, code='BLOCKED', project='NP', subdivision=subdivision)
+    cycle(db, unit='BLOCKED', project='NP', sale='2024-02-01')
+    # Blocked evidence cannot move the project start or count as a sale.
+    assert db.execute("SELECT fecha_ingreso_efectiva FROM analytics.v_absorcion_inicio_proyecto WHERE codigo_proyecto='NP'").fetchone()[0] == date(2025,8,1)
+    assert monthly(db, '2025-08-01', 'NP') == (0,1,0,1)
+    assert monthly(db, '2026-10-01', 'NP') == (1,0,0,1)
+    assert db.execute("SELECT codigo_unidad FROM analytics.v_absorcion_ventas_unidad WHERE codigo_proyecto='NP'").fetchall() == [('ENABLED',)]
+    assert db.execute("SELECT count(*) FROM analytics.v_absorcion_ventas_ciclos WHERE codigo_proyecto='NP'").fetchone()[0] == 0
+    cycle(db, unit='ENABLED', proforma='VALID', project='NP', sale='2026-09-01', separation='2026-08-01')
+    assert monthly(db, '2026-09-01', 'NP') == (1,0,1,0)
+    assert db.execute("SELECT total_departamentos FROM analytics.absorcion_ventas_mensual('2026-10-02') WHERE codigo_proyecto='NP' AND periodo_mes='2026-10-01'").fetchone()[0] == 1
+    # Reinstall is safe with dependent monthly views already present.
+    db.execute((ROOT/'sql/96_absorcion_ventas/01_contract.sql').read_text(), prepare=False)
+    assert monthly(db, '2026-09-01', 'NP') == (1,0,1,0)
+
+
+def test_other_projects_keep_all_subdivisions(db):
+    for code, subdivision in [('A','NP-B'), ('B',None), ('C','OTHER')]:
+        unit(db, code=code, subdivision=subdivision)
+    assert monthly(db, '2026-10-01') == (3,0,0,3)

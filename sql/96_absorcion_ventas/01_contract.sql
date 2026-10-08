@@ -32,6 +32,13 @@ FROM (VALUES
 ) AS seed(codigo,nombre,fecha)
 ON CONFLICT (codigo_proyecto) DO NOTHING;
 
+-- Universo comercial habilitado: Torre Nápoles solo NP-A.
+-- Se conserva CORE/RAW; NULL y otras subdivisiones de NP no están habilitadas.
+CREATE OR REPLACE VIEW analytics.v_absorcion_unidades_habilitadas AS
+SELECT u.* FROM core.dim_unidad u
+WHERE u.codigo_proyecto IS DISTINCT FROM 'NP'
+   OR btrim(u.codigo_subdivision) = 'NP-A';
+
 -- Evidencia local por ciclo: conserva exclusiones y población de Phase B.
 -- No exigir transición de inventario ni desplazar la fecha documental.
 CREATE OR REPLACE VIEW analytics.v_absorcion_ventas_ciclos AS
@@ -63,7 +70,7 @@ WITH extras AS (
            (c.fecha_separacion < DATE '2026-01-01'
             AND coalesce(c.fecha_separacion_raw,c.fecha_separacion) < DATE '2026-01-01') AS permite_legacy
     FROM analytics.v_absorcion_ventas_reconciliado c
-    JOIN core.dim_unidad u USING (codigo_unidad)
+    JOIN analytics.v_absorcion_unidades_habilitadas u USING (codigo_unidad)
     JOIN analytics.absorcion_inicio_proyecto i ON i.codigo_proyecto=u.codigo_proyecto
     LEFT JOIN extras e USING (codigo_proforma)
     LEFT JOIN ventas v USING (codigo_proforma,codigo_unidad)
@@ -150,7 +157,7 @@ SELECT u.codigo_unidad,u.nombre_unidad,u.codigo_proyecto,i.nombre_proyecto,
        c.ultima_actualizacion_ciclos,
        'RECONSTRUIDO_RETROSPECTIVO_VENTAS_VIGENTES'::text AS metodo_stock,
        i.observacion AS observacion_inicio_proyecto
-FROM core.dim_unidad u
+FROM analytics.v_absorcion_unidades_habilitadas u
 JOIN analytics.v_absorcion_inicio_proyecto i USING (codigo_proyecto)
 LEFT JOIN cycles c USING (codigo_unidad)
 WHERE lower(trim(u.tipo_unidad)) IN
@@ -200,7 +207,7 @@ SELECT * FROM analytics.v_absorcion_ventas_unidad WHERE requiere_revision;
 -- Proyectos fuera del adjunto permanecen visibles para control, sin inventar altas.
 CREATE OR REPLACE VIEW analytics.v_absorcion_proyectos_sin_inicio AS
 SELECT u.codigo_proyecto,count(*) AS departamentos
-FROM core.dim_unidad u
+FROM analytics.v_absorcion_unidades_habilitadas u
 LEFT JOIN analytics.absorcion_inicio_proyecto i USING (codigo_proyecto)
 WHERE i.codigo_proyecto IS NULL AND lower(trim(u.tipo_unidad)) IN
  ('departamento','departamento flat','departamento duplex','departamento dúplex','departamento triplex','departamento tríplex')

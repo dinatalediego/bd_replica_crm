@@ -148,3 +148,40 @@ Exportar la segunda consulta a CSV para conservar los casos comentados en una fe
 Las vistas son vivas; no constituyen un historial inmutable de cambios de la fuente.
 La validación sintética comprueba reglas y saldos. Los nuevos totales reales requieren
 reinstalar el componente en Medallio y ejecutar `02_validation.sql`.
+
+
+## Corrección Torre Nápoles — 2026-10-07
+
+Para `codigo_proyecto = NP` solamente `codigo_subdivision = NP-A` está habilitada.
+NP-B, NULL, vacío y otras subdivisiones de NP se excluyen del universo reconstruido,
+ventas, primera evidencia documental, ingresos, stock inicial/final, denominadores
+y revisiones. Otros proyectos conservan su universo. Regla centralizada en
+`analytics.v_absorcion_unidades_habilitadas`; no depende del estado comercial actual:
+un NP-A vendido sigue contando en el histórico. CORE/RAW y el ledger se conservan.
+
+Las vistas mensuales y `analytics.absorcion_ventas_mensual(date)` recalculan todo el
+histórico al instalar. Forecast e impacto que leen estas vistas recibirán la base
+corregida en sus próximas ejecuciones; snapshots y predicciones guardadas no se
+reescriben. Supuestos manuales de pricing y otros marts observados no se redefinen.
+
+Actualización local desde PowerShell, después de incorporar este cambio en `main`
+y estando ya en la rama local `main`:
+
+```powershell
+cd C:\Cygnus\projects\bd_replica_crm
+git status
+git branch --show-current
+git stash push -u -m "Antes de ajuste NP-A"  # Solo si hay cambios sin commit
+git pull --ff-only origin main
+.\.venv\Scripts\python.exe scripts\schema_sync.py --only absorcion_ventas_mensual
+.\.venv\Scripts\python.exe scripts\schema_sync.py --only absorcion_ventas_mensual --status
+```
+
+Si estás en otra rama, integra `main` a esa rama según sus commits propios antes
+de instalar; no ejecutes el bloque anterior desde esa rama. Si
+`git pull --ff-only` se detiene, revisa los commits locales antes de continuar.
+Después de la validación SQL y Power BI, recuperar el stash con `git stash apply`
+solo si se creó; conservarlo hasta verificar el resultado. No usar reset --hard.
+No se requiere refresh completo ni consultar Redshift: son vistas de PostgreSQL.
+Ejecutar `sql/96_absorcion_ventas/02_validation.sql` en medallio_dw y actualizar
+Power BI. Los controles NP y la identidad de stock deben devolver cero filas.

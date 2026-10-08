@@ -3,29 +3,27 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "FORECAST-BI-003",
-    "title": "Diagnóstico de unidades en revisión y tablero de forecasting Cygnus",
+    "id": "PR-CONFLICTS-041-045-048",
+    "title": "Resolver conflictos de integración con main",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Revisar CI; ejecutar commercial_forecasting.py review en medallio_dw y corregir evidencia por unidad; construir tablero según COMMERCIAL_FORECASTING_POWERBI.md"
+    "next_action": "Revisar PR actualizado con main; conflicto resuelto, sin fusionar main"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/forecasting-robustness",
-    "checkpoint_commit": "8c88ea532ba1e8662a5ca9a20125af0d22beacbe",
-    "dirty": false
+    "working_branch": "HEAD",
+    "checkpoint_commit": "90c314229d85921517e2818131c512c3c4b5a7df",
+    "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-04T20:08:43Z",
+    "last_checked_at": "2026-10-08T14:42:01Z",
     "tests": [
-      "22 local forecasting tests passed; compileall passed; five Power Query SQL strings reconstructed and structurally checked"
+      "41 pruebas Python y migración SQL PGlite aprobadas"
     ],
     "notes": [
-      "New Power BI query and review command integration test is pending GitHub CI with disposable PostgreSQL",
-      "One current reviewed unit in each of NP, SL, TZ is repeated across project months; no unit IDs/proformas accessible without user local Medallio",
-      "Integración de los cambios ya presentes en main: DQ incremental (ADR-014) y escenarios de impacto; CI PostgreSQL de este merge pendiente."
+      "PR48 cerrado: incorporado en PR49. Actions automáticas siguen pausadas."
     ]
   },
-  "updated_at": "2026-10-05T02:12:59.938Z"
+  "updated_at": "2026-10-08T14:42:01Z"
 }

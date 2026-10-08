@@ -1,0 +1,38 @@
+{
+  "asignaciones": {
+    "enabled": true,
+    "schema": "raw_cygnus",
+    "table": "clientes_proyectos",
+    "project": "codigo_proyecto",
+    "date": "fecha_asignacion",
+    "id": "id",
+    "client": "documento_cliente"
+  },
+  "proformas": {
+    "enabled": true,
+    "schema": "raw_cygnus",
+    "table": "proforma_unidad",
+    "project": "codigo_proyecto",
+    "date": "fecha_creacion",
+    "id": "codigo_proforma",
+    "unit": "codigo_unidad"
+  },
+  "interacciones": {
+    "enabled": true,
+    "schema": "raw_cygnus",
+    "table": "interacciones",
+    "project": "codigo_proyecto",
+    "date": "fecha_creacion",
+    "id": "id",
+    "note": "Cuenta fecha de registro, no fecha de realización. Visitas requieren visit_column y visit_values verificados."
+  },
+  "captacion": {
+    "enabled": true,
+    "schema": "raw_cygnus",
+    "table": "clientes_proyectos",
+    "project": "codigo_proyecto",
+    "date": "fecha_creacion",
+    "id": "id",
+    "client": "documento_cliente"
+  }
+}
