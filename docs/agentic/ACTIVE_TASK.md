@@ -1,32 +1,21 @@
 # Active Task
 
-Task ID: ECONOMETRIA-DATASETS-001
-Title: Datasets históricos y captura diaria para predicción comercial
+Task ID: PR-CONFLICTS-041-045-048
+Title: Resolver conflictos de integración con main
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/datasets-econometricos
+Branch: feat/forecasting-robustness
 Base branch: main
 
-## Objective
+## Result
 
-Implementar tablas y actualización para las siete recomendaciones econométricas,
-con historia revisada separada de evidencia observada e integración al job local.
+PR #41: integrar main 62e784e preservando cambios funcionales de ambas ramas.
+41 pruebas Python y migración SQL main -> forecasting/econometría en PGlite aprobadas.
+PR #48 cerrado como duplicado: incorporado en main por #49; árbol idéntico.
 
 ## Next action
 
-Ejecutar scripts/67_install_econometric_datasets.ps1 en Medallio local y comprobar
-status/cobertura. Guía: docs/DATASETS_ECONOMETRICOS.md. Incluye cambios de PR 48.
-
-## Validation
-
-19 tests Python aprobados. 23 aserciones SQL y tres controles de rechazo ejecutados
-con PostgreSQL WASM/PGlite; instalación y reinstalación aprobadas.
-PostgreSQL nativo omitido sin DSN descartable. Windows/Medallio real no accesibles.
-
-## Limits
-
-Tasas, inversión y ofertas/cierres sin evidencia quedan pendientes de importación;
-visitas requieren etiquetas verificadas. No se inventa historia point-in-time.
-Captura observada comienza al ejecutar localmente; programación preparada, no
-instalada en el PC desde este entorno. Modelos existentes no se reentrenan aquí.
+Revisar PR #41, ahora actualizado con main. No se fusionó a main.
+La activación local de los datasets econométricos sigue pendiente según
+`docs/DATASETS_ECONOMETRICOS.md`; no se reactivaron GitHub Actions.

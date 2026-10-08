@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -79,8 +80,9 @@ def test_future_additions_exclude_training_analogs():
 def test_intervals_use_only_previously_mature_out_of_sample_errors():
     origin=pd.Timestamp('2025-01-01')
     prediction=pd.DataFrame([dict(model='mean3',horizon=1,origin=origin,prediction=10.,stock=100.)])
-    errors=pd.DataFrame([dict(model='mean3',horizon=1,origin=pd.Timestamp('2024-01-01'),
-        outcome_month=pd.Timestamp('2024-02-01'),actual=12.,prediction=10.)]*20)
+    errors=pd.DataFrame([dict(model='mean3',horizon=1,origin=m,
+        outcome_month=m+pd.DateOffset(months=1),actual=12.,prediction=10.)
+        for m in pd.date_range('2023-01-01',periods=20,freq='MS')])
     a=attach_intervals(prediction,errors,Config())
     poison=pd.DataFrame([dict(model='mean3',horizon=1,origin=origin,
         outcome_month=pd.Timestamp('2025-02-01'),actual=1000.,prediction=0.)]*100)
@@ -106,6 +108,7 @@ def test_zero_actual_wape_is_undefined():
     frame=pd.DataFrame(dict(actual=[0.],prediction=[1.],origin=[pd.Timestamp('2024-01-01')]))
     assert metrics(frame)['wape'] is None
     assert json_safe({'a':np.nan})=={'a':None}
+    assert json_safe({'fecha':date(2026,10,4)})=={'fecha':'2026-10-04'}
 
 
 def test_executable_artifacts_are_explicitly_synthetic(tmp_path,panel):
@@ -115,6 +118,11 @@ def test_executable_artifacts_are_explicitly_synthetic(tmp_path,panel):
     assert (directory/'trained_models.joblib').is_file()
     assert (directory/'report.html').is_file()
     assert (directory/'training_cuts.json').is_file()
+    from replica_cygnus.commercial_forecasting.robustness import verify_integrity
+    assert verify_integrity(directory)['status']=='VERIFIED'
+    assert (directory/'source_code/src/replica_cygnus/commercial_forecasting/core.py').is_file()
+    assert (directory/'project_coverage.csv').is_file()
+    assert manifest['architecture_version']=='2.0'
     assert future.groupby(['project','horizon']).is_selected.sum().eq(1).all()
     # A second run receives a separate identity and never overwrites evidence.
     assert manifest['run_id']==directory.name

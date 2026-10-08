@@ -3,27 +3,27 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "ECONOMETRIA-DATASETS-001",
-    "title": "Datasets históricos y captura diaria para predicción comercial",
+    "id": "PR-CONFLICTS-041-045-048",
+    "title": "Resolver conflictos de integración con main",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Ejecutar instalador Windows 67_install_econometric_datasets.ps1; verificar status y cobertura local"
+    "next_action": "Revisar PR actualizado con main; conflicto resuelto, sin fusionar main"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/datasets-econometricos",
-    "checkpoint_commit": "c7f969b129fb6f6d768f4ec8ceef92b04b237f9f",
+    "working_branch": "HEAD",
+    "checkpoint_commit": "90c314229d85921517e2818131c512c3c4b5a7df",
     "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-07T20:46:07Z",
+    "last_checked_at": "2026-10-08T14:42:01Z",
     "tests": [
-      "19 tests Python aprobados; 23 aserciones SQL y 3 controles de rechazo en PGlite; reinstalación aprobada"
+      "41 pruebas Python y migración SQL PGlite aprobadas"
     ],
     "notes": [
-      "Sin conexión a PostgreSQL productivo/Windows; tarea local preparada pero no activada aquí; contexto externo requiere evidencia importada"
+      "PR48 cerrado: incorporado en PR49. Actions automáticas siguen pausadas."
     ]
   },
-  "updated_at": "2026-10-07T20:46:07Z"
+  "updated_at": "2026-10-08T14:42:01Z"
 }

@@ -11,8 +11,10 @@ import pandas as pd
 
 from replica_cygnus.commercial_forecasting.core import Config, validate_panel
 from replica_cygnus.commercial_forecasting.service import (
-    dumps, ensure_schema, execute, measure, read_source, save_snapshot, store_run, synthetic_panel,
+    audit_artifacts, dumps, ensure_schema, execute, measure, read_review_cases, read_source,
+    save_snapshot, store_run, synthetic_panel,
 )
+from replica_cygnus.commercial_forecasting.robustness import verify_integrity
 from replica_cygnus.connections import connect_postgres
 from replica_cygnus.settings import load_settings
 
@@ -25,7 +27,8 @@ def parser():
     for name in ('demo', 'run', 'csv'):
         cmd = sub.add_parser(name)
         cmd.add_argument('--output', type=Path, default=ROOT/'artifacts/commercial_forecasting')
-        cmd.add_argument('--backtest-origins', type=int, default=12)
+        cmd.add_argument('--backtest-origins', type=int, default=24)
+        cmd.add_argument('--test-origins', type=int, default=6)
         if name == 'run':
             cmd.add_argument('--once-per-month', action='store_true')
         if name == 'csv':
@@ -34,6 +37,14 @@ def parser():
     sub.add_parser('capture')
     sub.add_parser('measure')
     sub.add_parser('status')
+    review = sub.add_parser('review', help='Unidades y ciclos en revisión de la absorción local; solo lectura')
+    review.add_argument('--project', action='append', dest='review_projects',
+                        help='Código de proyecto; repetir para varios (por defecto NP, SL, TZ)')
+    audit = sub.add_parser('audit')
+    audit.add_argument('--artifacts', type=Path, required=True)
+    audit.add_argument('--output', type=Path, default=ROOT/'artifacts/commercial_forecasting_audits')
+    verify = sub.add_parser('verify')
+    verify.add_argument('--artifacts', type=Path, required=True)
     goal = sub.add_parser('goal')
     goal.add_argument('--origin', required=True)
     goal.add_argument('--project', required=True)
@@ -53,15 +64,27 @@ def parser():
 
 def main(argv=None):
     args = parser().parse_args(argv)
+    if args.command == 'audit':
+        directory, report = audit_artifacts(args.artifacts, args.output)
+        print(dumps(report))
+        print(directory/'report.html')
+        return 0
+    if args.command == 'verify':
+        result = verify_integrity(args.artifacts)
+        print(dumps(result))
+        return 0 if result['status'] == 'VERIFIED' else 2
     if args.command in ('demo', 'csv'):
         panel = synthetic_panel() if args.command == 'demo' else pd.read_csv(args.input, dtype={'project': str})
         directory, manifest, _, _ = execute(panel, ROOT, args.output,
-            Config(backtest_origins=args.backtest_origins), synthetic=args.command == 'demo')
+            Config(backtest_origins=args.backtest_origins, test_origins=args.test_origins), synthetic=args.command == 'demo')
         print(f"{manifest['evidence_level']} | run={manifest['run_id']} | selected={manifest['selected_model']}")
         print(directory/'report.html')
         return 0
     settings = load_settings(ROOT, require_source=False)
     with connect_postgres(settings) as conn:
+        if args.command == 'review':
+            print(dumps(read_review_cases(conn, args.review_projects or ['NP','SL','TZ'])))
+            return 0
         ensure_schema(conn, ROOT)
         if args.command == 'init':
             print('Esquema de evidencia listo. Sin consultas a Redshift.')
@@ -87,7 +110,8 @@ def main(argv=None):
             print(f"Snapshot={snapshot_id} | projects={quality['projects']} | hash={quality['sha256']}")
             if args.command == 'run':
                 directory, manifest, future, bt = execute(panel, ROOT, args.output,
-                    Config(backtest_origins=args.backtest_origins), snapshot_id=snapshot_id)
+                    Config(backtest_origins=args.backtest_origins, test_origins=args.test_origins), snapshot_id=snapshot_id,
+                    snapshot_context=quality.get('snapshot_comparison'))
                 store_run(conn, directory, manifest, future, bt)
                 conn.commit()
                 print(f"Run={manifest['run_id']} | selected={manifest['selected_model']} | SHADOW")
