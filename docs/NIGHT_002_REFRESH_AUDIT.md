@@ -38,3 +38,12 @@ while NIGHT-002 remains the in-flight pilot item. No Claude review is claimed.
 
 
 2026-10-08: se integra main 62e784e para resolver el conflicto; la CI histórica anterior no se atribuye a esta revisión.
+
+## Checkpoint PR-CONFLICTS-041-045-048 — 2026-10-08, después de integrar #41
+
+Main avanzó a 5619115 mediante el squash de #41. Se vuelve a integrar main en #45.
+Los tres archivos MAP globales se conservan exactamente como están en main; el
+checkpoint específico de NIGHT-002 queda aquí para no sustituir el traspaso del
+trabajo recién integrado. Cambios propios del PR: este informe y las tres pruebas
+de contrato de refresh. Validación local: 15 tests aprobados. No hay nueva CI ni
+cambios de sincronización/producción. Siguiente acción: revisar y fusionar #45.

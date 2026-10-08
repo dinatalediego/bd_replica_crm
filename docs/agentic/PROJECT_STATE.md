@@ -19,6 +19,19 @@ The current default-branch README identifies the repository state as:
 
 This file intentionally does not attempt to summarize every feature branch.
 
+## Forecasting robustness branch — 2026-10-04
+
+FORECAST-ROBUSTNESS-002 extends the merged forecasting pilot from PR #39.
+The branch adds guarded validation policies, equal-population comparisons,
+inventory coverage, temporal support checks, source fingerprints and stricter
+as-issued outcome measurement. Reconstructed history remains diagnostic;
+confirmation requires future frozen results. See ADR-015 and ACTIVE_TASK.md.
+
+The FORECAST-BI-003 follow-up documents three distinct unit review cases in
+NP/SL/TZ (repeated in the supplied monthly panel) and adds read-only
+diagnostics plus Power BI import queries/measures. It does not certify the source
+records or rewrite existing forecast runs. See ADR-016 and ACTIVE_TASK.md.
+
 ## Current MAP status
 
 MAP v1.0 is being introduced as a coordination layer only.

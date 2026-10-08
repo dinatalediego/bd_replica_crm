@@ -22,12 +22,17 @@ class Config:
     horizon: int = 6
     min_train_rows: int = 24
     max_clusters: int = 3
-    backtest_origins: int = 12
-    test_origins: int = 3
+    backtest_origins: int = 24
+    test_origins: int = 6
     seed: int = 42
     min_interval_errors: int = 20
     min_gate_origins: int = 3
     min_gate_improvement: float = .05
+    min_gate_nonoverlap_origins: int = 2
+    min_candidate_coverage: float = .8
+    min_project_history: int = 6
+    min_cluster_rows: int = 10
+    min_interval_origins: int = 3
 
     def validate(self):
         if not 1 <= self.horizon <= 6:
@@ -40,6 +45,10 @@ class Config:
             raise ValueError('Insufficient evidence thresholds')
         if not 0 <= self.min_gate_improvement < 1:
             raise ValueError('Invalid improvement threshold')
+        if self.min_gate_nonoverlap_origins < 2 or self.min_interval_origins < 2:
+            raise ValueError('Need multiple temporal evidence origins')
+        if not 0 < self.min_candidate_coverage <= 1 or self.min_project_history < 3 or self.min_cluster_rows < 2:
+            raise ValueError('Invalid model support thresholds')
 
 
 def validate_panel(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
@@ -138,7 +147,9 @@ def fit_predict(panel: pd.DataFrame, origin: pd.Timestamp, cfg: Config):
     train = matrix.dropna(subset=target_cols)
     train = train[train.age.ge(2)]
     # Even without ML, projects with zero stock have exact zero forecasts.
-    zero = observed[observed.month.eq(origin) & observed.stock_close.eq(0) & observed.review_units.eq(0)]
+    quarantined = set(observed.loc[observed.review_units.gt(0), 'project'])
+    zero = observed[observed.month.eq(origin) & observed.stock_close.eq(0)
+                    & ~observed.project.isin(quarantined)]
     meta = {'origin': str(origin.date()), 'train_rows': len(train), 'features': FEATURES,
             'config': asdict(cfg), 'train_feature_max': None, 'train_outcome_max': None,
             'unavailable': {}, 'clusters': [], 'feature_importance': {}}
@@ -151,14 +162,19 @@ def fit_predict(panel: pd.DataFrame, origin: pd.Timestamp, cfg: Config):
         x, y = train[FEATURES].to_numpy(float), train[target_cols].to_numpy(float)
         scaler = RobustScaler().fit(x)
         z = scaler.transform(x)
-        choices = []
+        choices, bic_audit = [], []
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)
             for k in range(1, min(cfg.max_clusters, max(1, len(train)//cfg.min_train_rows))+1):
                 gm = GaussianMixture(k, covariance_type='diag', reg_covar=1e-3,
                                      n_init=3, random_state=cfg.seed).fit(z)
-                if gm.converged_:
+                component_support = gm.predict_proba(z).sum(axis=0)
+                supported = bool(gm.converged_ and component_support.min() >= cfg.min_cluster_rows)
+                bic_audit.append(dict(k=k, bic=float(gm.bic(z)), eligible=supported,
+                                      minimum_support=float(component_support.min())))
+                if supported:
                     choices.append((float(gm.bic(z)), gm))
+        meta['bic'] = bic_audit
         if choices:
             _, gm = min(choices, key=lambda pair: pair[0])
             prob = gm.predict_proba(z)
@@ -172,7 +188,9 @@ def fit_predict(panel: pd.DataFrame, origin: pd.Timestamp, cfg: Config):
                     'profile': dict(zip(FEATURES, (prob[:, k] @ x / support[k]).tolist())),
                     'cumulative_rates': rates[k].tolist()})
             models['_gmm_bundle'] = (scaler, gm, rates)
-            meta['bic'] = [{'k': model.n_components, 'bic': score} for score, model in choices]
+            meta['cluster_diagnostics'] = dict(chosen_k=gm.n_components,
+                tested_max_k=max(r['k'] for r in bic_audit), at_search_boundary=gm.n_components==max(r['k'] for r in bic_audit),
+                minimum_support=float(support.min()), converged=bool(gm.converged_))
         else:
             meta['unavailable']['gmm_analog'] = 'No converged fit'
         rf = RandomForestRegressor(n_estimators=80, max_depth=5, min_samples_leaf=5,
@@ -181,6 +199,12 @@ def fit_predict(panel: pd.DataFrame, origin: pd.Timestamp, cfg: Config):
         models['random_forest'] = pred * current.stock.to_numpy()[:, None]
         models['_rf_bundle'] = rf
         meta['feature_importance'] = dict(zip(FEATURES, rf.feature_importances_.tolist()))
+        meta['feature_importance_semantics'] = 'TRAINING_IMPURITY_ON_FRACTION_TARGET_NOT_CAUSAL'
+        meta['training_feature_ranges'] = {f: dict(min=float(train[f].min()), max=float(train[f].max())) for f in FEATURES}
+        meta['extrapolation'] = [dict(project=r.project, feature=f, value=float(r[f]),
+            training_min=meta['training_feature_ranges'][f]['min'], training_max=meta['training_feature_ranges'][f]['max'])
+            for _, r in current.iterrows() for f in FEATURES
+            if r[f] < train[f].min() or r[f] > train[f].max()]
     else:
         for name in ('gmm_analog', 'random_forest'):
             meta['unavailable'][name] = 'Insufficient mature training rows or current features'
@@ -189,20 +213,33 @@ def fit_predict(panel: pd.DataFrame, origin: pd.Timestamp, cfg: Config):
         paths = {'mean3': np.arange(1, cfg.horizon+1)*r.mean3}
         g = observed[observed.project.eq(r.project)].sort_values('month')
         if len(g) >= 8:
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', UserWarning)
+            with warnings.catch_warnings(record=True) as fit_warnings:
+                warnings.simplefilter('always', UserWarning)
+                # SSE=0 can make unused ETS information criteria log(0).
+                warnings.filterwarnings('ignore', message='divide by zero encountered in log',
+                                        category=RuntimeWarning, module=r'statsmodels\.tsa\.holtwinters\.model')
                 try:
                     series = pd.Series(g.sales.to_numpy(float), index=pd.DatetimeIndex(g.month, freq='MS'))
                     ets = ExponentialSmoothing(series, trend='add', seasonal=None,
                                                initialization_method='estimated').fit(optimized=True)
+                    optimizer = getattr(ets, 'mle_retvals', None)
+                    if optimizer is not None and not optimizer.get('success', True):
+                        raise ValueError('ETS optimizer did not converge')
                     models.setdefault('_ets_bundles', {})[r.project] = ets
                     paths['ets'] = np.maximum(ets.forecast(cfg.horizon).to_numpy(), 0).cumsum()
                 except (ValueError, FloatingPointError) as exc:
-                    meta['unavailable'][f'ets:{r.project}'] = type(exc).__name__
+                    meta['unavailable'][f'ets:{r.project}'] = f'{type(exc).__name__}: {exc}'
+                if fit_warnings:
+                    meta.setdefault('fit_warnings', {})[f'ets:{r.project}'] = sorted(set(str(w.message) for w in fit_warnings))
         for name in ('gmm_analog', 'random_forest'):
-            if name in models:
+            if name in models and len(g) >= cfg.min_project_history:
                 paths[name] = models[name][i]
+            elif name in models:
+                meta['unavailable'][f'{name}:{r.project}'] = 'Insufficient project history; baseline fallback'
         for name, path in paths.items():
+            if not np.isfinite(path).all():
+                meta['unavailable'][f'{name}:{r.project}'] = 'Nonfinite forecast rejected'
+                continue
             path = np.maximum.accumulate(np.clip(path, 0, r.stock))
             for h, value in enumerate(path, 1):
                 forecasts.append(dict(project=r.project, origin=origin, horizon=h, model=name,
@@ -224,17 +261,26 @@ def metrics(rows: pd.DataFrame) -> dict:
 
 
 def attach_intervals(predictions: pd.DataFrame, errors: pd.DataFrame, cfg: Config):
+    from .evaluation import nonoverlapping_origins
     out = predictions.copy()
     for coverage in (80, 95):
         out[f'lower{coverage}'] = np.nan
         out[f'upper{coverage}'] = np.nan
     out['interval_errors'] = 0
+    out['interval_origins'] = 0
+    out['interval_nonoverlap_origins'] = 0
+    out['interval_status'] = 'INSUFFICIENT_TEMPORAL_SUPPORT'
     for idx, r in out.iterrows():
         pool = errors[errors.model.eq(r.model) & errors.horizon.eq(r.horizon)
                       & errors.outcome_month.le(r.origin) & errors.origin.lt(r.origin)]
         out.loc[idx, 'interval_errors'] = len(pool)
-        if len(pool) < cfg.min_interval_errors:
+        origins = int(pool.origin.nunique())
+        separate = nonoverlapping_origins(pool.origin, int(r.horizon))
+        out.loc[idx, 'interval_origins'] = origins
+        out.loc[idx, 'interval_nonoverlap_origins'] = separate
+        if len(pool) < cfg.min_interval_errors or origins < cfg.min_interval_origins or separate < 2:
             continue
+        out.loc[idx, 'interval_status'] = 'EMPIRICAL_POOLED_NOT_GUARANTEED'
         absolute = (pool.actual-pool.prediction).abs().to_numpy()
         for coverage in (80, 95):
             # Empirical out-of-sample error bands; not an exchangeability guarantee.
@@ -283,17 +329,6 @@ def evaluate(panel: pd.DataFrame, cfg: Config):
                 & available.actual.le(available[f'upper{coverage}'])).mean()) if len(available) else None
             result[f'interval_rows{coverage}'] = len(available)
         summaries.append(result)
-    # Candidate choice uses validation only. Final holdout is reporting, not tuning.
-    candidates = []
-    for model in MODELS[1:]:
-        cand = bt[bt.partition.eq('validation') & bt.model.eq(model)]
-        ref = bt[bt.partition.eq('validation') & bt.model.eq('mean3')]
-        paired = cand.merge(ref, on=['project', 'origin', 'horizon'], suffixes=('', '_baseline'))
-        if paired.empty or paired.origin.nunique() < cfg.min_gate_origins:
-            continue
-        score = float((paired.prediction-paired.actual).abs().mean())
-        base = float((paired.prediction_baseline-paired.actual).abs().mean())
-        if base > 0 and score <= base*(1-cfg.min_gate_improvement):
-            candidates.append((score, model))
-    selected = min(candidates)[1] if candidates else 'mean3'
+    from .evaluation import select_policy
+    selected = select_policy(bt, cfg)['selected_model']
     return bt, pd.DataFrame(summaries), evidence, selected

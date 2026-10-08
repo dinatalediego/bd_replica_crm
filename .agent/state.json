@@ -13,13 +13,13 @@
   "git": {
     "base_branch": "main",
     "working_branch": "HEAD",
-    "checkpoint_commit": "e902a0cc08d6a66e98ebe9934d6ea16d6b154f32",
+    "checkpoint_commit": "90c314229d85921517e2818131c512c3c4b5a7df",
     "dirty": true
   },
   "validation": {
     "last_checked_at": "2026-10-08T14:42:01Z",
     "tests": [
-      "15 pruebas de contrato de refresh aprobadas"
+      "41 pruebas Python y migración SQL PGlite aprobadas"
     ],
     "notes": [
       "PR48 cerrado: incorporado en PR49. Actions automáticas siguen pausadas."

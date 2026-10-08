@@ -7,7 +7,7 @@ From: chatgpt
 To: human
 Status: REVIEW_READY
 Branch: HEAD
-Commit at checkpoint: e902a0cc08d6a66e98ebe9934d6ea16d6b154f32
+Commit at checkpoint: 90c314229d85921517e2818131c512c3c4b5a7df
 
 ## Exact next action
 
@@ -26,10 +26,9 @@ Dirty: yes
 - A  docs/DATASETS_ECONOMETRICOS.md
 - A  docs/EVOLUCION_COMERCIAL.md
 - A  docs/ML_SCHEMA_HANDOFF.md
-- M docs/NIGHT_002_REFRESH_AUDIT.md
 - MM docs/agentic/ACTIVE_TASK.md
 - M  docs/agentic/DECISIONS.md
-- UU docs/agentic/HANDOFF.md
+- M  docs/agentic/HANDOFF.md
 - A  examples/econometria/intervenciones.csv
 - A  examples/econometria/mercado.csv
 - A  examples/econometria/ofertas.csv
@@ -39,7 +38,7 @@ Dirty: yes
 - A  scripts/econometric_datasets.py
 - A  scripts/export_ml_schema_package.py
 - A  scripts/refresh_evolucion_comercial.py
-- M  scripts/schema_sync.py
+- MM scripts/schema_sync.py
 - A  sql/100_econometria/01_tables.sql
 - A  sql/100_econometria/02_capture.sql
 - A  sql/100_econometria/03_datasets.sql
@@ -64,27 +63,25 @@ Dirty: yes
 ### Diff stat
 
 ```text
-.agent/state.json               |   4 +-
- docs/NIGHT_002_REFRESH_AUDIT.md |  25 ++++++++++
- docs/agentic/ACTIVE_TASK.md     |  31 ++++--------
- docs/agentic/HANDOFF.md         | Unmerged
- docs/agentic/HANDOFF.md         | 102 +++++++++++++++++++++++++---------------
- 4 files changed, 100 insertions(+), 62 deletions(-)
+.agent/state.json           |  4 ++--
+ docs/agentic/ACTIVE_TASK.md | 31 ++++++++++---------------------
+ scripts/schema_sync.py      |  1 +
+ 3 files changed, 13 insertions(+), 23 deletions(-)
 ```
 
 ### Staged diff stat
 
 ```text
-.agent/state.json                                  |  23 ++-
+.agent/state.json                                  |  22 ++-
  .github/workflows/ci.yml                           |   5 +-
  config/econometric_sources.json                    |  38 ++++
  docs/ABSORCION_VENTAS_MENSUAL.md                   |  37 ++++
  docs/DATASETS_ECONOMETRICOS.md                     | 198 +++++++++++++++++++++
  docs/EVOLUCION_COMERCIAL.md                        | 110 ++++++++++++
  docs/ML_SCHEMA_HANDOFF.md                          |  28 +++
- docs/agentic/ACTIVE_TASK.md                        |  34 ++--
- docs/agentic/DECISIONS.md                          |  43 +++++
- docs/agentic/HANDOFF.md                            | Unmerged
+ docs/agentic/ACTIVE_TASK.md                        |  50 ++----
+ docs/agentic/DECISIONS.md                          |  50 +++++-
+ docs/agentic/HANDOFF.md                            |  74 ++++----
  examples/econometria/intervenciones.csv            |   1 +
  examples/econometria/mercado.csv                   |   1 +
  examples/econometria/ofertas.csv                   |   1 +
@@ -94,7 +91,7 @@ Dirty: yes
  scripts/econometric_datasets.py                    |  41 +++++
  scripts/export_ml_schema_package.py                | 190 ++++++++++++++++++++
  scripts/refresh_evolucion_comercial.py             |  22 +++
- scripts/schema_sync.py                             |  43 +++++
+ scripts/schema_sync.py                             |  58 ++++++
  sql/100_econometria/01_tables.sql                  | 115 ++++++++++++
  sql/100_econometria/02_capture.sql                 | 130 ++++++++++++++
  sql/100_econometria/03_datasets.sql                | 125 +++++++++++++
@@ -115,12 +112,12 @@ Dirty: yes
  .../test_evolucion_comercial_postgres.py           |  22 +++
  tests/test_econometric_demand.py                   |  42 +++++
  tests/test_econometric_imports.py                  |  45 +++++
- 39 files changed, 2046 insertions(+), 41 deletions(-)
+ 40 files changed, 2097 insertions(+), 101 deletions(-)
 ```
 
 ## Validation / tests recorded for this checkpoint
 
-- 15 pruebas de contrato de refresh aprobadas
+- 41 pruebas Python y migración SQL PGlite aprobadas
 
 ## Notes
 
@@ -128,11 +125,11 @@ Dirty: yes
 
 ## Recent commits
 
-- e902a0c docs: record NIGHT-002 green CI handoff
-- 7bab146 docs: hand off NIGHT-002 draft PR validation
-- e71a82d test: lock low-impact hourly refresh contract
-- c4f4ecc docs: reconcile NIGHT-002 refresh audit on current main
-- c00d525 Incorporar cortes comerciales y escenarios de impacto ML en Medallio (#42)
+- 90c3142 Accept PostgreSQL timestamp for forecast month
+- d979803 Add monthly forecast view and Medallio setup script
+- 72866b2 Count candidate projects across available forecast horizons
+- 2bf35bc Merge main into forecasting review and preserve ML impact and DQ work
+- 8c88ea5 Add unit review diagnostics and forecasting Power BI layer
 
 ## Handoff rule
 

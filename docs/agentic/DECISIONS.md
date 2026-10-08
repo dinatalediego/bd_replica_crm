@@ -260,3 +260,48 @@ registros forecasting existentes; no se entrenan/promocionan nuevos modelos.
 El paso 07b del maestro horario procesa una vez al día tras CORE/ventas. Instalador
 local con alternativa de tarea Windows explícita; no ejecución remota del PC.
 Sin consultas Redshift añadidas ni reactivación de Actions. NP-A se conserva.
+
+
+<!-- PR #41 decisions formerly numbered 015/016; renumbered 018/019 to retain main decisions without collisions. -->
+## MAP-ADR-018 — Selección conservadora y evidencia comparable
+
+Date: 2026-10-04
+Status: ACCEPTED — strengthens evaluation and monitoring in ADR-013
+
+El usuario pidió fortalecer la arquitectura con sus artifacts reales. La selección
+usa únicamente trayectorias completas de validación, controles por proyecto y
+políticas con fallback comparadas sobre la misma población. Se exige soporte
+temporal no solapado, cobertura e incremento mínimo de rendimiento; esos umbrales
+son configurables y no prueban significancia. Con evidencia insuficiente se conserva
+mean3 y los candidatos ML siguen shadow. La prueba histórica ya inspeccionada
+sirve como diagnóstico de desarrollo, no como confirmación virgen de esta versión.
+
+Cada run registra cobertura por proyecto y stock, revisiones del snapshot, rangos
+de entrenamiento, calibración, bytes de código y hashes. La medición congela el
+primer snapshot completo por proyecto y verifica compatibilidad con el stock emitido.
+Se distinguen emisión antes del inicio de la ventana y emisión durante ella, usando
+America/Lima; outcomes legacy no se recertifican retroactivamente. No se modifican
+ventas canónicas, no se consulta Redshift, no se promueve ni fusiona automáticamente.
+Los datos comerciales adjuntos se auditan de forma privada; no se publican en GitHub.
+
+
+## MAP-ADR-019 — Revisión por unidad y presentación de evidencia emitida
+
+Date: 2026-10-04
+Status: ACCEPTED — adds a read-only diagnostic and Power BI layer to ADR-018
+
+El panel comercial suministrado tiene filas mensuales con revisión para NP, SL
+y TZ, pero la función mensual cruza cada mes con el mismo estado ACTUAL de las
+unidades. Cada proyecto marca una unidad en todos sus meses: son tres unidades
+actuales por investigar, sin asumir el motivo documental de ninguna. Se entregan
+consultas de lectura a las vistas unitarias y de ciclos existentes. No se cambia
+requiere_revision ni se reduce retrospectivamente el stock para ocultar el caso;
+la resolución exige fuente/documentación local y una nueva versión de pronóstico.
+
+El tablero usa vistas ya instaladas con grano explícito: cobertura solo del último
+run, pronóstico seleccionado por horizonte, fila de revisión por unidad y resultado
+emitido por run/proyecto/horizonte. MAE, sesgo y WAPE se calculan con el mismo filtro
+de elegibilidad y quedan vacíos hasta que exista resultado maduro compatible; un
+horizonte acumulado único evita sumar varias ventanas superpuestas. Los modelos
+candidatos se muestran como entrenamiento/propuesta aunque no sean seleccionados.
+No hay acceso a PostgreSQL real ni modificación automática de la fuente de Medallio.

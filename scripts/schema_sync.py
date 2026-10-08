@@ -19,6 +19,22 @@ class SchemaComponent:
 
 COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
+        name="commercial_forecasting",
+        files=(
+            "sql/97_commercial_forecasting/01_evidence.sql",
+            "sql/97_commercial_forecasting/02_monthly_projection.sql",
+        ),
+        expected_relations=(
+            "features.commercial_forecast_snapshots",
+            "model_control.commercial_forecast_runs",
+            "analytics.commercial_forecast_predictions",
+            "analytics.v_commercial_forecast_current",
+            "analytics.v_commercial_forecast_monthly",
+            "analytics.v_commercial_forecast_performance",
+            "analytics.v_commercial_forecast_coverage",
+        ),
+    ),
+    SchemaComponent(
         name="core_commercial",
         files=("sql/init_core_commercial.sql",),
         expected_relations=("core.dim_proyecto", "core.dim_unidad"),
