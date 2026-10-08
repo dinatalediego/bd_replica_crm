@@ -243,3 +243,20 @@ usan observación anterior al mes. Índice geométrico nominal base 100 de cesta
 por proyecto/moneda, NULL si cobertura incompleta. No se inventa historia ni se
 estima elasticidad causal. Estacionalidad y estacionariedad requieren análisis
 posterior sobre el panel. Sin nuevas consultas Redshift ni programación automática.
+
+## MAP-ADR-017 — Datasets econométricos históricos y captura programada
+
+Date: 2026-10-07
+Status: ACCEPTED
+
+Usuario autoriza tablas para las siete recomendaciones, cálculo histórico y captura
+programada. Nueva capa local integra eventos versionados, snapshots diarios, ofertas,
+etapas, demanda, contexto importable, predictores y objetivos por corte/horizonte.
+Reconstruido se revisa sin presentarlo como evidencia histórica conocida. Observado
+es inmutable; resultados revisados dejan versiones. Primer resultado maduro sin
+alertas/fresco se usa en evaluación prospectiva. Fuentes externas sin contrato no
+se inventan: importadores documentados y estados de cobertura. Se reutilizan
+registros forecasting existentes; no se entrenan/promocionan nuevos modelos.
+El paso 07b del maestro horario procesa una vez al día tras CORE/ventas. Instalador
+local con alternativa de tarea Windows explícita; no ejecución remota del PC.
+Sin consultas Redshift añadidas ni reactivación de Actions. NP-A se conserva.

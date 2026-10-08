@@ -1,17 +1,17 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-07T20:18:51Z
-Task: EVOLUCION-COMERCIAL-001 — Panel por edad comercial, composición y precios normalizados
+Generated at: 2026-10-07T20:46:07Z
+Task: ECONOMETRIA-DATASETS-001 — Datasets históricos y captura diaria para predicción comercial
 From: chatgpt
 To: human
 Status: REVIEW_READY
-Branch: feat/evolucion-comercial
-Commit at checkpoint: a5cfe11c524fa30be8084858b048cbf7b2fbf1a2
+Branch: feat/datasets-econometricos
+Commit at checkpoint: c7f969b129fb6f6d768f4ec8ceef92b04b237f9f
 
 ## Exact next action
 
-Aplicar rama y ejecutar docs/EVOLUCION_COMERCIAL.md en Medallio local
+Ejecutar instalador Windows 67_install_econometric_datasets.ps1; verificar status y cobertura local
 
 ## Working-tree state
 
@@ -21,21 +21,30 @@ Dirty: yes
 
 - M docs/agentic/ACTIVE_TASK.md
 - M docs/agentic/DECISIONS.md
+- M scripts/dw_refresh.py
 - M scripts/schema_sync.py
-- ?? docs/EVOLUCION_COMERCIAL.md
-- ?? scripts/refresh_evolucion_comercial.py
-- ?? sql/99_evolucion_comercial/
-- ?? tests/integration/evolucion_comercial_assertions.sql
-- ?? tests/integration/evolucion_comercial_fixture.sql
-- ?? tests/integration/test_evolucion_comercial_postgres.py
+- ?? config/econometric_sources.json
+- ?? docs/DATASETS_ECONOMETRICOS.md
+- ?? examples/econometria/
+- ?? scripts/67_install_econometric_datasets.ps1
+- ?? scripts/econometric_datasets.py
+- ?? sql/100_econometria/
+- ?? src/replica_cygnus/econometric_datasets/
+- ?? tests/integration/econometric_assertions.sql
+- ?? tests/integration/econometric_fixture.sql
+- ?? tests/integration/run_econometric_pglite.cjs
+- ?? tests/integration/test_econometric_postgres.py
+- ?? tests/test_econometric_demand.py
+- ?? tests/test_econometric_imports.py
 
 ### Diff stat
 
 ```text
-docs/agentic/ACTIVE_TASK.md | 21 ++++++++++++++-------
- docs/agentic/DECISIONS.md   | 15 +++++++++++++++
- scripts/schema_sync.py      | 13 +++++++++++++
- 3 files changed, 42 insertions(+), 7 deletions(-)
+docs/agentic/ACTIVE_TASK.md | 27 +++++++++++++++------------
+ docs/agentic/DECISIONS.md   | 17 +++++++++++++++++
+ scripts/dw_refresh.py       |  4 ++++
+ scripts/schema_sync.py      | 29 +++++++++++++++++++++++++++++
+ 4 files changed, 65 insertions(+), 12 deletions(-)
 ```
 
 ### Staged diff stat
@@ -46,19 +55,19 @@ docs/agentic/ACTIVE_TASK.md | 21 ++++++++++++++-------
 
 ## Validation / tests recorded for this checkpoint
 
-- 16 aserciones SQL aprobadas en PostgreSQL WASM PGlite; instalación repetida aprobada; compilación Python aprobada
+- 19 tests Python aprobados; 23 aserciones SQL y 3 controles de rechazo en PGlite; reinstalación aprobada
 
 ## Notes
 
-- Sin acceso a Medallio real; pytest nativo skipped sin DSN; captura de precios comienza al ejecutar refresh local
+- Sin conexión a PostgreSQL productivo/Windows; tarea local preparada pero no activada aquí; contexto externo requiere evidencia importada
 
 ## Recent commits
 
+- c7f969b Add commercial age panels and observed normalized price series
 - a5cfe11 Excluir NP-B de absorción y stock reconstruidos de Torre Nápoles
 - 3287d20 Pause automatic CI; keep manual workflow dispatch
 - c00d525 Incorporar cortes comerciales y escenarios de impacto ML en Medallio (#42)
 - 0c1b83b Clientes calidad incremental: recuperar 02b sin reconstruir todos los clientes cada hora (#40)
-- 5808037 Forecasting comercial: entrenamiento reproducible y evidencia prospectiva (#39)
 
 ## Handoff rule
 

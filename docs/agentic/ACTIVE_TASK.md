@@ -1,29 +1,32 @@
 # Active Task
 
-Task ID: EVOLUCION-COMERCIAL-001
-Title: Panel por edad comercial, composición y precios normalizados
+Task ID: ECONOMETRIA-DATASETS-001
+Title: Datasets históricos y captura diaria para predicción comercial
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/evolucion-comercial
+Branch: feat/datasets-econometricos
 Base branch: main
 
 ## Objective
 
-Comparar proyectos desde mes 1 con stock, ventas, exposición, composición, áreas
-relativas y precios observados sin fuga de información futura.
+Implementar tablas y actualización para las siete recomendaciones econométricas,
+con historia revisada separada de evidencia observada e integración al job local.
 
 ## Next action
 
-Aplicar rama y ejecutar comandos en docs/EVOLUCION_COMERCIAL.md sobre Medallio local.
-Verificar cobertura, proyectos sin inicio y unidades en revisión antes de consumir PBI.
-No se ejecutó contra datos productivos ni se activaron tareas o Actions.
+Ejecutar scripts/67_install_econometric_datasets.ps1 en Medallio local y comprobar
+status/cobertura. Guía: docs/DATASETS_ECONOMETRICOS.md. Incluye cambios de PR 48.
 
 ## Validation
 
-16 aserciones SQL sobre PostgreSQL WASM/PGlite aprobadas, incluida instalación
-idempotente. Python compilado. Pytest nativo omitido por falta de DSN descartable.
+19 tests Python aprobados. 23 aserciones SQL y tres controles de rechazo ejecutados
+con PostgreSQL WASM/PGlite; instalación y reinstalación aprobadas.
+PostgreSQL nativo omitido sin DSN descartable. Windows/Medallio real no accesibles.
 
-## Previous task
+## Limits
 
-ABSORCION-NP-A-001 presente en main; verificación Medallio/Power BI permanece local.
+Tasas, inversión y ofertas/cierres sin evidencia quedan pendientes de importación;
+visitas requieren etiquetas verificadas. No se inventa historia point-in-time.
+Captura observada comienza al ejecutar localmente; programación preparada, no
+instalada en el PC desde este entorno. Modelos existentes no se reentrenan aquí.
