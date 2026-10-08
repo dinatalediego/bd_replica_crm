@@ -19,3 +19,6 @@ output/stock_disponible/*.xlsx
 
 # Power BI -> Medallio adapter local state/extractions.
 .state/
+
+# Medallio OS local notebook executions.
+.medallio/

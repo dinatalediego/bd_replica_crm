@@ -1,21 +1,31 @@
 # Active Task
 
-Task ID: PR-CONFLICTS-041-045-048
-Title: Resolver conflictos de integración con main
+Task ID: MEDALLIO-OS-MVP-001
+Title: Construir Medallio OS local sobre kernels, notebooks y Ambassador
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/forecasting-robustness
+Branch: feat/medallio-os-mvp
 Base branch: main
 
 ## Result
 
-PR #41: integrar main 62e784e preservando cambios funcionales de ambas ramas.
-41 pruebas Python y migración SQL main -> forecasting/econometría en PGlite aprobadas.
-PR #48 cerrado como duplicado: incorporado en main por #49; árbol idéntico.
+Se implementó un MVP Streamlit local con Home, Control Tower, Executive Briefing,
+Forecast Studio, Econometrics Lab, Project Benchmark Lab, Data Quality Center y
+Notebook Launcher. La ejecución de notebooks usa copias en `.medallio/runs/` y
+valida que notebook y kernel pertenezcan al runtime local permitido.
+
+El runner `scripts/medallio_ambassador/run_ambassador.py` no está en `main` al
+momento de este trabajo, pero la UI lo descubre dinámicamente si existe en el
+working tree local (como en la captura del usuario).
+
+Validación aislada sobre el mismo código fuente: 12 pruebas enfocadas aprobadas y
+compilación Python sin errores. No se ejecutó el CI completo del repositorio ni se
+fusionó a `main`.
 
 ## Next action
 
-Revisar PR #41, ahora actualizado con main. No se fusionó a main.
-La activación local de los datasets econométricos sigue pendiente según
-`docs/DATASETS_ECONOMETRICOS.md`; no se reactivaron GitHub Actions.
+Revisar el PR de `feat/medallio-os-mvp`. En el PC local, preservar cambios sin
+commit, traer la rama sin descartarlos, instalar `apps/medallio_os/requirements.txt`
+y ejecutar `scripts/run_medallio_os.ps1` o `python -m streamlit run
+apps/medallio_os/app.py`.
