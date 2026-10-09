@@ -1,0 +1,23 @@
+{
+  "headline": "Medallio está listo para escalar con disciplina",
+  "platform_coverage_pct": 100.0,
+  "forecast_wape_pct": null,
+  "forecast_bias": null,
+  "open_actions": 0,
+  "risk_alerts": 0,
+  "outcomes": 0,
+  "trust_score_pct": 50.0,
+  "top_3_decisions": [
+    {
+      "decision": "Mantener rumbo y exigir evidencia de valor",
+      "value_at_stake": "Escala",
+      "confidence": "Media",
+      "urgency": "Próximo comité",
+      "owner": "AI Steering Committee",
+      "why": "Sin alertas ejecutivas automáticas"
+    }
+  ],
+  "ceo_asks": [
+    "Hacer obligatorio capturar outcome y ROI de cada decisión asistida por IA."
+  ]
+}

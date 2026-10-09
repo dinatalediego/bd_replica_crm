@@ -1,0 +1,18 @@
+{
+  "v27": {
+    "auto_sync_db": false,
+    "decision_levels": {
+      "D0": "Inform",
+      "D1": "Recommend",
+      "D2": "Human approval required",
+      "D3": "Autonomous execution"
+    },
+    "gates": {
+      "observed_min_coverage_pct": 95,
+      "predictive_max_wape_pct": 25,
+      "predictive_min_trust_pct": 70,
+      "recommendation_min_owner_ratio": 0.8,
+      "recommendation_min_rationale_ratio": 0.8
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "version": "2.9.2.1",
+  "calculated_as_of": "2026-10-08",
+  "note": "Reference snapshot only. The runtime script recalculates recommendations using the run date.",
+  "projects": {
+    "TZ": {
+      "project_name": "Tizón y Bueno",
+      "project_key": "TZ",
+      "preliminary_delivery_date": "2025-12-30",
+      "days_to_preliminary_delivery": -282,
+      "schedule_band": "PAST_PRELIMINARY_DATE",
+      "milestone_status_review_required": true,
+      "new_experiment_allowed_by_schedule": false,
+      "default_outcome_window_days": 30
+    },
+    "EEUU": {
+      "project_name": "Edificio Urbanzen",
+      "project_key": "EEUU",
+      "preliminary_delivery_date": "2025-06-30",
+      "days_to_preliminary_delivery": -465,
+      "schedule_band": "PAST_PRELIMINARY_DATE",
+      "milestone_status_review_required": true,
+      "new_experiment_allowed_by_schedule": false,
+      "default_outcome_window_days": 30
+    },
+    "GY": {
+      "project_name": "Alicanto",
+      "project_key": "GY",
+      "preliminary_delivery_date": "2026-11-30",
+      "days_to_preliminary_delivery": 53,
+      "schedule_band": "LATE",
+      "milestone_status_review_required": false,
+      "new_experiment_allowed_by_schedule": true,
+      "default_outcome_window_days": 30
+    },
+    "CP": {
+      "project_name": "Capadocia",
+      "project_key": "CP",
+      "preliminary_delivery_date": "2026-09-30",
+      "days_to_preliminary_delivery": -8,
+      "schedule_band": "PAST_PRELIMINARY_DATE",
+      "milestone_status_review_required": true,
+      "new_experiment_allowed_by_schedule": false,
+      "default_outcome_window_days": 30,
+      "route_status": "DESIGN_ONLY",
+      "recommended_deadline_type": "design_deadline",
+      "recommended_deadline": "2026-10-13",
+      "recommended_deadline_reason": "Deadline to finish Value to Capture/intervention design; not permission to execute.",
+      "next_deliverable": "Economic intervention design / Value to Capture"
+    },
+    "SL": {
+      "project_name": "Sialia",
+      "project_key": "SL",
+      "preliminary_delivery_date": "2026-12-30",
+      "days_to_preliminary_delivery": 83,
+      "schedule_band": "LATE",
+      "milestone_status_review_required": false,
+      "new_experiment_allowed_by_schedule": true,
+      "default_outcome_window_days": 30,
+      "route_status": "EVIDENCE_BUILDING",
+      "recommended_deadline_type": "evidence_review_deadline",
+      "recommended_deadline": "2026-10-15",
+      "recommended_deadline_reason": "Deadline for the next evidence/readiness review; not an execution deadline.",
+      "next_deliverable": "Predictive evidence/readiness review"
+    },
+    "FX": {
+      "project_name": "Fenix",
+      "project_key": "FX",
+      "preliminary_delivery_date": "2026-06-30",
+      "days_to_preliminary_delivery": -100,
+      "schedule_band": "PAST_PRELIMINARY_DATE",
+      "milestone_status_review_required": true,
+      "new_experiment_allowed_by_schedule": false,
+      "default_outcome_window_days": 30
+    },
+    "MD": {
+      "project_name": "Modena",
+      "project_key": "MD",
+      "preliminary_delivery_date": "2027-09-30",
+      "days_to_preliminary_delivery": 357,
+      "schedule_band": "EARLY",
+      "milestone_status_review_required": false,
+      "new_experiment_allowed_by_schedule": true,
+      "default_outcome_window_days": 90,
+      "route_status": "ACTIVATION_CANDIDATE",
+      "recommended_deadline_type": "approval_deadline",
+      "recommended_deadline": "2026-10-29",
+      "recommended_deadline_reason": "Deadline for human approval/readiness, not the building delivery date.",
+      "next_deliverable": "Human-approved execution contract"
+    },
+    "MT": {
+      "project_name": "Matera",
+      "project_key": "MT",
+      "preliminary_delivery_date": "2027-09-30",
+      "days_to_preliminary_delivery": 357,
+      "schedule_band": "EARLY",
+      "milestone_status_review_required": false,
+      "new_experiment_allowed_by_schedule": true,
+      "default_outcome_window_days": 90,
+      "route_status": "ACTIVATION_CANDIDATE",
+      "recommended_deadline_type": "approval_deadline",
+      "recommended_deadline": "2026-10-29",
+      "recommended_deadline_reason": "Deadline for human approval/readiness, not the building delivery date.",
+      "next_deliverable": "Value to Capture + human-approved execution contract"
+    },
+    "NP": {
+      "project_name": "Torre Nápoles",
+      "project_key": "NP",
+      "preliminary_delivery_date": "2028-11-30",
+      "days_to_preliminary_delivery": 784,
+      "schedule_band": "EARLY",
+      "milestone_status_review_required": false,
+      "new_experiment_allowed_by_schedule": true,
+      "default_outcome_window_days": 90,
+      "route_status": "BLOCKED_RECONCILIATION",
+      "recommended_deadline_type": "reconciliation_deadline",
+      "recommended_deadline": "2026-10-15",
+      "recommended_deadline_reason": "Deadline to reconcile economics/data before any activation can be considered.",
+      "next_deliverable": "Economics reconciliation"
+    }
+  }
+}

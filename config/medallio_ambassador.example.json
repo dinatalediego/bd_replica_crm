@@ -1,0 +1,36 @@
+{
+  "recipient": "TU_CORREO@gmail.com",
+  "sender_alias": "Medallio Ambassador",
+  "subject_prefix": "[Medallio Ambassador]",
+  "attachment_budget_mb": 18,
+  "max_single_attachment_mb": 7,
+  "notebook_timeout_seconds": 1200,
+  "continue_on_notebook_error": true,
+  "notebooks": {
+    "every_run": [
+      "notebooks/Medallio_CEO_5_Minute_AI_Briefing.ipynb",
+      "notebooks/Medallio_CEO_AI_Control_Tower_Lite.ipynb"
+    ],
+    "evening_only": [
+      "notebooks/Medallio_Enterprise_AI_Analytics_Operating_System.ipynb",
+      "notebooks/Medallio_AI_Analytics_Factory.ipynb"
+    ]
+  },
+  "artifact_roots": [
+    "artifacts/medallio_ceo_briefing",
+    "artifacts/medallio_enterprise",
+    "artifacts/medallio_ai_factory"
+  ],
+  "gmail": {
+    "credentials_file": ".secrets/gmail_credentials.json",
+    "token_file": ".secrets/gmail_token.json"
+  },
+  "kernel_name": "medallio_dw",
+  "notebook_timeouts_seconds": {
+    "notebooks/Medallio_CEO_5_Minute_AI_Briefing.ipynb": 300,
+    "notebooks/Medallio_CEO_AI_Control_Tower_Lite.ipynb": 360,
+    "notebooks/Medallio_Enterprise_AI_Analytics_Operating_System.ipynb": 1200,
+    "notebooks/Medallio_AI_Analytics_Factory.ipynb": 1200
+  },
+  "artifact_policy": "current_run_only"
+}

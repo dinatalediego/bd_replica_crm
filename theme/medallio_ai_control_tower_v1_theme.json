@@ -1,0 +1,15 @@
+{
+  "name": "Medallio AI Control Tower v1",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "title": [
+          {
+            "show": true,
+            "fontSize": 12
+          }
+        ]
+      }
+    }
+  }
+}

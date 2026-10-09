@@ -1,0 +1,14 @@
+{
+  "narrative_policy": {
+    "mode": "client_plus_internal",
+    "max_projects": 5,
+    "evidence_grades": true,
+    "anti_hallucination": true,
+    "business_fronts": [
+      "Comercial",
+      "Pricing",
+      "Operaciones",
+      "Marketing"
+    ]
+  }
+}

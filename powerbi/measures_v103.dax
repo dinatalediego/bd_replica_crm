@@ -1,0 +1,70 @@
+-- Forecast Factory v1.0.3 — Evidence & Scoreboard measures
+
+Prospective Forecasts =
+SUM ( 'CEO Evidence Status'[prospective_predictions] )
+
+Evaluation Candidates =
+SUM ( 'CEO Evidence Status'[prospective_candidates] )
+
+Evaluated Prospective Pairs =
+SUM ( 'CEO Evidence Status'[evaluated_prospective_pairs] )
+
+Expected Pairs Next Unlock =
+SUM ( 'CEO Evidence Status'[expected_pairs_next_unlock] )
+
+Models Ready for Review =
+SUM ( 'CEO Evidence Status'[model_cells_ready_for_review] )
+
+Next Evidence Unlock =
+MIN ( 'CEO Evidence Status'[next_evidence_unlock] )
+
+Days to Next Evidence Unlock =
+DATEDIFF ( TODAY(), [Next Evidence Unlock], DAY )
+
+Portfolio Champion Status =
+SELECTEDVALUE (
+    'CEO Evidence Status'[portfolio_champion_status],
+    "NOT_YET_DECLARED"
+)
+
+Scoreboard WAPE =
+AVERAGE ( 'Model Scoreboard'[wape] )
+
+Scoreboard Bias =
+AVERAGE ( 'Model Scoreboard'[bias] )
+
+Scoreboard Naive WAPE =
+AVERAGE ( 'Model Scoreboard'[naive_wape] )
+
+Scoreboard Skill vs Naive =
+AVERAGE ( 'Model Scoreboard'[skill_vs_naive] )
+
+Mature Pairs =
+SUM ( 'Model Scoreboard'[mature_pairs] )
+
+Distinct Mature Periods =
+MAX ( 'Model Scoreboard'[distinct_target_periods] )
+
+Distinct Projects Evaluated =
+MAX ( 'Model Scoreboard'[distinct_projects] )
+
+Ready Model Cells =
+CALCULATE (
+    COUNTROWS ( 'Model Scoreboard' ),
+    'Model Scoreboard'[promotion_readiness] = "READY_FOR_HUMAN_REVIEW"
+)
+
+Evidence Calendar Candidates =
+SUM ( 'Evidence Calendar'[evaluation_candidates] )
+
+Evidence Calendar Evaluated =
+SUM ( 'Evidence Calendar'[evaluated_candidates] )
+
+Evidence Calendar Incubating =
+SUM ( 'Evidence Calendar'[incubating_candidates] )
+
+Evidence Calendar Blocked =
+SUM ( 'Evidence Calendar'[blocked_scope_candidates] )
+
+Evidence Calendar Due =
+SUM ( 'Evidence Calendar'[outcome_due_candidates] )

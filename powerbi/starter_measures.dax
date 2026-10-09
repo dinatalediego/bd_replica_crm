@@ -1,0 +1,61 @@
+-- Forecast Factory Contract v1 — Power BI measures
+
+Forecast =
+SUM ( 'Forecast Factory Current'[prediction] )
+
+Forecast Lower =
+SUM ( 'Forecast Factory Current'[prediction_lower] )
+
+Forecast Upper =
+SUM ( 'Forecast Factory Current'[prediction_upper] )
+
+Naive Forecast =
+SUM ( 'Forecast Factory Current'[naive_prediction] )
+
+Actual Mature =
+SUM ( 'Forecast Factory Current'[actual_value] )
+
+Mature Forecasts =
+CALCULATE (
+    COUNTROWS ( 'Forecast Factory Current' ),
+    'Forecast Factory Current'[maturity_status] = "MATURE"
+)
+
+Incubating Forecasts =
+CALCULATE (
+    COUNTROWS ( 'Forecast Factory Current' ),
+    'Forecast Factory Current'[maturity_status] = "INCUBATING"
+)
+
+WAPE =
+AVERAGE ( 'Forecast Performance'[wape] )
+
+Bias =
+AVERAGE ( 'Forecast Performance'[bias] )
+
+Naive WAPE =
+AVERAGE ( 'Forecast Performance'[naive_wape] )
+
+Skill vs Naive =
+AVERAGE ( 'Forecast Performance'[skill_vs_naive] )
+
+Interval Coverage =
+AVERAGE ( 'Forecast Performance'[interval_coverage] )
+
+Defensible Cells =
+CALCULATE (
+    COUNTROWS ( 'Forecast Performance' ),
+    'Forecast Performance'[defendability_status] = "PASS"
+)
+
+Forecast Cells =
+COUNTROWS ( 'Forecast Performance' )
+
+Defensible Share =
+DIVIDE ( [Defensible Cells], [Forecast Cells] )
+
+Prospective Mature Pairs =
+CALCULATE (
+    SUM ( 'Forecast Performance'[mature_pairs] ),
+    'Forecast Performance'[evidence_class] = "PROSPECTIVE"
+)
