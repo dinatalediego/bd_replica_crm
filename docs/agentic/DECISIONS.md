@@ -305,3 +305,18 @@ de elegibilidad y quedan vacíos hasta que exista resultado maduro compatible; u
 horizonte acumulado único evita sumar varias ventanas superpuestas. Los modelos
 candidatos se muestran como entrenamiento/propuesta aunque no sean seleccionados.
 No hay acceso a PostgreSQL real ni modificación automática de la fuente de Medallio.
+
+
+## MAP-ADR-020 — Productos analíticos portables y evidencia
+
+Date: 2026-10-09
+Status: ACCEPTED
+
+El usuario autorizó desarrollar y desplegar los 12 puntos de la propuesta Atlas.
+Se añade publishing sin reorganizar ni cambiar contratos de réplica/analytics.
+Packs JSON versionados, registro privado inmutable y feedback de decisiones.
+La publicación incluida usa solo fixture sintética verificable. El agregado real
+sigue PRIVATE; no hay acceso directo Android a PostgreSQL. Tipos de evidencia no
+son una escala universal de calidad. Baseline de media móvil con evaluación
+temporal; sin elasticidad causal, promoción automática, nuevas consultas Redshift
+ni reactivación de Actions. Instalar publishing es opt-in en schema_sync.

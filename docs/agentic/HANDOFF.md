@@ -1,61 +1,75 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-08
-Task: MEDALLIO-OS-MVP-001 — Construir Medallio OS local
+Generated at: 2026-10-09T19:00:16Z
+Task: ATLAS-PUBLISH-001 — Productos analíticos portables y evidencia para Atlas
 From: chatgpt
 To: human
 Status: REVIEW_READY
-Branch: feat/medallio-os-mvp
-Implementation checkpoint: 8d43666c0299016cf868f0c94b83417533be40b6
+Branch: feat/atlas-analytical-products
+Commit at checkpoint: 3863a0342a09e1cc74672542508ec17107fecc9b
 
 ## Exact next action
 
-Revisar el PR y probar la app en `C:\Projects\bd_replica_crm` preservando primero
-los cambios locales no confirmados. No fusionar automáticamente sobre un working
-tree sucio.
+Publicar PR autorizado; instalar publishing y probar fuente local en el PC
 
-## Delivered
+## Working-tree state
 
-- `apps/medallio_os/app.py`: shell Streamlit con 8 módulos locales.
-- `src/replica_cygnus/medallio_os/runtime.py`: descubrimiento de kernels/notebooks,
-  ejecución segura de copias y puente a Medallio Ambassador.
-- `src/replica_cygnus/medallio_os/analytics.py`: perfil DQ y benchmark Mes 0.
-- `scripts/run_medallio_os.ps1`: launcher Windows.
-- `.medallio/` ignorado por Git para resultados de ejecución.
-- pruebas unitarias enfocadas para runtime y analytics.
+Dirty: yes
 
-## Validation
+### Changed files
 
-En un entorno aislado con el mismo código fuente se ejecutaron 12 pruebas enfocadas:
-`12 passed`. Los archivos Python también compilaron sin errores de sintaxis.
-No se ejecutó el CI completo del repositorio ni se verificó contra el PostgreSQL
-local del usuario desde este entorno.
+- M .agent/state.json
+- M README.md
+- M docs/agentic/ACTIVE_TASK.md
+- M docs/agentic/DECISIONS.md
+- M pyproject.toml
+- M scripts/schema_sync.py
+- ?? build/
+- ?? docs/agentic/HANDOFF_MEDALLIO_OS_MVP_001.md
+- ?? docs/publishing/
+- ?? powerbi/atlas_products.sql
+- ?? scripts/publish_atlas.py
+- ?? sql/101_publishing/
+- ?? src/replica_cygnus/publishing/
+- ?? tests/publishing/
 
-## Local smoke test
+### Diff stat
 
-```powershell
-cd C:\Projects\bd_replica_crm
-python -m pip install -e .
-python -m pip install -r apps\medallio_os\requirements.txt
-python -m streamlit run apps\medallio_os\app.py
+```text
+.agent/state.json           |  8 ++++----
+ README.md                   |  6 ++++++
+ docs/agentic/ACTIVE_TASK.md | 28 +++++++++++-----------------
+ docs/agentic/DECISIONS.md   | 15 +++++++++++++++
+ pyproject.toml              |  5 +++++
+ scripts/schema_sync.py      |  8 +++++++-
+ 6 files changed, 48 insertions(+), 22 deletions(-)
 ```
 
-Alternativa:
+### Staged diff stat
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\run_medallio_os.ps1
+```text
+(none)
 ```
 
-## Important local-state note
+## Validation / tests recorded for this checkpoint
 
-La captura del usuario muestra `scripts/medallio_ambassador/run_ambassador.py` y
-notebooks CEO/Control Tower funcionando localmente, pero esos activos no estaban
-en `main` durante esta implementación. La app no los reemplaza: los descubre en
-runtime si están presentes en el working tree local. Esto evita borrar o pisar el
-trabajo sin commit del usuario.
+- 45 pruebas Python aprobadas
+- PGlite: instalación, idempotencia, vistas e inmutabilidad PASS
+- Demo ZIP/importación/HTML y compilación Python PASS
+
+## Notes
+
+- No PostgreSQL real, no suite completa; prueba visual bloqueada por descarga Chromium. Android no modificado.
+
+## Recent commits
+
+- 3863a03 feat: add local Medallio OS for notebooks and analytics (#50)
+- 5ade86c NIGHT-002: harden low-impact refresh contract (#45)
+- 5619115 Forecasting: selección robusta, cobertura y evidencia temporal auditable (#41)
+- 62e784e Exportar estructura de Medallio para preparar ML sin datos personales (#46)
+- f71d420 Datasets econométricos: historia revisada, evidencia diaria y actualización programada (#49)
 
 ## Handoff rule
 
-Inspeccionar el estado Git real y el diff antes de integrar. Evidencia de código,
-runtime y tests tiene prioridad sobre este documento.
+The receiving agent must inspect the real repository state and diff before trusting this summary. Code/runtime evidence and tests outrank this file.
