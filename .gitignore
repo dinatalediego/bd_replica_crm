@@ -22,3 +22,8 @@ output/stock_disponible/*.xlsx
 
 # Medallio OS local notebook executions.
 .medallio/
+
+# Local secrets
+.secrets/
+**/.ipynb_checkpoints/
+
