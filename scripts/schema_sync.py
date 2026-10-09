@@ -19,6 +19,11 @@ class SchemaComponent:
 
 COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
+        name="publishing",
+        files=("sql/101_publishing/01_registry.sql",),
+        expected_relations=("publish.product_release", "publish.data_product", "publish.model_run", "publish.finding", "publish.decision_insight", "publish.wisdom_card", "publish.decision_event", "publish.decision_learning"),
+    ),
+    SchemaComponent(
         name="commercial_forecasting",
         files=(
             "sql/97_commercial_forecasting/01_evidence.sql",
@@ -429,7 +434,8 @@ def main() -> int:
     settings = load_settings()
     root = Path(settings.project_root)
 
-    selected = COMPONENTS
+    # Publishing is opt-in; existing unattended schema sync must not install it.
+    selected = tuple(c for c in COMPONENTS if c.name != "publishing")
     if args.only:
         requested = set(args.only)
         selected = tuple(c for c in COMPONENTS if c.name in requested)

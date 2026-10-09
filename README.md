@@ -113,3 +113,9 @@ excluyendo stock bloqueado. Son hipótesis económicas, no ventas causadas por M
 [Contrato, controles y pasos para VS Code](docs/ML_IMPACT_SCENARIOS.md).
 
 [Guía de Power BI para cobertura, pronóstico y resultados maduros](docs/COMMERCIAL_FORECASTING_POWERBI.md). [Arquitectura de robustez v2](docs/COMMERCIAL_FORECASTING_ROBUSTNESS.md).
+
+## Productos analíticos portables para Atlas
+
+La capa opcional [Medallio → Atlas](docs/publishing/README.md) produce Data,
+Model, Story y Scenario Packs versionados, con una demo sintética offline y
+registro privado de evidencia. No modifica la réplica ni la programación horaria.

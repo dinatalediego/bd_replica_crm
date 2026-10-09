@@ -3,29 +3,29 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "MEDALLIO-OS-MVP-001",
-    "title": "Construir Medallio OS local sobre kernels, notebooks y Ambassador",
+    "id": "ATLAS-PUBLISH-001",
+    "title": "Productos analíticos portables y evidencia para Atlas",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Revisar PR, preservar working tree local y ejecutar smoke test de Streamlit"
+    "next_action": "Publicar PR autorizado; instalar publishing y probar fuente local en el PC"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/medallio-os-mvp",
-    "checkpoint_commit": "8d43666c0299016cf868f0c94b83417533be40b6",
-    "dirty": false
+    "working_branch": "feat/atlas-analytical-products",
+    "checkpoint_commit": "3863a0342a09e1cc74672542508ec17107fecc9b",
+    "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-08T17:51:18Z",
+    "last_checked_at": "2026-10-09T19:00:16Z",
     "tests": [
-      "12 pruebas enfocadas de Medallio OS aprobadas en entorno aislado",
-      "Compilación Python de runtime, analytics, app y tests sin errores"
+      "45 pruebas Python aprobadas",
+      "PGlite: instalación, idempotencia, vistas e inmutabilidad PASS",
+      "Demo ZIP/importación/HTML y compilación Python PASS"
     ],
     "notes": [
-      "CI completo del repositorio no ejecutado desde este entorno.",
-      "Ambassador y notebooks CEO/Control Tower observados en el working tree local del usuario no estaban en main; la app los descubre dinámicamente."
+      "No PostgreSQL real, no suite completa; prueba visual bloqueada por descarga Chromium. Android no modificado."
     ]
   },
-  "updated_at": "2026-10-08T17:51:18Z"
+  "updated_at": "2026-10-09T19:00:16Z"
 }

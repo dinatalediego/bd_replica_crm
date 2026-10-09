@@ -22,7 +22,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+publishing = ["jsonschema>=4.23,<5"]
 dev = [
+  "jsonschema>=4.23,<5",
   "pytest>=8.0,<9",
   "matplotlib>=3.9,<4",
 ]
@@ -47,3 +49,6 @@ where = ["src"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.setuptools.package-data]
+"replica_cygnus.publishing" = ["schemas/*.json"]
