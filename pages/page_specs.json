@@ -1,0 +1,169 @@
+{
+  "version": "1.0",
+  "principle": "The first page must answer What needs my attention now? in under 30 seconds.",
+  "pages": [
+    {
+      "name": "01 CEO Control Tower",
+      "top_cards": [
+        "Scheduled Interventions",
+        "Active Executions",
+        "Waiting Outcomes",
+        "Mature Outcomes"
+      ],
+      "visuals": [
+        {
+          "type": "table",
+          "title": "What needs attention now",
+          "fields": [
+            "project_key",
+            "project_name",
+            "what_needs_me_now",
+            "priority_score",
+            "execution_health",
+            "outcome_phase_status",
+            "schedule_band"
+          ],
+          "sort": "priority_score desc"
+        },
+        {
+          "type": "bar",
+          "title": "Portfolio by required action",
+          "axis": "what_needs_me_now",
+          "value": "distinct project_key"
+        },
+        {
+          "type": "table",
+          "title": "Critical controls",
+          "fields": [
+            "project_key",
+            "metric_semantics_status",
+            "milestone_status_review_required",
+            "contract_deadline",
+            "days_to_outcome_due"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Decision & Execution",
+      "top_cards": [
+        "Contracts Ready to Start",
+        "Contracts In Execution",
+        "Executions At Risk",
+        "Material Scope Changes"
+      ],
+      "visuals": [
+        {
+          "type": "matrix",
+          "title": "Contract → execution state",
+          "rows": [
+            "project_name",
+            "contract_code"
+          ],
+          "values": [
+            "execution_status",
+            "execution_health",
+            "owner"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Execution timeline",
+          "fields": [
+            "project_key",
+            "event_ts",
+            "event_type",
+            "actor",
+            "note",
+            "is_material_change"
+          ]
+        },
+        {
+          "type": "cards",
+          "title": "Cost and evidence",
+          "values": [
+            "Actual Action Cost",
+            "Evidence Attached"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Outcome & ROI",
+      "top_cards": [
+        "Waiting Outcomes",
+        "Mature Outcomes",
+        "Observed Value Realized",
+        "Observed Net Value",
+        "Observed ROI"
+      ],
+      "visuals": [
+        {
+          "type": "table",
+          "title": "Outcome maturity",
+          "fields": [
+            "project_name",
+            "outcome_phase_status",
+            "outcome_due_date",
+            "latest_outcome_value",
+            "latest_value_realized",
+            "observed_net_value",
+            "observed_roi"
+          ]
+        }
+      ],
+      "note": "Label ROI as observed/accounting association unless a causal identification design exists."
+    },
+    {
+      "name": "04 Predictive Evidence",
+      "top_cards": [],
+      "visuals": [
+        {
+          "type": "table",
+          "title": "Predictive evidence factory",
+          "fields": [
+            "project_key",
+            "evidence_level",
+            "prospective_issue_rows",
+            "next_maturity",
+            "performance_rows"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Project Deep Dive",
+      "slicer": "project_name",
+      "top_cards": [
+        "Total Gap Value",
+        "Average Months to Zero",
+        "Average Absorption 3M"
+      ],
+      "visuals": [
+        {
+          "type": "cards",
+          "title": "Commercial state",
+          "fields": [
+            "stock_units",
+            "sales_units",
+            "gap_value",
+            "cumplimiento_actual",
+            "months_to_zero"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Decision context",
+          "fields": [
+            "suggested_action",
+            "suggested_owner",
+            "evidence_level",
+            "schedule_band",
+            "execution_status",
+            "outcome_sla_status"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+nbformat>=5.10
+nbconvert>=7.16
+jupyter-client>=8.6
+ipykernel>=6.29
+google-api-python-client>=2.150
+google-auth>=2.35
+google-auth-oauthlib>=1.2

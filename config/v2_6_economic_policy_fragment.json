@@ -1,0 +1,21 @@
+{
+  "economic_decision_policy": {
+    "currency": "PEN",
+    "currency_symbol": "S/",
+    "confidence_by_evidence_grade": {
+      "A": 0.8,
+      "B": 0.65,
+      "C": 0.45
+    },
+    "max_decisions": 12,
+    "max_projects": 10,
+    "economic_escalation_enabled": false,
+    "critical_value_at_risk": null
+  },
+  "interpretation": {
+    "value_at_risk": "Brecha económica o valor potencialmente comprometido; no equivale a pérdida realizada.",
+    "value_to_capture": "Beneficio incremental estimado; requiere hipótesis y evidencia.",
+    "confidence_adjusted_value": "Value to Capture multiplicado por confianza; no sustituye evaluación causal.",
+    "growth_altitude": "Madurez del problema de negocio cubierto, no madurez tecnológica del modelo."
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "page_name": "Predictive Evidence",
+  "sections": [
+    {
+      "name": "Executive clock",
+      "visuals": [
+        "Next Evidence Unlock",
+        "Expected Pairs Next Unlock",
+        "Evaluated Prospective Pairs",
+        "Portfolio Champion Status"
+      ]
+    },
+    {
+      "name": "Evidence calendar",
+      "visual": "Matrix by expected_evidence_unlock × lead_time_bucket",
+      "values": [
+        "evaluation_candidates",
+        "evaluated_candidates",
+        "blocked_scope_candidates"
+      ]
+    },
+    {
+      "name": "Model scoreboard",
+      "visual": "Matrix by model_name × lead_time_bucket",
+      "values": [
+        "mature_pairs",
+        "distinct_target_periods",
+        "wape",
+        "bias",
+        "naive_wape",
+        "skill_vs_naive",
+        "promotion_readiness"
+      ]
+    },
+    {
+      "name": "Champion governance",
+      "visual": "Table",
+      "values": [
+        "lead_time_bucket",
+        "champion_status",
+        "approved_model_name",
+        "recommended_model_name",
+        "recommended_skill_vs_naive"
+      ]
+    }
+  ]
+}

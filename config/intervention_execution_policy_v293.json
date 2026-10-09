@@ -1,0 +1,53 @@
+{
+  "version": "2.9.3",
+  "principle": "An approved contract is not proof that the intervention occurred. Execution must be evidenced separately from outcome.",
+  "initial_projects": [
+    "MD",
+    "MT"
+  ],
+  "allowed_execution_states": [
+    "SCHEDULED",
+    "STARTED",
+    "IMPLEMENTED",
+    "COMPLETED",
+    "CANCELLED"
+  ],
+  "allowed_event_types": [
+    "SCHEDULED",
+    "STARTED",
+    "IMPLEMENTED",
+    "SCOPE_CHANGED",
+    "PRICE_CHANGED",
+    "DISCOUNT_CHANGED",
+    "CAMPAIGN_CHANGED",
+    "BUDGET_CHANGED",
+    "COST_RECORDED",
+    "EVIDENCE_ATTACHED",
+    "COMPLETED",
+    "CANCELLED"
+  ],
+  "required_evidence": {
+    "STARTED": [
+      "actual_start_date",
+      "execution_note",
+      "actor"
+    ],
+    "IMPLEMENTED": [
+      "implementation_note",
+      "actor"
+    ],
+    "COMPLETED": [
+      "actual_end_date",
+      "completion_note",
+      "actor"
+    ]
+  },
+  "guardrails": {
+    "do_not_edit_frozen_contract": true,
+    "do_not_infer_execution_from_contract_activation": true,
+    "do_not_infer_outcome_from_execution": true,
+    "do_not_infer_causality_from_outcome": true,
+    "require_reason_for_scope_change": true,
+    "retain_full_event_history": true
+  }
+}

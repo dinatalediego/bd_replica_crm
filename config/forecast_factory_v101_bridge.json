@@ -1,0 +1,15 @@
+{
+  "version": "1.0.1",
+  "purpose": "Make Forecast Factory v1 compatible with Medallio's existing commercial_forecasting engine without falsifying interval, issuance, or cumulative-horizon semantics.",
+  "fixes": [
+    "Prediction intervals may be NULL when temporal support is insufficient; absence blocks defendability rather than fabricating certainty.",
+    "Forecasts explicitly declare PERIOD_VALUE vs CUMULATIVE_WINDOW semantics.",
+    "Cumulative forecasts carry origin/window start/window end.",
+    "Evidence class supports SHADOW in addition to PROSPECTIVE and BACKTEST.",
+    "Legacy commercial_forecasting runs can be bridged idempotently into the canonical factory."
+  ],
+  "legacy_target": "cumulative_sales_units_existing_stock",
+  "legacy_scope": "EXISTING_STOCK_NO_FUTURE_INFLOWS",
+  "naive_model": "mean3",
+  "interval_level": 0.8
+}

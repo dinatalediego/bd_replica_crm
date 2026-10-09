@@ -1,0 +1,32 @@
+{
+  "version": "1.0.3",
+  "name": "Evidence Calendar + Automated Maturity Evaluator + Model Scoreboard",
+  "evaluation_sample_policy": "LATEST_WITHIN_MODEL_PROJECT_TARGET_LEAD_BUCKET",
+  "scoreboard_policy": {
+    "portfolio": {
+      "min_mature_pairs": 6,
+      "min_distinct_target_periods": 3,
+      "min_distinct_projects": 3,
+      "max_wape": 0.25,
+      "min_skill_vs_naive": 0.0,
+      "max_abs_bias": 0.15
+    },
+    "project": {
+      "min_mature_pairs": 3,
+      "min_distinct_target_periods": 3,
+      "max_wape": 0.3,
+      "min_skill_vs_naive": 0.0,
+      "max_abs_bias": 0.2
+    }
+  },
+  "champion_policy": {
+    "automatic_promotion": false,
+    "recommend_only": true,
+    "human_approval_required": true
+  },
+  "automation": {
+    "recommended_frequency": "DAILY",
+    "recommended_local_time": "06:15",
+    "run_upstream_v102_before_evaluation": true
+  }
+}

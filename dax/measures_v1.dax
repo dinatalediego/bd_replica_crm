@@ -1,0 +1,154 @@
+-- =========================================================
+-- Medallio AI Control Tower v1
+-- Suggested table names after import:
+-- Dim Project
+-- AI Control Tower
+-- Control Tower KPIs
+-- Intervention Monitoring
+-- Intervention Events
+-- Outcome ROI
+-- Predictive Evidence
+-- Project Deep Dive
+-- Contract Semantics Issues
+-- =========================================================
+
+Scheduled Interventions =
+SUM ( 'Control Tower KPIs'[scheduled_interventions] )
+
+Active Executions =
+SUM ( 'Control Tower KPIs'[active_executions] )
+
+Waiting Outcomes =
+SUM ( 'Control Tower KPIs'[waiting_outcomes] )
+
+Mature Outcomes =
+SUM ( 'Control Tower KPIs'[mature_outcomes] )
+
+Executions At Risk =
+SUM ( 'Control Tower KPIs'[executions_at_risk] )
+
+Metric Semantics Issues =
+SUM ( 'Control Tower KPIs'[contracts_with_metric_semantics_issue] )
+
+Projects in Tower =
+DISTINCTCOUNT ( 'AI Control Tower'[project_key] )
+
+Projects Needing Attention =
+CALCULATE (
+    DISTINCTCOUNT ( 'AI Control Tower'[project_key] ),
+    'AI Control Tower'[what_needs_me_now] <> "MONITOR"
+)
+
+Attention Share =
+DIVIDE ( [Projects Needing Attention], [Projects in Tower] )
+
+Average Priority Score =
+AVERAGE ( 'AI Control Tower'[priority_score] )
+
+Highest Priority Score =
+MAX ( 'AI Control Tower'[priority_score] )
+
+Actual Action Cost =
+SUM ( 'Outcome ROI'[actual_action_cost] )
+
+Planned Action Cost =
+SUM ( 'Outcome ROI'[planned_action_cost] )
+
+Observed Value Realized =
+SUM ( 'Outcome ROI'[latest_value_realized] )
+
+Observed Net Value =
+SUM ( 'Outcome ROI'[observed_net_value] )
+
+Observed ROI =
+DIVIDE ( [Observed Net Value], [Actual Action Cost] )
+
+Contracts Ready to Start =
+CALCULATE (
+    DISTINCTCOUNT ( 'Intervention Monitoring'[contract_code] ),
+    'Intervention Monitoring'[execution_health] = "READY_TO_START"
+)
+
+Contracts Blocked by Metric =
+CALCULATE (
+    DISTINCTCOUNT ( 'Intervention Monitoring'[contract_code] ),
+    'Intervention Monitoring'[execution_health] = "BLOCKED_METRIC_SEMANTICS"
+)
+
+Contracts In Execution =
+CALCULATE (
+    DISTINCTCOUNT ( 'Intervention Monitoring'[contract_code] ),
+    'Intervention Monitoring'[execution_status] IN { "STARTED", "IMPLEMENTED" }
+)
+
+Contracts Completed =
+CALCULATE (
+    DISTINCTCOUNT ( 'Intervention Monitoring'[contract_code] ),
+    'Intervention Monitoring'[execution_status] = "COMPLETED"
+)
+
+Days to Next Outcome =
+MINX (
+    FILTER (
+        'Intervention Monitoring',
+        NOT ISBLANK ( 'Intervention Monitoring'[days_to_outcome_due] )
+    ),
+    'Intervention Monitoring'[days_to_outcome_due]
+)
+
+Days to Nearest Contract Deadline =
+MINX (
+    FILTER (
+        'Intervention Monitoring',
+        NOT ISBLANK ( 'Intervention Monitoring'[days_to_contract_deadline] )
+    ),
+    'Intervention Monitoring'[days_to_contract_deadline]
+)
+
+Evidence Attached =
+SUM ( 'Intervention Monitoring'[evidence_count] )
+
+Material Scope Changes =
+SUM ( 'Intervention Monitoring'[material_change_count] )
+
+Projects Fix Data =
+CALCULATE (
+    DISTINCTCOUNT ( 'AI Control Tower'[project_key] ),
+    'AI Control Tower'[what_needs_me_now] = "FIX DATA"
+)
+
+Projects Design =
+CALCULATE (
+    DISTINCTCOUNT ( 'AI Control Tower'[project_key] ),
+    'AI Control Tower'[what_needs_me_now] = "DESIGN"
+)
+
+Projects Build Evidence =
+CALCULATE (
+    DISTINCTCOUNT ( 'AI Control Tower'[project_key] ),
+    'AI Control Tower'[what_needs_me_now] = "BUILD EVIDENCE"
+)
+
+Projects Start Action =
+CALCULATE (
+    DISTINCTCOUNT ( 'AI Control Tower'[project_key] ),
+    'AI Control Tower'[what_needs_me_now] = "START ACTION"
+)
+
+Projects Fix Contract Metric =
+CALCULATE (
+    DISTINCTCOUNT ( 'AI Control Tower'[project_key] ),
+    'AI Control Tower'[what_needs_me_now] = "FIX CONTRACT METRIC"
+)
+
+Average Days to Delivery =
+AVERAGE ( 'AI Control Tower'[days_to_preliminary_delivery] )
+
+Total Gap Value =
+SUM ( 'Project Deep Dive'[gap_value] )
+
+Average Months to Zero =
+AVERAGE ( 'Project Deep Dive'[months_to_zero] )
+
+Average Absorption 3M =
+AVERAGE ( 'Project Deep Dive'[absorcion_promedio_3m] )
