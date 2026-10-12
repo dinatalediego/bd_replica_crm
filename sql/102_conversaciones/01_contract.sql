@@ -62,12 +62,19 @@ CREATE TABLE IF NOT EXISTS analytics.conversation_events (
     note text NOT NULL,
     first_run_id bigint NOT NULL REFERENCES etl_control.conversation_import_runs(run_id),
     inserted_at timestamptz NOT NULL DEFAULT now(),
+    unit_code text,
+    related_event_id char(64),
     UNIQUE (message_id, ruleset_version, event_index)
 );
+-- The contract was installed before contextual event linking on some PCs.
+ALTER TABLE analytics.conversation_events ADD COLUMN IF NOT EXISTS unit_code text;
+ALTER TABLE analytics.conversation_events ADD COLUMN IF NOT EXISTS related_event_id char(64);
 CREATE INDEX IF NOT EXISTS ix_conversation_events_type_date
     ON analytics.conversation_events(source_id, event_type, reported_date);
 CREATE INDEX IF NOT EXISTS ix_conversation_events_review
     ON analytics.conversation_events(source_id, review_required, reported_date);
+CREATE INDEX IF NOT EXISTS ix_conversation_events_related
+    ON analytics.conversation_events(related_event_id) WHERE related_event_id IS NOT NULL;
 
 CREATE OR REPLACE FUNCTION etl_control.protect_conversation_evidence()
 RETURNS trigger LANGUAGE plpgsql AS $$
@@ -88,7 +95,11 @@ DO $$ BEGIN
 END $$;
 
 CREATE OR REPLACE VIEW analytics.v_conversation_events_current AS
-SELECT e.*, m.sent_at AS message_at, m.sender, m.source_line, m.is_multimedia
+SELECT e.event_id, e.message_id, e.source_id, e.event_index, e.ruleset_version,
+       e.event_type, e.reported_date, e.project_name, e.venue_type, e.count_min,
+       e.count_max, e.confidence, e.review_required, e.note, e.first_run_id,
+       e.inserted_at, m.sent_at AS message_at, m.sender, m.source_line,
+       m.is_multimedia, e.unit_code, e.related_event_id
 FROM analytics.conversation_events e
 JOIN etl_control.conversation_sources s ON s.source_id=e.source_id
 JOIN raw_conversations.messages m ON m.message_id=e.message_id
@@ -149,28 +160,18 @@ SELECT source_id, sent_at::date AS message_date, extract(hour from sent_at)::int
 FROM raw_conversations.messages
 GROUP BY source_id, sent_at::date, extract(hour from sent_at);
 
--- Assign each congratulation to the closest preceding announcement within 15 minutes.
+-- Only contextual reactions linked to a preceding announcement are counted.
+-- The initial columns retain the previous Power BI contract.
 CREATE OR REPLACE VIEW analytics.v_conversation_sale_reactions AS
-WITH reactions AS (
-    SELECT sale.event_id, m.message_id, m.sender, m.sent_at,
-           extract(epoch from (m.sent_at-sale.message_at))/60.0 AS latency_minutes
-    FROM raw_conversations.messages m
-    JOIN LATERAL (
-        SELECT e.event_id, e.message_at, e.sender
-        FROM analytics.v_conversation_events_current e
-        WHERE e.source_id=m.source_id AND e.event_type='separacion_anuncio'
-          AND e.message_at<=m.sent_at AND e.message_at>m.sent_at-interval '15 minutes'
-          AND e.message_id<>m.message_id
-        ORDER BY e.message_at DESC, e.event_id DESC LIMIT 1
-    ) sale ON true
-    WHERE m.body ~* 'felicit|felicidades|buena|bravo|esooo'
-      AND m.sender IS DISTINCT FROM sale.sender
-)
 SELECT e.event_id, e.message_at AS announcement_at, e.project_name,
-       count(r.message_id) AS reactions_15m,
-       count(DISTINCT r.sender) AS distinct_reactors_15m,
-       min(r.latency_minutes) AS first_reaction_minutes
+       count(r.message_id) FILTER (WHERE r.message_at <= e.message_at + interval '15 minutes') AS reactions_15m,
+       count(DISTINCT r.sender) FILTER (WHERE r.message_at <= e.message_at + interval '15 minutes') AS distinct_reactors_15m,
+       min(extract(epoch from (r.message_at-e.message_at))/60.0) AS first_reaction_minutes,
+       count(r.message_id) AS reactions_24h,
+       count(DISTINCT r.sender) AS distinct_reactors_24h,
+       e.unit_code, e.source_id
 FROM analytics.v_conversation_events_current e
-LEFT JOIN reactions r ON r.event_id=e.event_id
+LEFT JOIN analytics.v_conversation_events_current r
+    ON r.related_event_id=e.event_id AND r.event_type='celebracion'
 WHERE e.event_type='separacion_anuncio'
-GROUP BY e.event_id,e.message_at,e.project_name;
+GROUP BY e.event_id,e.message_at,e.project_name,e.unit_code;

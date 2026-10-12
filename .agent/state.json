@@ -8,24 +8,18 @@
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Revisar PR; en el PC importar TXT privado y validar vistas con PostgreSQL local"
+    "next_action": "Traer PR #53, ejecutar scripts/run_conversaciones_y_zip.bat y adjuntar el ZIP privado al siguiente chat"
   },
   "git": {
     "base_branch": "main",
     "working_branch": "feat/conversation-intelligence-manual",
-    "checkpoint_commit": "eedebdaa24b7a5b5766691b43b19508c114528ca",
-    "dirty": false
+    "checkpoint_commit": "6d2d486308d29111118fb9395a8f0019fcf62e1e",
+    "dirty": true
   },
   "validation": {
-    "last_checked_at": "2026-10-12T15:58:12Z",
-    "tests": [
-      "5 pruebas unittest enfocadas PASS",
-      "Parseo de 25,421 mensajes en lectura PASS",
-      "compileall y git diff --check PASS"
-    ],
-    "notes": [
-      "No hay acceso al PostgreSQL del usuario; SQL pendiente de smoke test local."
-    ]
+    "last_checked_at": "2026-10-12T22:30:10Z",
+    "tests": [],
+    "notes": []
   },
-  "updated_at": "2026-10-12T15:58:12Z"
+  "updated_at": "2026-10-12T22:30:10Z"
 }

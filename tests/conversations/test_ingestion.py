@@ -5,7 +5,7 @@ import unittest
 from datetime import date, datetime
 from pathlib import Path
 
-from replica_cygnus.conversations.extraction import extract_events
+from replica_cygnus.conversations.extraction import extract_events, extract_linked_events
 from replica_cygnus.conversations.parser import parse_export
 from replica_cygnus.conversations.service import HistoricalExportChanged, validate_append_only
 from scripts.dw_refresh import _steps
@@ -68,17 +68,41 @@ class ConversationIngestionTests(unittest.TestCase):
         self.assertEqual([e.count_min for e in extract_events(messages[2])
                           if e.event_type == "visita_reporte"], [0])
 
-    def test_sales_and_social_reactions_are_distinct(self):
+    def test_reactions_link_to_sale_for_up_to_24_hours(self):
         messages = self.write(
             "5/3/25, 5:00\u202fp.\u202fm. - Ana: Separación Fenix dpto 1703\n"
             "5/3/25, 5:01\u202fp.\u202fm. - Beto: Felicitaciones Ana, más separaciones!\n"
-            "5/3/25, 5:02\u202fp.\u202fm. - Carla: Una minuta más y llegamos\n"
+            "6/3/25, 4:59\u202fp.\u202fm. - Carla: Bravo Ana por Fenix 1703!\n"
+            "6/3/25, 5:02\u202fp.\u202fm. - Dani: Felicitaciones Ana!\n"
+            "6/3/25, 5:03\u202fp.\u202fm. - Ana: Vamos equipo!\n"
+            "6/3/25, 5:04\u202fp.\u202fm. - Eva: Una minuta más y llegamos\n"
         )
-        kinds = [[event.event_type for event in extract_events(m)] for m in messages]
-        self.assertIn("separacion_anuncio", kinds[0])
-        self.assertNotIn("separacion_anuncio", kinds[1])
-        self.assertIn("celebracion", kinds[1])
-        self.assertNotIn("minuta_reporte", kinds[2])
+        events = extract_linked_events(messages)
+        sales = [e for e in events if e.event_type == "separacion_anuncio"]
+        reactions = [e for e in events if e.event_type == "celebracion"]
+        self.assertEqual(len(sales), 1)
+        self.assertEqual({e.message_id for e in reactions},
+                         {messages[1].message_id, messages[2].message_id})
+        self.assertTrue(all(e.related_event_id == sales[0].event_id for e in reactions))
+        self.assertTrue(all(e.unit_code == "1703" for e in reactions))
+        self.assertFalse(any(e.message_id in {messages[3].message_id, messages[4].message_id}
+                             for e in reactions))
+        self.assertFalse(any(e.event_type == "minuta_reporte" for e in events))
+
+    def test_visit_number_does_not_require_venue_or_followup_message(self):
+        messages = self.write(
+            "22/6/25, 11:26\u202fa.\u202fm. - Ana: Ayer Nelly atendió aproximadamente 20 personas\n"
+            "Luis unas 14\n"
+            "22/6/25, 11:30\u202fa.\u202fm. - Eva: Ayer Nelly atendió aproximadamente 20 personas y Luis unas 14\n"
+            "22/6/25, 11:45\u202fa.\u202fm. - Luis: Buenos días, ayer en promedio unos 15 atendí\n"
+            "22/6/25, 12:00\u202fp.\u202fm. - Ana: Separación Fenix dpto 1703 cliente Carlos\n"
+        )
+        reports = [e for message in messages for e in extract_events(message)
+                   if e.event_type == "visita_reporte"]
+        self.assertEqual([(e.count_min, e.count_max) for e in reports],
+                         [(20, 20), (14, 14), (20, 20), (14, 14), (15, 15)])
+        self.assertTrue(all(e.reported_date == date(2025, 6, 21) for e in reports))
+        self.assertTrue(all(e.venue_type is None and e.review_required for e in reports))
 
     def test_manual_only_includes_conversations_when_txt_exists(self):
         import scripts.dw_refresh as refresh

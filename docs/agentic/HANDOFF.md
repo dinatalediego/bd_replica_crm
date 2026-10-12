@@ -1,30 +1,48 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-12T15:58:12Z
+Generated at: 2026-10-12T22:30:10Z
 Task: CHAT-CONVERSATIONS-001 — Importación manual incremental de conversaciones comerciales
 From: chatgpt
 To: human
 Status: REVIEW_READY
 Branch: feat/conversation-intelligence-manual
-Commit at checkpoint: eedebdaa24b7a5b5766691b43b19508c114528ca
+Commit at checkpoint: 6d2d486308d29111118fb9395a8f0019fcf62e1e
 
 ## Exact next action
 
-Revisar PR; en el PC importar TXT privado y validar vistas con PostgreSQL local
+Traer PR #53, ejecutar scripts/run_conversaciones_y_zip.bat y adjuntar el ZIP privado al siguiente chat
 
 ## Working-tree state
 
-Dirty: no
+Dirty: yes
 
 ### Changed files
 
-- None
+- M conversaciones/README.md
+- M docs/agentic/ACTIVE_TASK.md
+- M docs/agentic/DECISIONS.md
+- M docs/conversaciones/README.md
+- M sql/102_conversaciones/01_contract.sql
+- M src/replica_cygnus/conversations/extraction.py
+- M src/replica_cygnus/conversations/service.py
+- M tests/conversations/test_ingestion.py
+- ?? scripts/export_conversaciones_diagnostico.py
+- ?? scripts/run_conversaciones_y_zip.bat
+- ?? tests/conversations/test_export.py
 
 ### Diff stat
 
 ```text
-(none)
+conversaciones/README.md                       |   2 +
+ docs/agentic/ACTIVE_TASK.md                    |  14 ++-
+ docs/agentic/DECISIONS.md                      |  16 +++
+ docs/conversaciones/README.md                  |  32 +++++-
+ sql/102_conversaciones/01_contract.sql         |  45 ++++----
+ src/replica_cygnus/conversations/extraction.py | 143 ++++++++++++++++++++++---
+ src/replica_cygnus/conversations/service.py    |  16 ++-
+ tests/conversations/test_ingestion.py          |  40 +++++--
+ 8 files changed, 249 insertions(+), 59 deletions(-)
 ```
 
 ### Staged diff stat
@@ -35,21 +53,19 @@ Dirty: no
 
 ## Validation / tests recorded for this checkpoint
 
-- 5 pruebas unittest enfocadas PASS
-- Parseo de 25,421 mensajes en lectura PASS
-- compileall y git diff --check PASS
+- None
 
 ## Notes
 
-- No hay acceso al PostgreSQL del usuario; SQL pendiente de smoke test local.
+- None
 
 ## Recent commits
 
+- 6d2d486 docs: checkpoint conversation ingestion handoff
 - eedebda feat(conversations): import WhatsApp exports into local Medallio manually
 - 3863a03 feat: add local Medallio OS for notebooks and analytics (#50)
 - 5ade86c NIGHT-002: harden low-impact refresh contract (#45)
 - 5619115 Forecasting: selección robusta, cobertura y evidencia temporal auditable (#41)
-- 62e784e Exportar estructura de Medallio para preparar ML sin datos personales (#46)
 
 ## Handoff rule
 

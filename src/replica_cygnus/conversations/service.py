@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
-from .extraction import RULESET_VERSION, extract_events
+from .extraction import RULESET_VERSION, extract_linked_events
 from .parser import Message, parse_export
 
 
@@ -89,7 +89,12 @@ def import_export(conn, path: Path | str, *, batch_size: int = 500) -> ImportRes
             new_messages = validate_append_only(messages, old_ids)
             reclassify = RULESET_VERSION != old_ruleset
             to_extract = messages if reclassify else new_messages
-            events = [event for message in to_extract for event in extract_events(message)]
+            # Contextual reactions may refer to a sale in the previously loaded
+            # prefix. Analyze the full sequence, then retain events belonging
+            # to new messages on ordinary incremental imports.
+            all_events = extract_linked_events(messages)
+            new_ids = {message.message_id for message in to_extract}
+            events = [event for event in all_events if event.message_id in new_ids]
             cur.execute("""
                 INSERT INTO etl_control.conversation_import_runs
                     (source_id,file_sha256,parsed_messages,new_messages,new_events,ruleset_version)
@@ -109,11 +114,12 @@ def import_export(conn, path: Path | str, *, batch_size: int = 500) -> ImportRes
                     INSERT INTO analytics.conversation_events
                         (event_id,message_id,source_id,event_index,ruleset_version,event_type,
                          reported_date,project_name,venue_type,count_min,count_max,confidence,
-                         review_required,note,first_run_id)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                         review_required,note,first_run_id,unit_code,related_event_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, [(e.event_id,e.message_id,source_id,e.event_index,e.ruleset_version,
                           e.event_type,e.reported_date,e.project_name,e.venue_type,e.count_min,
-                          e.count_max,e.confidence,e.review_required,e.note,run_id) for e in chunk])
+                          e.count_max,e.confidence,e.review_required,e.note,run_id,
+                          e.unit_code,e.related_event_id) for e in chunk])
             cur.execute("""
                 UPDATE etl_control.conversation_sources
                 SET last_file_sha256=%s, message_count=%s, current_ruleset_version=%s,
