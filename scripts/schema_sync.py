@@ -24,6 +24,23 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_relations=("publish.product_release", "publish.data_product", "publish.model_run", "publish.finding", "publish.decision_insight", "publish.wisdom_card", "publish.decision_event", "publish.decision_learning"),
     ),
     SchemaComponent(
+        name="conversaciones",
+        files=("sql/102_conversaciones/01_contract.sql",),
+        expected_relations=(
+            "etl_control.conversation_sources",
+            "etl_control.conversation_import_runs",
+            "raw_conversations.messages",
+            "analytics.conversation_events",
+            "analytics.v_conversation_events_current",
+            "analytics.v_conversation_visit_reports",
+            "analytics.v_conversation_visits_daily",
+            "analytics.v_conversation_project_hourly",
+            "analytics.v_conversation_project_day_signals",
+            "analytics.v_conversation_daily_rhythm",
+            "analytics.v_conversation_sale_reactions",
+        ),
+    ),
+    SchemaComponent(
         name="commercial_forecasting",
         files=(
             "sql/97_commercial_forecasting/01_evidence.sql",
@@ -431,11 +448,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    settings = load_settings()
+    settings = load_settings(require_source=False)
     root = Path(settings.project_root)
 
-    # Publishing is opt-in; existing unattended schema sync must not install it.
-    selected = tuple(c for c in COMPONENTS if c.name != "publishing")
+    # Publishing and private conversation evidence install only when selected.
+    selected = tuple(c for c in COMPONENTS if c.name not in {"publishing", "conversaciones"})
     if args.only:
         requested = set(args.only)
         selected = tuple(c for c in COMPONENTS if c.name in requested)

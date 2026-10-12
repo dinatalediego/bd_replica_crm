@@ -320,3 +320,10 @@ sigue PRIVATE; no hay acceso directo Android a PostgreSQL. Tipos de evidencia no
 son una escala universal de calidad. Baseline de media móvil con evaluación
 temporal; sin elasticidad causal, promoción automática, nuevas consultas Redshift
 ni reactivación de Actions. Instalar publishing es opt-in en schema_sync.
+
+## MAP-ADR-021 — Conversaciones privadas con carga manual incremental
+
+Date: 2026-10-12
+Status: ACCEPTED
+
+El usuario autorizó importar exportaciones TXT de WhatsApp a Medallio desde una carpeta local mediante una tarea manual. La fuente RAW y los eventos derivados son inmutables; el SHA-256 del archivo y los IDs deterministas permiten insertar solo mensajes nuevos. Un cambio o recorte del historial se rechaza antes de escribir para evitar duplicados silenciosos. Las reglas de extracción llevan versión, conservan evidencia privada y exponen vistas de reportes de visitas, pulso horario y reacción social. El recuento de visitas es la cifra declarada en la conversación y no una medida de visitantes únicos de Sperant; los casos inciertos se marcan para revisión. La tarea horaria, Redshift y ventas canónicas no se modifican.

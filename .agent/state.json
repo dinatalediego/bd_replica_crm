@@ -3,29 +3,29 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "ATLAS-PUBLISH-001",
-    "title": "Productos analíticos portables y evidencia para Atlas",
+    "id": "CHAT-CONVERSATIONS-001",
+    "title": "Importación manual incremental de conversaciones comerciales",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Publicar PR autorizado; instalar publishing y probar fuente local en el PC"
+    "next_action": "Revisar PR; en el PC importar TXT privado y validar vistas con PostgreSQL local"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/atlas-analytical-products",
-    "checkpoint_commit": "3863a0342a09e1cc74672542508ec17107fecc9b",
-    "dirty": true
+    "working_branch": "feat/conversation-intelligence-manual",
+    "checkpoint_commit": "eedebdaa24b7a5b5766691b43b19508c114528ca",
+    "dirty": false
   },
   "validation": {
-    "last_checked_at": "2026-10-09T19:00:16Z",
+    "last_checked_at": "2026-10-12T15:58:12Z",
     "tests": [
-      "45 pruebas Python aprobadas",
-      "PGlite: instalación, idempotencia, vistas e inmutabilidad PASS",
-      "Demo ZIP/importación/HTML y compilación Python PASS"
+      "5 pruebas unittest enfocadas PASS",
+      "Parseo de 25,421 mensajes en lectura PASS",
+      "compileall y git diff --check PASS"
     ],
     "notes": [
-      "No PostgreSQL real, no suite completa; prueba visual bloqueada por descarga Chromium. Android no modificado."
+      "No hay acceso al PostgreSQL del usuario; SQL pendiente de smoke test local."
     ]
   },
-  "updated_at": "2026-10-09T19:00:16Z"
+  "updated_at": "2026-10-12T15:58:12Z"
 }

@@ -1,49 +1,30 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-09T19:00:16Z
-Task: ATLAS-PUBLISH-001 — Productos analíticos portables y evidencia para Atlas
+Generated at: 2026-10-12T15:58:12Z
+Task: CHAT-CONVERSATIONS-001 — Importación manual incremental de conversaciones comerciales
 From: chatgpt
 To: human
 Status: REVIEW_READY
-Branch: feat/atlas-analytical-products
-Commit at checkpoint: 3863a0342a09e1cc74672542508ec17107fecc9b
+Branch: feat/conversation-intelligence-manual
+Commit at checkpoint: eedebdaa24b7a5b5766691b43b19508c114528ca
 
 ## Exact next action
 
-Publicar PR autorizado; instalar publishing y probar fuente local en el PC
+Revisar PR; en el PC importar TXT privado y validar vistas con PostgreSQL local
 
 ## Working-tree state
 
-Dirty: yes
+Dirty: no
 
 ### Changed files
 
-- M .agent/state.json
-- M README.md
-- M docs/agentic/ACTIVE_TASK.md
-- M docs/agentic/DECISIONS.md
-- M pyproject.toml
-- M scripts/schema_sync.py
-- ?? build/
-- ?? docs/agentic/HANDOFF_MEDALLIO_OS_MVP_001.md
-- ?? docs/publishing/
-- ?? powerbi/atlas_products.sql
-- ?? scripts/publish_atlas.py
-- ?? sql/101_publishing/
-- ?? src/replica_cygnus/publishing/
-- ?? tests/publishing/
+- None
 
 ### Diff stat
 
 ```text
-.agent/state.json           |  8 ++++----
- README.md                   |  6 ++++++
- docs/agentic/ACTIVE_TASK.md | 28 +++++++++++-----------------
- docs/agentic/DECISIONS.md   | 15 +++++++++++++++
- pyproject.toml              |  5 +++++
- scripts/schema_sync.py      |  8 +++++++-
- 6 files changed, 48 insertions(+), 22 deletions(-)
+(none)
 ```
 
 ### Staged diff stat
@@ -54,21 +35,21 @@ Dirty: yes
 
 ## Validation / tests recorded for this checkpoint
 
-- 45 pruebas Python aprobadas
-- PGlite: instalación, idempotencia, vistas e inmutabilidad PASS
-- Demo ZIP/importación/HTML y compilación Python PASS
+- 5 pruebas unittest enfocadas PASS
+- Parseo de 25,421 mensajes en lectura PASS
+- compileall y git diff --check PASS
 
 ## Notes
 
-- No PostgreSQL real, no suite completa; prueba visual bloqueada por descarga Chromium. Android no modificado.
+- No hay acceso al PostgreSQL del usuario; SQL pendiente de smoke test local.
 
 ## Recent commits
 
+- eedebda feat(conversations): import WhatsApp exports into local Medallio manually
 - 3863a03 feat: add local Medallio OS for notebooks and analytics (#50)
 - 5ade86c NIGHT-002: harden low-impact refresh contract (#45)
 - 5619115 Forecasting: selección robusta, cobertura y evidencia temporal auditable (#41)
 - 62e784e Exportar estructura de Medallio para preparar ML sin datos personales (#46)
-- f71d420 Datasets econométricos: historia revisada, evidencia diaria y actualización programada (#49)
 
 ## Handoff rule
 
