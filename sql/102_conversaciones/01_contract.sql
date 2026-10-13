@@ -174,4 +174,4 @@ FROM analytics.v_conversation_events_current e
 LEFT JOIN analytics.v_conversation_events_current r
     ON r.related_event_id=e.event_id AND r.event_type='celebracion'
 WHERE e.event_type='separacion_anuncio'
-GROUP BY e.event_id,e.message_at,e.project_name,e.unit_code;
+GROUP BY e.event_id,e.message_at,e.project_name,e.unit_code,e.source_id;
