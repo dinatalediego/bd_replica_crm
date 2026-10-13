@@ -1,7 +1,7 @@
 # Active Task
 
 Task ID: CHAT-CONVERSATIONS-001
-Title: Importación manual incremental de conversaciones comerciales
+Title: Importación y revisión programada de conversaciones comerciales
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
@@ -10,20 +10,23 @@ Base branch: main
 
 ## Result
 
-La versión 2 de reglas vincula felicitaciones a separaciones anteriores hasta
-24 horas con evidencia de asesor/proyecto/unidad, y cuenta visitas numéricas
-sin exigir foto, sede o cierre de sesión. SQL añade vínculo y unidad; un nuevo
-lanzador Windows importa y genera un ZIP privado completo de diagnóstico.
+El diagnóstico local del 12-oct-2026 confirma 25,421 mensajes, dos cargas y
+reglas v2. Se añadió una tarea local de Windows con tres disparadores diarios
+(09:00, 15:00, 21:00). Consulta PostgreSQL antes de cada intento y omite los
+restantes del día de Lima después de una importación con new_messages > 0.
+Las cargas sin mensajes nuevos y los errores no consumen el día. El TXT sigue
+siendo privado y debe reemplazarse manualmente en conversaciones/.
 
 ## Validation
 
-Siete pruebas aisladas PASS; export privado de 25,421 mensajes procesado en
-lectura (32 reportes candidatos de visitas, 421 separaciones y 2,318 reacciones
-vinculadas). Prueba de ZIP con conexión simulada PASS. PostgreSQL local no
-disponible aquí; migración SQL e importación pendiente de smoke test en el PC.
+Cuatro pruebas aisladas del nuevo gate pasan; py_compile pasa. El export
+diagnóstico acredita que la instalación SQL y el importador manual funcionaron
+en el PostgreSQL local. El programador de tareas de Windows no se puede ejecutar
+desde este entorno; requiere smoke test en el PC.
 
 ## Next action
 
-Traer la rama del PR, ejecutar `scripts\\run_conversaciones_y_zip.bat` en el PC
-y adjuntar el ZIP generado al siguiente chat para evaluar falsos positivos y
-negativos con la evidencia completa.
+En la rama, hacer git pull e instalar con
+scripts/install_conversaciones_schedule.ps1. Revisar la tarea y ejecutar
+scripts/check_conversaciones_scheduled.py una vez desde PowerShell. Ver
+docs/conversaciones/PROGRAMACION.md.
