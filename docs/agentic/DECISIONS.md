@@ -357,3 +357,10 @@ fuente durante el día civil de America/Lima, los demás intentos del día se
 omiten consultando conversation_import_runs. Una reclasificación sin mensajes
 nuevos y una revisión sin cambios no bloquean intentos posteriores. El TXT
 lo actualiza manualmente el usuario; la tarea no obtiene contenido de WhatsApp.
+
+## MAP-ADR-023 — Fiscalización local de calidad y reproducibilidad de modelos
+
+Date: 2026-10-13
+Status: ACCEPTED
+
+El usuario autorizó instrumentar controles de calidad para forecast comercial, riesgo de caída de separación y ventas proyecto-mes. Un gate de datos PASS confirma contratos y condiciones evaluables; no certifica precisión ni despliegue. Los resultados prospectivos maduros, el benchmark y el gate predictivo existente siguen siendo necesarios para calcular y defender WAPE. Los datos permanecen en PostgreSQL local: solo se guardan conteos, fechas agregadas y hashes de contrato. No se sube información a Supabase, no se cambian ventas/forecasts canónicos y no se promocionan modelos automáticamente. Los outcomes ausentes se esperan; no se reconstruyen ni imputan para desbloquear una métrica.

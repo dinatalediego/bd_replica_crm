@@ -3,28 +3,29 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "CHAT-CONVERSATIONS-001",
-    "title": "Importación y revisión programada de conversaciones comerciales",
+    "id": "MODEL-DATA-QUALITY-001",
+    "title": "Fiscalización de calidad para datasets predictivos de Medallio",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Traer la rama, instalar la tarea de Windows y verificar una ejecución local"
+    "next_action": "Crear worktree local, instalar componente y ejecutar suites contra PostgreSQL local"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/conversation-intelligence-manual",
-    "checkpoint_commit": "df259a162fd6696b14195db03957114d80dae344",
+    "working_branch": "feat/model-data-quality-gates",
+    "checkpoint_commit": null,
     "dirty": false
   },
   "validation": {
-    "last_checked_at": "2026-10-13T04:22:50.216Z",
+    "last_checked_at": "2026-10-13T05:03:14.432Z",
     "tests": [
-      "PYTHONPATH=src python -m unittest discover -s tests/conversations -p test_schedule.py -v: 4 PASS",
-      "python -m py_compile schedule.py runner.py test_schedule.py: PASS"
+      "python -m py_compile scripts/model_data_quality_gates.py tests/test_model_data_quality_gates.py tests/integration/test_model_data_quality_gates_postgres.py: PASS",
+      "python -m unittest discover -s tests -p test_model_data_quality_gates.py -v: 7 PASS"
     ],
     "notes": [
-      "Programador de tareas y PostgreSQL del PC pendientes de smoke test; diagnóstico del usuario confirma importador y esquema previos."
+      "PostgreSQL Medallio local no disponible en este entorno; falta smoke test de lectura de contratos y registro agregado.",
+      "La auditoría de código detecta que falta trainer supervisado específico y prueba end-to-end para separation_fall_risk."
     ]
   },
-  "updated_at": "2026-10-13T04:22:50.216Z"
+  "updated_at": "2026-10-13T05:03:14.432Z"
 }

@@ -1,26 +1,24 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Task: CHAT-CONVERSATIONS-001 — Importación y revisión programada
+Task: MODEL-DATA-QUALITY-001 — Fiscalización de datasets predictivos
 From: chatgpt
 To: human
 Status: REVIEW_READY
-Branch: feat/conversation-intelligence-manual
-Checkpoint code commit: df259a162fd6696b14195db03957114d80dae344
+Branch: feat/model-data-quality-gates
+Base branch: main
+Checkpoint code commit: pendiente de publicar
 
 ## Exact next action
 
-Traer la rama, instalar `scripts/install_conversaciones_schedule.ps1` en
-PowerShell y ejecutar `scripts/check_conversaciones_scheduled.py` una vez.
-Ver `docs/conversaciones/PROGRAMACION.md` para horarios, requisitos y log.
+Desde el repo local, crear un worktree para esta rama y ejecutar
+python scripts/schema_sync.py --only model_data_quality_gates,
+python -m unittest discover -s tests -p "test_model_data_quality_gates.py" -v,
+python scripts/model_data_quality_gates.py run y status. No subir la data a
+Supabase. Ver docs/MODEL_DATA_QUALITY_GATES.md.
 
-## Evidence
+## Evidence and limits
 
-El diagnóstico privado del usuario contiene 25,421 mensajes, 2 corridas,
-la segunda con 0 mensajes nuevos y 2,935 eventos reclasificados. El código
-de programación consulta `new_messages > 0` para cortar intentos solo
-después de una verdadera ampliación del TXT en el día civil de Lima.
+Siete pruebas unitarias pasaron y ambos archivos Python compilaron. No se obtuvo conexión a la PostgreSQL del PC desde este entorno, por lo que el runner no ha producido conteos reales. La auditoría estática marca como pendiente un trainer supervisado específico de riesgo de caída. El estado informado anteriormente fue 84 forecasts emitidos, 70 activos/incubando, 0 evaluados y 0 pares maduros; con esos datos WAPE sigue N/A y el backtest retrospectivo BACKTEST_ONLY no lo reemplaza.
 
-Cuatro pruebas aisladas de programación y `py_compile` pasaron. La tarea
-de Windows no pudo ejecutarse aquí; el smoke test local sigue pendiente.
-No se incluyeron TXT ni JSONL privados en Git.
+La instalación crea solo catálogo y ledgers agregados de calidad. La medición de WAPE depende de outcomes prospectivos completos y elegibles; no se altera ni se fabrica esa evidencia.

@@ -241,6 +241,18 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_relations=("analytics.v_propietarios_equipamiento",),
     ),
     SchemaComponent(
+        name="model_data_quality_gates",
+        files=("sql/115_model_data_quality_gates/01_contract.sql",),
+        expected_relations=(
+            "model_control.data_quality_test_catalog",
+            "model_control.data_quality_suite_run",
+            "model_control.data_quality_test_result",
+            "model_control.training_dataset_manifest",
+            "model_control.v_model_data_quality_latest_gate",
+            "model_control.v_model_data_quality_latest_results",
+        ),
+    ),
+    SchemaComponent(
         name="observability",
         files=("sql/init_observability.sql",),
         expected_relations=(
@@ -451,8 +463,8 @@ def main() -> int:
     settings = load_settings(require_source=False)
     root = Path(settings.project_root)
 
-    # Publishing and private conversation evidence install only when selected.
-    selected = tuple(c for c in COMPONENTS if c.name not in {"publishing", "conversaciones"})
+    # Publishing, private conversation evidence, and model DQ install only when selected.
+    selected = tuple(c for c in COMPONENTS if c.name not in {"publishing", "conversaciones", "model_data_quality_gates"})
     if args.only:
         requested = set(args.only)
         selected = tuple(c for c in COMPONENTS if c.name in requested)
