@@ -1,5 +1,20 @@
 # Decisions
 
+## MAP-ADR-2026-10-13-AI-REVIEW — Isolated, human-gated OpenAI review
+
+Date: 2026-10-13  
+Status: PROPOSED (pilot branch)
+
+### Decision
+
+Introduce a manual, opt-in evidence review for v2.9.0 project contexts. Send only enumerated aggregate facts under organizational data approval; accept only structured drafts with local reference validation. Persist drafts and human feedback in separate opt-in tables. Do not write CRM or operational decision tables from model output.
+
+### Rationale and evidence
+
+The current compiler's `context.json` includes row samples and profile categories that may contain personal data. The v2.9.1 analyst already supplies deterministic classification; the external model's narrow role is to find missing checks. `tests/test_ai_review.py` exercises the allowlist, abstention, unsupported references and offline workflow. A real API and database trial remain separate release gates.
+
+---
+
 ## MAP-ADR-001 — Git repository is the shared agent memory
 
 Date: 2026-09-30  
@@ -320,3 +335,4 @@ sigue PRIVATE; no hay acceso directo Android a PostgreSQL. Tipos de evidencia no
 son una escala universal de calidad. Baseline de media móvil con evaluación
 temporal; sin elasticidad causal, promoción automática, nuevas consultas Redshift
 ni reactivación de Actions. Instalar publishing es opt-in en schema_sync.
+

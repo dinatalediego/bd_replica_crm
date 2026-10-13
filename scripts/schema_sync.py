@@ -19,6 +19,15 @@ class SchemaComponent:
 
 COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
+        name="ai_review",
+        files=("sql/115_ai_review/01_ai_review.sql",),
+        expected_relations=(
+            "decision_intelligence.ai_review_run",
+            "decision_intelligence.ai_review_finding",
+            "decision_intelligence.ai_review_feedback",
+        ),
+    ),
+    SchemaComponent(
         name="publishing",
         files=("sql/101_publishing/01_registry.sql",),
         expected_relations=("publish.product_release", "publish.data_product", "publish.model_run", "publish.finding", "publish.decision_insight", "publish.wisdom_card", "publish.decision_event", "publish.decision_learning"),
@@ -434,8 +443,8 @@ def main() -> int:
     settings = load_settings()
     root = Path(settings.project_root)
 
-    # Publishing is opt-in; existing unattended schema sync must not install it.
-    selected = tuple(c for c in COMPONENTS if c.name != "publishing")
+    # New isolated review tables are opt-in; unattended schema sync stays unchanged.
+    selected = tuple(c for c in COMPONENTS if c.name not in {"publishing", "ai_review"})
     if args.only:
         requested = set(args.only)
         selected = tuple(c for c in COMPONENTS if c.name in requested)
@@ -462,3 +471,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
