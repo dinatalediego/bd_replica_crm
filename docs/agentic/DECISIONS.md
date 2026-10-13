@@ -343,3 +343,17 @@ prerrequisitos para conservar el conteo. Los reportes simultáneos pueden
 solaparse y siguen sujetos a revisión. Un exportador manual genera un ZIP
 privado con RAW, eventos de todas las versiones, vistas y control de cargas;
 el ZIP local se ignora en Git y se comparte solo cuando el usuario lo adjunte.
+
+---
+
+## MAP-ADR-017 — Tres intentos locales de conversaciones con corte diario
+
+Date: 2026-10-12
+Status: ACCEPTED
+
+La tarea de conversaciones se dispara tres veces al día en Windows, separada
+del ETL horario de Redshift. Tras insertar al menos un mensaje nuevo para una
+fuente durante el día civil de America/Lima, los demás intentos del día se
+omiten consultando conversation_import_runs. Una reclasificación sin mensajes
+nuevos y una revisión sin cambios no bloquean intentos posteriores. El TXT
+lo actualiza manualmente el usuario; la tarea no obtiene contenido de WhatsApp.
