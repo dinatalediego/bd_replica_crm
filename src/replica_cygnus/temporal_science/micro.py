@@ -77,13 +77,21 @@ def _metrics(y: pd.Series, probability: np.ndarray) -> dict:
     return out
 
 
+def _requires_review(value) -> bool:
+    if isinstance(value, dict):
+        return bool(value.get("requiere_revision", False))
+    text = str(value).lower()
+    return "requiere_revision" in text and ("true" in text or "'requiere_revision': 1" in text)
+
+
 def _select_evidence(frame: pd.DataFrame, horizon: int) -> tuple[pd.DataFrame, str]:
     h = frame[frame.horizonte_dias.eq(horizon) & frame.maduro & frame.venta_vigente.notna()].copy()
     observed = h[h.evidencia.eq("OBSERVADO") & h.elegible_validacion_prospectiva.fillna(False)]
     if len(observed) >= 200 and observed.fecha_corte.nunique() >= 4 and observed.venta_vigente.nunique() == 2:
         return observed, "PROSPECTIVE_OBSERVED"
     reconstructed = h[h.evidencia.eq("RECONSTRUIDO")].copy()
-    reconstructed = reconstructed[~reconstructed.calidad.astype(str).str.contains('"requiere_revision": true', case=False, regex=False)]
+    if "calidad" in reconstructed:
+        reconstructed = reconstructed[~reconstructed.calidad.map(_requires_review)]
     return reconstructed, "HISTORICAL_DIAGNOSTIC_SHADOW"
 
 
