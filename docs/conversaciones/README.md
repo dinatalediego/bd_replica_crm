@@ -3,6 +3,8 @@
 Importa exportaciones TXT de WhatsApp que se reemplazan con el mismo nombre en
 `conversaciones/`. Es una fuente local y privada; no añade consultas a Redshift.
 
+Para programar tres intentos diarios con salto después de la primera carga de mensajes nuevos, consulta [PROGRAMACION.md](PROGRAMACION.md).
+
 ## Uso en Windows
 
 1. Exporta el chat **sin adjuntos**, conserva el nombre
