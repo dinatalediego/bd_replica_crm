@@ -1,75 +1,66 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-09T19:00:16Z
-Task: ATLAS-PUBLISH-001 — Productos analíticos portables y evidencia para Atlas
+Generated at: 2026-10-12T19:15:00-05:00
+Task: TEMPORAL-DS-001 — Medallio Temporal Science Factory — macro/micro forecasting closed loop
 From: chatgpt
 To: human
-Status: REVIEW_READY
-Branch: feat/atlas-analytical-products
-Commit at checkpoint: 3863a0342a09e1cc74672542508ec17107fecc9b
+Status: IMPLEMENTED_NEEDS_LOCAL_VALIDATION
+Branch: feat/temporal-inference-factory
+Base: main @ a1ebb3cff4d053fd78b19af4799346d73cb1a4a8
 
 ## Exact next action
 
-Publicar PR autorizado; instalar publishing y probar fuente local en el PC
+En el PC con Medallio actualizado, cambiar a esta rama y ejecutar:
 
-## Working-tree state
-
-Dirty: yes
-
-### Changed files
-
-- M .agent/state.json
-- M README.md
-- M docs/agentic/ACTIVE_TASK.md
-- M docs/agentic/DECISIONS.md
-- M pyproject.toml
-- M scripts/schema_sync.py
-- ?? build/
-- ?? docs/agentic/HANDOFF_MEDALLIO_OS_MVP_001.md
-- ?? docs/publishing/
-- ?? powerbi/atlas_products.sql
-- ?? scripts/publish_atlas.py
-- ?? sql/101_publishing/
-- ?? src/replica_cygnus/publishing/
-- ?? tests/publishing/
-
-### Diff stat
-
-```text
-.agent/state.json           |  8 ++++----
- README.md                   |  6 ++++++
- docs/agentic/ACTIVE_TASK.md | 28 +++++++++++-----------------
- docs/agentic/DECISIONS.md   | 15 +++++++++++++++
- pyproject.toml              |  5 +++++
- scripts/schema_sync.py      |  8 +++++++-
- 6 files changed, 48 insertions(+), 22 deletions(-)
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pytest tests/test_temporal_science.py
+.\.venv\Scripts\python.exe scripts\temporal_science.py init
+.\.venv\Scripts\python.exe scripts\temporal_science.py profile
+.\.venv\Scripts\python.exe scripts\temporal_science.py status
+.\.venv\Scripts\python.exe scripts\temporal_science.py run
 ```
 
-### Staged diff stat
+Si todo pasa, marcar el PR listo para review/merge. Instalar la tarea Windows sólo
+después del run manual satisfactorio:
 
-```text
-(none)
+```powershell
+powershell -NoProfile -File .\scripts\68_install_temporal_science_task.ps1
 ```
 
-## Validation / tests recorded for this checkpoint
+## Scope implemented
 
-- 45 pruebas Python aprobadas
-- PGlite: instalación, idempotencia, vistas e inmutabilidad PASS
-- Demo ZIP/importación/HTML y compilación Python PASS
+- nuevos schemas `forecasting_control`, `forecasting_macro`, `forecasting_micro`;
+- perfiles de distribución y tiempo por run/serie/variable;
+- router de familias de forecasting con prerequisitos explícitos;
+- drift PSI/mean shift y señales de reentrenamiento;
+- vistas macro reconstruidas y vistas observadas point-in-time;
+- probabilidad micro de venta a 30/60/90/180 días;
+- validación micro temporal con embargo y Brier contra baseline;
+- coordinación con el robust `commercial_forecasting` ya existente;
+- CLI, instalador Windows, pruebas y documentación de arquitectura.
 
-## Notes
+## Safety
 
-- No PostgreSQL real, no suite completa; prueba visual bloqueada por descarga Chromium. Android no modificado.
+Implementación aditiva: no modifica RAW, CORE, Phase B, ventas canónicas, absorción,
+pricing ni el flujo horario. No agrega consultas Redshift. No se hizo merge a `main`.
+Las tablas de evidencia nuevas son append-only donde corresponde.
 
-## Recent commits
+## Validation / limits
 
-- 3863a03 feat: add local Medallio OS for notebooks and analytics (#50)
-- 5ade86c NIGHT-002: harden low-impact refresh contract (#45)
-- 5619115 Forecasting: selección robusta, cobertura y evidencia temporal auditable (#41)
-- 62e784e Exportar estructura de Medallio para preparar ML sin datos personales (#46)
-- f71d420 Datasets econométricos: historia revisada, evidencia diaria y actualización programada (#49)
+No se ejecutó PostgreSQL real ni se pobló el esquema local desde esta sesión. No se
+reclama que `tests/test_temporal_science.py` haya pasado: un intento de obtener el repo
+en el runtime de ejecución quedó bloqueado por DNS/red. La revisión de esta entrega fue
+estructural y contra los contratos reales existentes en GitHub.
+
+## Important semantic contract
+
+La historia reconstruida sigue etiquetada como diagnóstico. Un predictor histórico sólo
+puede tratarse como point-in-time si existía/capturó con `available_at/information_cutoff`
+anterior al origen. El sistema no transforma valores actuales en historia mediante joins.
 
 ## Handoff rule
 
-The receiving agent must inspect the real repository state and diff before trusting this summary. Code/runtime evidence and tests outrank this file.
+El siguiente agente debe inspeccionar el diff real, ejecutar tests y validar el SQL en
+Medallio local antes de declarar el producto operativo o fusionarlo a `main`.
