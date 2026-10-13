@@ -60,4 +60,4 @@ Agentic coordination must remain cheaper and safer than the work it coordinates:
 
 ## Fiscalización de datasets predictivos — 2026-10-13
 
-La rama feat/model-data-quality-gates agrega suites locales para forecast, riesgo de caída y panel de ventas mensual. Registra conteos agregados y hashes de contrato; no publica ni copia datos inmobiliarios. La evaluación de maduración y rendimiento predictivo continúa en los gates existentes. Ver docs/MODEL_DATA_QUALITY_GATES.md y MAP-ADR-023. La conexión al PostgreSQL del PC y los conteos reales quedan pendientes del smoke test local.
+La rama feat/model-data-quality-gates agrega suites locales para forecast, riesgo de caída y panel de ventas mensual. Registra conteos agregados y hashes de contrato; no publica ni copia datos inmobiliarios. La evaluación de maduración y rendimiento predictivo continúa en los gates existentes. Ver docs/MODEL_DATA_QUALITY_GATES.md y MAP-ADR-024. La conexión al PostgreSQL del PC y los conteos reales quedan pendientes del smoke test local.

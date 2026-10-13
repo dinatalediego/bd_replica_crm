@@ -358,7 +358,7 @@ omiten consultando conversation_import_runs. Una reclasificación sin mensajes
 nuevos y una revisión sin cambios no bloquean intentos posteriores. El TXT
 lo actualiza manualmente el usuario; la tarea no obtiene contenido de WhatsApp.
 
-## MAP-ADR-023 — Fiscalización local de calidad y reproducibilidad de modelos
+## MAP-ADR-024 — Fiscalización local de calidad y reproducibilidad de modelos
 
 Date: 2026-10-13
 Status: ACCEPTED
