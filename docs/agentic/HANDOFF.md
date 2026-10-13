@@ -7,7 +7,7 @@ To: human
 Status: REVIEW_READY
 Branch: feat/model-data-quality-gates
 Base branch: main
-Checkpoint code commit: pendiente de publicar
+Checkpoint code commit: 4014950a1835c7d4bb234d3d7803b04eb32e1d49
 
 ## Exact next action
 
