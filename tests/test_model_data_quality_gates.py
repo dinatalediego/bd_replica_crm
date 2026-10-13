@@ -36,13 +36,13 @@ class ModelDataQualityGateTests(unittest.TestCase):
         self.assertEqual(forecast_benchmark_status(0, 0)[0], "FAIL")
 
     def test_risk_feature_allowlist_detects_post_outcome_column(self) -> None:
-        columns = {"snapshot_at", "target_fall_before_conversion", "days_since_separation"}
+        columns = {"snapshot_at", "target_fall_within_30d", "days_since_separation"}
         missing, unexpected = feature_column_differences(columns)
         self.assertIn("lifecycle_balancing_weight", missing)
         self.assertEqual(unexpected, [])
         _, unexpected = feature_column_differences(columns | {"outcome_at"})
         self.assertEqual(unexpected, ["outcome_at"])
-        self.assertEqual(len(RISK_MODEL_PREDICTORS), 5)
+        self.assertEqual(len(RISK_MODEL_PREDICTORS), 7)
         self.assertNotIn("documento_cliente", RISK_MODEL_PREDICTORS)
         self.assertNotIn("asesor", RISK_MODEL_PREDICTORS)
 

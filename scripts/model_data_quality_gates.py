@@ -34,9 +34,10 @@ FORECAST_RELATIONS = (
     "analytics.v_forecast_predictive_gate_v283",
 )
 RISK_RELATIONS = (
-    "features.v_separation_fall_training_point_in_time_audit",
-    "features.separation_fall_training_point_in_time",
-    "features.v_separation_fall_training_point_in_time_health",
+    "features.v_separation_fall_training_30d_audit",
+    "features.separation_fall_training_30d",
+    "features.v_separation_fall_training_30d_health",
+    "features.v_separation_fall_training_30d_regime_profile",
 )
 SALES_RELATIONS = (
     "analytics.comercial_proyecto_mes",
@@ -46,11 +47,12 @@ SALES_RELATIONS = (
 RISK_FEATURE_VIEW_COLUMNS = frozenset({
     "separation_id", "codigo_proforma", "codigo_unidad", "codigo_proyecto",
     "documento_cliente", "asesor", "tipo_unidad_principal", "fecha_separacion",
-    "snapshot_at", "landmark_day", "days_since_separation",
+    "snapshot_at", "horizon_end_at", "landmark_day", "days_since_separation",
     "proforma_age_days_at_snapshot", "proforma_age_days_at_separation",
-    "snapshot_iso_weekday", "snapshot_month", "target_fall_before_conversion",
-    "snapshots_per_separation", "lifecycle_balancing_weight", "feature_scope",
-    "interaction_features_certified", "evaluation_contract",
+    "snapshot_iso_weekday", "snapshot_month", "label_measurement_regime",
+    "target_fall_within_30d", "snapshots_per_separation", "lifecycle_balancing_weight",
+    "prediction_horizon_days", "feature_scope", "interaction_features_certified",
+    "evaluation_contract",
 })
 RISK_MODEL_PREDICTORS = (
     "days_since_separation",
@@ -58,8 +60,10 @@ RISK_MODEL_PREDICTORS = (
     "proforma_age_days_at_separation",
     "snapshot_iso_weekday",
     "snapshot_month",
+    "codigo_proyecto",
+    "tipo_unidad_principal",
 )
-RISK_EVALUATION_CONTRACT = "GROUP_SPLIT_BY_SEPARATION_ID_AND_OUT_OF_TIME_REQUIRED"
+RISK_EVALUATION_CONTRACT = "GROUP_BY_SEPARATION_ID_OUT_OF_TIME_AND_HORIZON_CENSORING_REQUIRED"
 
 
 def feature_column_differences(actual: set[str] | frozenset[str]) -> tuple[list[str], list[str]]:
@@ -241,98 +245,150 @@ def _risk_suite(cur) -> tuple[list[TestResult], dict[str, Any]]:
     results = [_result(
         "RISK_SCHEMA", "PASS" if present else "FAIL", len(missing),
         {"required_relations": len(RISK_RELATIONS), "missing_relations": missing}, {},
-        "Vistas de auditoría, entrenamiento y health presentes." if present else "Faltan relaciones del dataset point-in-time.",
+        "Vistas del dataset supervisado de caída a 30 días presentes." if present else "Faltan relaciones del dataset de riesgo a 30 días.",
     )]
     if not present:
         results.extend(_blocked(t, missing) for t in (
-            "RISK_ROWS", "RISK_TIME", "RISK_GRAIN", "RISK_FEATURES", "RISK_TARGET",
+            "RISK_ROWS", "RISK_TIME", "RISK_GRAIN", "RISK_WEIGHT", "RISK_FEATURES", "RISK_TARGET",
             "RISK_SPLIT", "RISK_CLASS_SUPPORT", "RISK_EXCLUSIONS"
         ))
         return results, {"source_missing": missing}
 
-    (audit_rows, train_rows, distinct_lifecycles, fall_lifecycles, conversion_lifecycles,
-     blocked_missing, blocked_future, oldest, newest) = _row(cur, """
+    (train_rows, lifecycles, fall_rows, no_fall_rows, fall_lifecycles,
+     oldest, newest, latest_horizon_end, prediction_horizon, invalid_weights,
+     missing_weights, certified_interactions, observed_through, censored_rows,
+     transfer_exclusions, undated_payment_exclusions, blocked_missing,
+     blocked_missing_cutoff) = _row(cur, """
         SELECT
-          (SELECT count(*)::bigint FROM features.v_separation_fall_training_point_in_time_audit),
-          h.snapshot_rows, h.distinct_lifecycles, h.fall_lifecycles, h.conversion_lifecycles,
-          h.blocked_missing_proforma_first_seen, h.blocked_proforma_after_snapshot,
-          h.oldest_snapshot_at, h.newest_snapshot_at
-        FROM features.v_separation_fall_training_point_in_time_health h
+          h.labeled_snapshot_rows, h.labeled_lifecycles,
+          h.fall_within_30d_rows, h.no_fall_within_30d_rows,
+          h.lifecycles_with_fall_within_30d,
+          h.oldest_snapshot_at, h.newest_snapshot_at, h.latest_horizon_end_at,
+          h.prediction_horizon_days, h.invalid_snapshot_weight_rows,
+          h.missing_lifecycle_weight_rows, h.rows_with_certified_interaction_features,
+          h.observed_through, h.censored_incomplete_30d_followup,
+          h.excluded_transfer_competing_event_within_30d,
+          h.excluded_undated_payment_evidence_timing_ambiguous,
+          h.blocked_missing_proforma_first_seen, h.blocked_missing_observation_cutoff
+        FROM features.v_separation_fall_training_30d_health h
     """)
-    audit_rows, train_rows, distinct_lifecycles, fall_lifecycles, conversion_lifecycles = map(
-        _as_int, (audit_rows, train_rows, distinct_lifecycles, fall_lifecycles, conversion_lifecycles)
+    (train_rows, lifecycles, fall_rows, no_fall_rows, fall_lifecycles,
+     prediction_horizon, invalid_weights, missing_weights, certified_interactions,
+     censored_rows, transfer_exclusions, undated_payment_exclusions, blocked_missing,
+     blocked_missing_cutoff) = map(
+        _as_int,
+        (train_rows, lifecycles, fall_rows, no_fall_rows, fall_lifecycles,
+         prediction_horizon, invalid_weights, missing_weights, certified_interactions,
+         censored_rows, transfer_exclusions, undated_payment_exclusions, blocked_missing,
+         blocked_missing_cutoff),
     )
-    blocked_missing, blocked_future = _as_int(blocked_missing), _as_int(blocked_future)
-    bad_eligible_time = _as_int(_row(cur, """
-        SELECT count(*)::bigint
-        FROM features.v_separation_fall_training_point_in_time_audit
-        WHERE snapshot_eligibility_status = 'ELIGIBLE'
-          AND outcome_at::date <= snapshot_at
+    audit_rows = _as_int(_row(cur, """
+        SELECT count(*)::bigint FROM features.v_separation_fall_training_30d_audit
     """)[0])
+    no_fall_lifecycles = _as_int(_row(cur, """
+        SELECT count(DISTINCT separation_id)::bigint
+        FROM features.separation_fall_training_30d
+        WHERE target_fall_within_30d = 0
+    """)[0])
+    invalid_time = _as_int(_row(cur, """
+        SELECT count(*)::bigint
+        FROM features.separation_fall_training_30d t
+        JOIN features.v_separation_fall_training_30d_audit a
+          USING (separation_id, snapshot_at, landmark_day)
+        WHERE t.snapshot_at < t.fecha_separacion::date
+           OR t.horizon_end_at <> t.snapshot_at + 30
+           OR t.prediction_horizon_days <> 30
+           OR t.interaction_features_certified IS DISTINCT FROM false
+           OR a.snapshot_eligibility_status <> 'ELIGIBLE_FOR_HORIZON_LABEL'
+           OR a.horizon_label_status NOT IN (
+                'LABELED_FALL_WITHIN_30D',
+                'LABELED_NO_FALL_CONVERTED_WITHIN_30D',
+                'LABELED_NO_FALL_FULL_30D_FOLLOWUP'
+           )
+    """)[0])
+    invalid_time += 0 if prediction_horizon == 30 else 1
     duplicate_grain = _as_int(_row(cur, """
         SELECT count(*)::bigint FROM (
           SELECT separation_id, snapshot_at
-          FROM features.separation_fall_training_point_in_time
+          FROM features.separation_fall_training_30d
           GROUP BY separation_id, snapshot_at HAVING count(*) > 1
         ) d
     """)[0])
     missing_columns, unexpected_columns = feature_column_differences(
-        _columns(cur, "features.separation_fall_training_point_in_time")
+        _columns(cur, "features.separation_fall_training_30d")
     )
     invalid_target = _as_int(_row(cur, """
-        SELECT count(*)::bigint FROM features.separation_fall_training_point_in_time
-        WHERE target_fall_before_conversion IS NULL
-           OR target_fall_before_conversion NOT IN (0, 1)
+        SELECT count(*)::bigint FROM features.separation_fall_training_30d
+        WHERE target_fall_within_30d IS NULL
+           OR target_fall_within_30d NOT IN (0, 1)
     """)[0])
     invalid_split_contract = _as_int(_row(cur, """
-        SELECT count(*)::bigint FROM features.separation_fall_training_point_in_time
+        SELECT count(*)::bigint FROM features.separation_fall_training_30d
         WHERE evaluation_contract IS DISTINCT FROM %s
+           OR feature_scope IS DISTINCT FROM 'STRUCTURAL_TEMPORAL_30D_V1'
+           OR interaction_features_certified IS DISTINCT FROM false
     """, (RISK_EVALUATION_CONTRACT,))[0])
+    invalid_weights += missing_weights
     results.extend([
         _result("RISK_ROWS", "PASS" if train_rows else "FAIL", 0 if train_rows else 1,
-                {"eligible_snapshots": train_rows, "lifecycles": distinct_lifecycles}, {"minimum_snapshots": 1},
-                "Hay snapshots elegibles." if train_rows else "El conjunto de entrenamiento está vacío."),
-        _result("RISK_TIME", "PASS" if bad_eligible_time == 0 else "FAIL", bad_eligible_time,
-                {"eligible_outcome_known_at_snapshot": bad_eligible_time}, {"maximum": 0},
-                "No se detectan outcomes conocidos al momento del snapshot." if bad_eligible_time == 0 else "Hay labels disponibles antes o en el corte; esto es fuga temporal."),
+                {"labeled_snapshots": train_rows, "lifecycles": lifecycles,
+                 "fall_rows": fall_rows, "no_fall_rows": no_fall_rows}, {"minimum_snapshots": 1},
+                "Hay snapshots con label maduro a 30 días." if train_rows else "El conjunto de entrenamiento está vacío."),
+        _result("RISK_TIME", "PASS" if invalid_time == 0 else "FAIL", invalid_time,
+                {"invalid_horizon_or_label_rows": invalid_time, "prediction_horizon_days": prediction_horizon},
+                {"maximum": 0, "required_horizon_days": 30},
+                "Label elegible, point-in-time y con ventana completa a 30 días." if invalid_time == 0 else "Hay filas con corte, etiqueta o ventana de 30 días inconsistente."),
         _result("RISK_GRAIN", "PASS" if duplicate_grain == 0 else "FAIL", duplicate_grain,
                 {"duplicate_lifecycle_snapshot_keys": duplicate_grain}, {"maximum": 0},
                 "Grano lifecycle × snapshot único." if duplicate_grain == 0 else "Hay duplicados en el grano lifecycle × snapshot."),
+        _result("RISK_WEIGHT", "PASS" if invalid_weights == 0 else "FAIL", invalid_weights,
+                {"invalid_or_missing_lifecycle_weights": invalid_weights}, {"maximum": 0},
+                "Pesos de balanceo por lifecycle válidos." if invalid_weights == 0 else "Hay pesos lifecycle nulos o inválidos para el benchmark."),
         _result("RISK_FEATURES", "PASS" if not (missing_columns or unexpected_columns) else "FAIL",
                 len(missing_columns) + len(unexpected_columns),
                 {"missing_columns": missing_columns, "unexpected_columns": unexpected_columns,
                  "model_predictors": list(RISK_MODEL_PREDICTORS)},
-                {"contract": "dataset schema allowlist; only model_predictors are predictors"},
-                "Esquema dentro de allowlist; IDs y datos de identificación son metadatos, no predictores." if not (missing_columns or unexpected_columns) else "Cambió el contrato de columnas; revisar leakage y aprobación antes de entrenar."),
+                {"contract": "schema allowlist; only model_predictors are predictors"},
+                "Esquema dentro de allowlist; IDs y datos de identificación son metadatos, no predictores." if not (missing_columns or unexpected_columns) else "Cambió el contrato de columnas; revisar leakage antes de entrenar."),
         _result("RISK_TARGET", "PASS" if invalid_target == 0 else "FAIL", invalid_target,
                 {"non_binary_or_null_targets": invalid_target}, {"allowed_values": [0, 1], "maximum_invalid": 0},
-                "Target binario y no nulo." if invalid_target == 0 else "Hay targets ausentes o fuera de {0,1}."),
+                "Target 30d binario y no nulo." if invalid_target == 0 else "Hay targets ausentes o fuera de {0,1}."),
         _result("RISK_SPLIT", "PASS" if invalid_split_contract == 0 else "FAIL", invalid_split_contract,
                 {"rows_without_grouped_out_of_time_contract": invalid_split_contract},
                 {"required_contract": RISK_EVALUATION_CONTRACT, "maximum": 0},
-                "El dataset requiere split agrupado por lifecycle y fuera de tiempo." if invalid_split_contract == 0 else "El contrato de evaluación no exige agrupación por lifecycle y corte fuera de tiempo."),
-        _result("RISK_CLASS_SUPPORT", risk_class_support_status(fall_lifecycles, conversion_lifecycles),
-                max(0, 30 - min(fall_lifecycles, conversion_lifecycles)),
-                {"fall_lifecycles": fall_lifecycles, "conversion_lifecycles": conversion_lifecycles},
+                "El contrato exige agrupación por lifecycle, corte fuera de tiempo y censura por horizonte." if invalid_split_contract == 0 else "El contrato no exige split agrupado fuera de tiempo o cambió el scope de features."),
+        _result("RISK_CLASS_SUPPORT", risk_class_support_status(fall_lifecycles, no_fall_lifecycles),
+                max(0, 30 - min(fall_lifecycles, no_fall_lifecycles)),
+                {"fall_lifecycles": fall_lifecycles, "no_fall_lifecycles": no_fall_lifecycles},
                 {"minimum_lifecycles_per_class": 30},
-                "El soporte por clase alcanza el umbral inicial." if min(fall_lifecycles, conversion_lifecycles) >= 30 else "Soporte bajo por clase: limitarse a análisis exploratorio y aumentar evidencia antes de comparar modelos."),
-        _result("RISK_EXCLUSIONS", "WARN" if blocked_missing + blocked_future else "PASS",
-                blocked_missing + blocked_future,
-                {"missing_proforma_first_seen": blocked_missing, "proforma_after_snapshot": blocked_future},
+                "El soporte por clase alcanza el umbral inicial." if min(fall_lifecycles, no_fall_lifecycles) >= 30 else "Soporte bajo por clase: limitarse a análisis exploratorio y aumentar evidencia antes de comparar modelos."),
+        _result("RISK_EXCLUSIONS", "WARN" if blocked_missing + blocked_missing_cutoff + undated_payment_exclusions + censored_rows else "PASS",
+                blocked_missing + blocked_missing_cutoff + undated_payment_exclusions + censored_rows,
+                {"missing_proforma_first_seen": blocked_missing,
+                 "missing_observation_cutoff": blocked_missing_cutoff,
+                 "undated_payment_evidence_excluded": undated_payment_exclusions,
+                 "incomplete_30d_followup_censored": censored_rows,
+                 "transfer_competing_events_excluded": transfer_exclusions,
+                 "invalid_or_missing_lifecycle_weights": invalid_weights,
+                 "certified_interaction_rows": certified_interactions,
+                 "observed_through": observed_through},
                 {"preferred": 0},
-                "Hay casos bloqueados por evidencia temporal faltante o posterior; permanecen fuera del entrenamiento." if blocked_missing + blocked_future else "No hay bloqueos por evidencia de primera aparición de proforma."),
+                "Hay filas excluidas/censuradas por evidencia o seguimiento insuficiente; permanecen fuera del entrenamiento." if blocked_missing + blocked_missing_cutoff + undated_payment_exclusions + censored_rows else "No hay deuda de corte/proforma ni seguimiento incompleto."),
     ])
     evidence = {
         "source_rows": audit_rows, "eligible": train_rows, "excluded": max(0, audit_rows - train_rows),
-        "lifecycles": distinct_lifecycles, "fall_lifecycles": fall_lifecycles,
-        "conversion_lifecycles": conversion_lifecycles,
+        "lifecycles": lifecycles, "fall_lifecycles": fall_lifecycles,
+        "no_fall_lifecycles": no_fall_lifecycles,
         "invalid_targets": invalid_target, "invalid_split_contract_rows": invalid_split_contract,
+        "invalid_horizon_rows": invalid_time, "censored_rows": censored_rows,
+        "transfer_exclusions": transfer_exclusions,
+        "undated_payment_exclusions": undated_payment_exclusions,
         "blocked_missing_proforma_first_seen": blocked_missing,
-        "blocked_proforma_after_snapshot": blocked_future,
-        "window_start": oldest, "window_end": newest,
+        "blocked_missing_observation_cutoff": blocked_missing_cutoff,
+        "window_start": oldest, "window_end": newest, "latest_horizon_end": latest_horizon_end,
+        "observed_through": observed_through,
     }
     return results, evidence
-
 
 def _sales_suite(cur) -> tuple[list[TestResult], dict[str, Any]]:
     present, missing = _relation_presence(cur, SALES_RELATIONS)
@@ -420,10 +476,11 @@ CODE_ASSET_CONTRACTS: dict[str, tuple[str, ...]] = {
         "tests/test_lead_scoring.py",
     ),
     "CODE_RISK_DATASET": (
+        "decision_engine/sql/08_training_outcome_contract.sql",
         "decision_engine/sql/10_point_in_time_training_set.sql",
-        "decision_engine/sql/11_training_readiness_audit.sql",
+        "decision_engine/sql/12_horizon_training_set.sql",
+        "decision_engine/tests/test_horizon_training_set.py",
         "decision_engine/tests/test_point_in_time_training_set.py",
-        "decision_engine/tests/test_training_readiness_audit.py",
     ),
     "CODE_GATE_TESTS": (
         "tests/test_model_data_quality_gates.py",
@@ -431,8 +488,8 @@ CODE_ASSET_CONTRACTS: dict[str, tuple[str, ...]] = {
     ),
 }
 RISK_TRAINER_PATHS = (
-    "decision_engine/src/cygnus_decision_engine/training.py",
-    "decision_engine/tests/test_supervised_training.py",
+    "scripts/benchmark_separation_fall_30d.py",
+    "decision_engine/tests/test_30d_ml_benchmark_contract.py",
 )
 
 
@@ -483,17 +540,16 @@ def _code_suite(_cur) -> tuple[list[TestResult], dict[str, Any]]:
     if trainer_file.is_file() and not syntax_trainer:
         tree = ast.parse(trainer_file.read_text(encoding="utf-8"), filename=RISK_TRAINER_PATHS[0])
         trainer_has_fit = any(
-            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and ("train" in node.name.lower() or "fit" in node.name.lower())
+            isinstance(node, ast.Attribute) and node.attr == "fit"
             for node in ast.walk(tree)
         )
     trainer_status = "PASS" if not missing_trainer and not syntax_trainer and trainer_has_fit else "WARN"
     results.append(_result(
         "CODE_RISK_TRAINER", trainer_status,
         len(missing_trainer) + len(syntax_trainer) + (0 if trainer_has_fit else 1),
-        {"missing_files": missing_trainer, "syntax_errors": syntax_trainer, "fit_or_train_function": trainer_has_fit},
-        {"implementation": RISK_TRAINER_PATHS[0], "test": RISK_TRAINER_PATHS[1]},
-        "Trainer supervisado de riesgo y su prueba presentes." if trainer_status == "PASS" else "El dataset PIT y el baseline de reglas existen; falta un trainer supervisado específico y su prueba end-to-end.",
+        {"missing_files": missing_trainer, "syntax_errors": syntax_trainer, "has_fit_call": trainer_has_fit},
+        {"benchmark": RISK_TRAINER_PATHS[0], "contract_test": RISK_TRAINER_PATHS[1], "fit_call_required": True},
+        "Benchmark supervisado y test de contrato presentes; el benchmark queda en investigación." if trainer_status == "PASS" else "Falta el benchmark supervisado de riesgo, su test de contrato o una llamada fit en el código.",
     ))
     evidence = {"checked_code_assets": checked_files + 2, "missing_files": missing_total + len(missing_trainer),
                 "syntax_errors": syntax_total + len(syntax_trainer), "risk_supervised_trainer": trainer_status}
@@ -511,12 +567,16 @@ SUITES: dict[str, dict[str, Any]] = {
         "evaluate": _forecast_suite,
     },
     "separation_fall_risk": {
-        "dataset_key": "separation_fall_training_point_in_time",
-        "source_relation": "features.separation_fall_training_point_in_time",
+        "dataset_key": "separation_fall_training_30d",
+        "source_relation": "features.separation_fall_training_30d",
         "grain": ("separation_id", "snapshot_at"),
-        "target": "target_fall_before_conversion",
+        "target": "target_fall_within_30d",
         "time": "snapshot_at",
-        "contracts": ("decision_engine/sql/10_point_in_time_training_set.sql",),
+        "contracts": (
+            "decision_engine/sql/08_training_outcome_contract.sql",
+            "decision_engine/sql/12_horizon_training_set.sql",
+            "scripts/benchmark_separation_fall_30d.py",
+        ),
         "evaluate": _risk_suite,
     },
     "project_month_sales": {
@@ -537,7 +597,7 @@ SUITES: dict[str, dict[str, Any]] = {
 
 SUITE_TEST_IDS: dict[str, tuple[str, ...]] = {
     "commercial_forecast": ("FC_SCHEMA", "FC_ACTIVE", "FC_NEGATIVE", "FC_STOCK_LIMIT", "FC_HORIZON", "FC_BENCHMARK", "FC_TRACEABILITY", "FC_MATURITY"),
-    "separation_fall_risk": ("RISK_SCHEMA", "RISK_ROWS", "RISK_TIME", "RISK_GRAIN", "RISK_FEATURES", "RISK_TARGET", "RISK_SPLIT", "RISK_CLASS_SUPPORT", "RISK_EXCLUSIONS"),
+    "separation_fall_risk": ("RISK_SCHEMA", "RISK_ROWS", "RISK_TIME", "RISK_GRAIN", "RISK_WEIGHT", "RISK_FEATURES", "RISK_TARGET", "RISK_SPLIT", "RISK_CLASS_SUPPORT", "RISK_EXCLUSIONS"),
     "project_month_sales": ("SALES_SCHEMA", "SALES_ROWS", "SALES_GRAIN", "SALES_ROLLFORWARD", "SALES_COMPLETE_MONTH", "SALES_REVIEW_UNITS"),
     "model_code_readiness": ("CODE_SCHEMA", "CODE_FORECAST_PIPELINE", "CODE_SALES_PANEL", "CODE_ECONOMETRIC_PIPELINE", "CODE_LEAD_TRAINER", "CODE_RISK_DATASET", "CODE_RISK_TRAINER", "CODE_GATE_TESTS"),
 }
