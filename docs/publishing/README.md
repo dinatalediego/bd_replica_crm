@@ -25,7 +25,7 @@ rendimiento real de Cygnus ni de un modelo entrenado en Medallio.
 
 La vista HTML es un consumidor de referencia: muestra indicadores, gráfico,
 tabla, Model Card, evidencia, multiplicador de ritmo, escenario original y límites.
-Todo funciona offline; no implica que Android Atlas ya tenga implementado el importador.
+Todo funciona offline. El importador nativo está propuesto en el PR draft de Atlas Android #15; la compilación/firma 0.3.0 y prueba visual siguen pendientes.
 
 ## Conectar tu PostgreSQL local
 
@@ -50,7 +50,7 @@ Los comandos de publicación no necesitan credenciales de Redshift.
 python scripts/publish_atlas.py capture --as-of 2026-10-09 --output artifacts/atlas/private-snapshot.json
 $commit = git rev-parse HEAD
 python scripts/publish_atlas.py build --snapshot artifacts/atlas/private-snapshot.json --output artifacts/atlas/private.zip --generated-at 2026-10-09T18:00:00Z --git-commit $commit
-python scripts/publish_atlas.py register artifacts/atlas/private.zip
+python scripts/publish_atlas.py validate artifacts/atlas/private.zip
 python scripts/publish_atlas.py preview artifacts/atlas/private.zip --output artifacts/atlas/private.html
 ```
 
@@ -61,6 +61,14 @@ pasado: `as_of` limita los períodos pero la historia sigue siendo revisada.
 Si falla calidad o cobertura, el producto completo se rechaza; no se descartan
 proyectos silenciosamente. Corregir la fuente o preparar otro producto con un
 contrato explícito. La primera versión no admite cohortes con reposiciones.
+
+Para consumo en Android, compila Atlas 0.3.0 desde su rama/PR con la misma clave
+privada que firma la instalación; la app 0.2.0 existente no incluye este lector.
+Copia únicamente `artifacts/atlas/private.zip` por un canal local al teléfono,
+abre **Productos → Importar pack Atlas** y selecciónalo desde el selector de
+archivos. El pack se conserva en almacenamiento privado de la app. No subir el ZIP
+a Git, no incluirlo en el ZIP/APK de instalación y no pegar el DSN en comandos
+compartidos. La demo sintética no es un sustituto de este pack privado.
 
 Los snapshots, ZIP y HTML reales son **PRIVATE**, incluso siendo agregados.
 `artifacts/` ya está ignorado por Git. Anonimizar el código del proyecto no convierte
