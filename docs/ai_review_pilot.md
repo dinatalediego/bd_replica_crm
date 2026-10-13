@@ -2,6 +2,8 @@
 
 This pilot adds a second review of the existing v2.9.0 context. It proposes missing checks for an economist/data scientist to investigate. It does **not** revise the CRM, issue a recommendation for execution, validate causal effects, or promote model text into the decision ledger.
 
+The separate, aggregate Supabase modeling source is documented in `docs/SUPABASE_MINIMAL_MART.md`. It supplies a private project-month training panel; the OpenAI reviewer continues to consume only its own inspected evidence packet.
+
 ## Boundary and ownership
 
 | Step | Owner | Contract |

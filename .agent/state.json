@@ -4,27 +4,29 @@
   "project": "bd_replica_crm",
   "active_task": {
     "id": "OPENAI-REVIEW-001",
-    "title": "Piloto de revisión de evidencia MEDALLIO con OpenAI",
+    "title": "Data Partner: revisión OpenAI y mart mínimo en Supabase",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Revisar PR borrador; aprobar paquete de datos, retención y presupuesto antes del piloto real"
+    "next_action": "Revisar PR borrador; aprobar exportación agregada, tratamiento Supabase y presupuesto OpenAI antes del piloto real"
   },
   "git": {
     "base_branch": "main",
     "working_branch": "codex/medallio-ai-review-pilot-20261013",
-    "checkpoint_commit": "8e7cda0f9757143b97e0ae162a4a57439dca3559",
+    "checkpoint_commit": "09c11636f87cf791853a1d08976b73abceac1257",
     "dirty": false
   },
   "validation": {
-    "last_checked_at": "2026-10-13T01:24:18Z",
+    "last_checked_at": "2026-10-13T01:46:43Z",
     "tests": [
       "PYTHONPATH=src python tests/test_ai_review.py: 5 synthetic tests passed",
-      "python -m py_compile: 3 changed Python modules passed"
+      "PYTHONPATH=src python tests/test_supabase_mart.py: 4 synthetic tests passed",
+      "python -m py_compile: pilot Python modules passed",
+      "Supabase private mart: 24 synthetic months, 22 consecutive pairs, 0 stock errors, anon access denied"
     ],
     "notes": [
-      "No live OpenAI API call, PostgreSQL migration or real customer data test. Partial local checkout; GitHub branch commit and diff verified through connector."
+      "No live OpenAI API call or real customer data test. Supabase migration and synthetic seed only; local Medallio PostgreSQL was not accessed."
     ]
   },
-  "updated_at": "2026-10-13T01:24:18Z"
+  "updated_at": "2026-10-13T01:46:43Z"
 }

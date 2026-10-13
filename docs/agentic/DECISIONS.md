@@ -1,5 +1,27 @@
 # Decisions
 
+## MAP-ADR-2026-10-13-SUPABASE-MINIMAL — Mart mensual privado para modelado
+
+Date: 2026-10-13  
+Status: PROPOSED (pilot branch)
+
+### Decision
+
+Mantener `medallio_dw` local como fuente de verdad y añadir en el Supabase conectado un
+esquema privado `medallio_pilot` con una tabla de agregados por proyecto-mes y una vista
+de pares consecutivos para un baseline de ventas del mes siguiente. El exportador usa
+solo columnas enumeradas de `analytics.comercial_proyecto_mes`, sustituye códigos por
+HMAC y exige aprobación explícita para publicar. Se excluyen identificadores y filas CRM.
+
+### Evidence and limits
+
+La migración optativa se aplicó al proyecto Supabase existente con datos sintéticos:
+24 filas, 22 pares, cero errores de stock, RLS activo y sin privilegios `anon`.
+Cuatro pruebas Python sintéticas pasaron. Sin conexión a la base local ni carga de datos
+empresariales. La vista es retrospectiva revisada; no constituye evaluación as-issued.
+
+---
+
 ## MAP-ADR-2026-10-13-AI-REVIEW — Isolated, human-gated OpenAI review
 
 Date: 2026-10-13  
