@@ -461,7 +461,8 @@ def main() -> int:
     args = parser.parse_args()
 
     settings = load_settings(require_source=False)
-    root = Path(settings.project_root)
+    # Read SQL from this checkout/worktree, independent of the editable package root.
+    root = Path(__file__).resolve().parents[1]
 
     # Publishing, private conversation evidence, and model DQ install only when selected.
     selected = tuple(c for c in COMPONENTS if c.name not in {"publishing", "conversaciones", "model_data_quality_gates"})

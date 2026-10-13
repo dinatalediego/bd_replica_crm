@@ -31,7 +31,7 @@ def test_quality_contract_is_idempotent_and_blocks_incomplete_run(db):
         cur.execute(migration, prepare=False)
         cur.execute(migration, prepare=False)
 
-    assert db.execute("SELECT count(*) FROM model_control.data_quality_test_catalog").fetchone()[0] == 31
+    assert db.execute("SELECT count(*) FROM model_control.data_quality_test_catalog").fetchone()[0] == 32
     states = db.execute("SELECT count(*) FROM model_control.v_model_data_quality_latest_gate WHERE data_quality_status = 'NO_RUN'").fetchone()[0]
     assert states == 4
 

@@ -139,13 +139,27 @@ git worktree add -b feat/model-data-quality-gates `
 Set-Location ..\bd_replica_crm-model-quality
 ```
 
+Si ya creaste ese worktree, no repitas `worktree add`; actualízalo así:
+
+```powershell
+Set-Location C:\projects\bd_replica_crm-model-quality
+git fetch origin
+git pull --ff-only origin feat/model-data-quality-gates
+```
+
 Activa el entorno virtual usado por el proyecto. Si el paquete todavía no está
 instalado en ese entorno:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
+python -c "import replica_cygnus.settings as s; print(s.__file__)"
 ```
+
+La última línea debe apuntar a `C:\projects\bd_replica_crm-model-quality\src\replica_cygnus\settings.py`.
+Si el worktree no tiene `.env`, copia el `.env` local desde la carpeta principal
+solo si hace falta para conectar a PostgreSQL; mantenlo sin seguimiento de Git y
+no lo publiques.
 
 Aplica solo el contrato de fiscalización en la PostgreSQL local y corre las
 pruebas unitarias:
