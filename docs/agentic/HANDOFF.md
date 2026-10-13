@@ -1,75 +1,26 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Generated at: 2026-10-09T19:00:16Z
-Task: ATLAS-PUBLISH-001 — Productos analíticos portables y evidencia para Atlas
+Generated at: 2026-10-13
+Task: OPENAI-REVIEW-001 — Piloto de revisión de evidencia MEDALLIO con OpenAI
 From: chatgpt
 To: human
 Status: REVIEW_READY
-Branch: feat/atlas-analytical-products
-Commit at checkpoint: 3863a0342a09e1cc74672542508ec17107fecc9b
+Branch: codex/medallio-ai-review-pilot-20261013
+Code checkpoint: 8e7cda0f9757143b97e0ae162a4a57439dca3559
 
 ## Exact next action
 
-Publicar PR autorizado; instalar publishing y probar fuente local en el PC
+Inspect the draft PR diff and `docs/ai_review_pilot.md`. Authorize the aggregate packet,
+API project settings and data retention before trying a single manual live run.
+Review the resulting findings against source evidence and record verdicts.
 
-## Working-tree state
+## Evidence
 
-Dirty: yes
+- Five synthetic tests passed with `PYTHONPATH=src python tests/test_ai_review.py`.
+- Python compilation passed for `ai_review.py`, `medallio_ai_review.py`, `schema_sync.py`.
+- The commit contains seven code/schema/doc/test files; branch is based on `main` at
+  `a1ebb3cff4d053fd78b19af4799346d73cb1a4a8`.
+- No real API request, PostgreSQL installation or production CRM write was performed.
 
-### Changed files
-
-- M .agent/state.json
-- M README.md
-- M docs/agentic/ACTIVE_TASK.md
-- M docs/agentic/DECISIONS.md
-- M pyproject.toml
-- M scripts/schema_sync.py
-- ?? build/
-- ?? docs/agentic/HANDOFF_MEDALLIO_OS_MVP_001.md
-- ?? docs/publishing/
-- ?? powerbi/atlas_products.sql
-- ?? scripts/publish_atlas.py
-- ?? sql/101_publishing/
-- ?? src/replica_cygnus/publishing/
-- ?? tests/publishing/
-
-### Diff stat
-
-```text
-.agent/state.json           |  8 ++++----
- README.md                   |  6 ++++++
- docs/agentic/ACTIVE_TASK.md | 28 +++++++++++-----------------
- docs/agentic/DECISIONS.md   | 15 +++++++++++++++
- pyproject.toml              |  5 +++++
- scripts/schema_sync.py      |  8 +++++++-
- 6 files changed, 48 insertions(+), 22 deletions(-)
-```
-
-### Staged diff stat
-
-```text
-(none)
-```
-
-## Validation / tests recorded for this checkpoint
-
-- 45 pruebas Python aprobadas
-- PGlite: instalación, idempotencia, vistas e inmutabilidad PASS
-- Demo ZIP/importación/HTML y compilación Python PASS
-
-## Notes
-
-- No PostgreSQL real, no suite completa; prueba visual bloqueada por descarga Chromium. Android no modificado.
-
-## Recent commits
-
-- 3863a03 feat: add local Medallio OS for notebooks and analytics (#50)
-- 5ade86c NIGHT-002: harden low-impact refresh contract (#45)
-- 5619115 Forecasting: selección robusta, cobertura y evidencia temporal auditable (#41)
-- 62e784e Exportar estructura de Medallio para preparar ML sin datos personales (#46)
-- f71d420 Datasets econométricos: historia revisada, evidencia diaria y actualización programada (#49)
-
-## Handoff rule
-
-The receiving agent must inspect the real repository state and diff before trusting this summary. Code/runtime evidence and tests outrank this file.
+The receiving agent must inspect repository state and diff; code and runtime evidence outrank this summary.

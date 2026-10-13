@@ -1,25 +1,28 @@
 # Active Task
 
-Task ID: ATLAS-PUBLISH-001
-Title: Productos analíticos portables y evidencia para Atlas
+Task ID: OPENAI-REVIEW-001
+Title: Piloto de revisión de evidencia MEDALLIO con OpenAI
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/atlas-analytical-products
+Branch: codex/medallio-ai-review-pilot-20261013
 Base branch: main
 
 ## Result
 
-Implementación aditiva de los 12 puntos aprobados: data/model/story/scenario packs,
-fábrica baseline, Findings, DecisionInsight, Wisdom Cards, registro publish y
-feedback privado append-only. Demo sintética y consumidor HTML offline.
+Adaptador manual de Responses API para paquetes agregados v2.9.0, salida estructurada,
+validación de referencias, borradores aislados y feedback humano. El esquema SQL es optativo
+y está excluido de la sincronización desatendida. Ver `docs/ai_review_pilot.md`.
 
 ## Validation
 
-Ver docs/publishing/VALIDATION.md para comandos, resultados y límites.
-No hay acceso al PostgreSQL del usuario ni importador Android implementado aquí.
+`PYTHONPATH=src python tests/test_ai_review.py`: cinco pruebas sintéticas aprobadas.
+`python -m py_compile` de los tres módulos cambiados: aprobado.
+No se usaron datos reales, clave API ni PostgreSQL en esta revisión.
 
 ## Next action
 
-Publicar e integrar el PR autorizado; en el PC ejecutar schema_sync --only publishing
-y probar capture/build/register con datos locales. La réplica horaria no cambia.
+Revisar el PR borrador. Un responsable de datos debe aprobar el paquete agregado y los
+ajustes de retención/costo antes de una llamada real. Ejecutar un solo piloto manual en
+entorno autorizado y calificar cada hallazgo; integrar únicamente tras la evaluación.
+
