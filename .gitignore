@@ -23,11 +23,10 @@ output/stock_disponible/*.xlsx
 # Medallio OS local notebook executions.
 .medallio/
 
-<<<<<<< HEAD
-# Local secrets
-=======
-# Local secrets and notebook runtime files
->>>>>>> backup/medallio-os-mvp-20261009
+# Local secrets and notebook runtime files.
 .secrets/
 **/.ipynb_checkpoints/
 
+# Private WhatsApp exports; never commit text or attachments.
+conversaciones/*
+!conversaciones/README.md

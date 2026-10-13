@@ -61,11 +61,23 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
             "--additional-config", "config/hourly_required_tables.yml",
         )),
     )
-    return source_steps + (
+    manual_conversations = ()
+    if mode == "manual" and any((ROOT / "conversaciones").glob("*.txt")):
+        manual_conversations = (
+            Step("02a_conversaciones_schema", (
+                py, str(ROOT / "scripts" / "schema_sync.py"), "--only", "conversaciones",
+            )),
+            Step("02a_conversaciones_import", (
+                py, str(ROOT / "scripts" / "import_conversaciones.py"),
+            )),
+        )
+    schema_step = (
         Step(
             "02_schema_sync",
             (py, str(ROOT / "scripts" / "schema_sync.py")),
         ),
+    )
+    return source_steps + schema_step + manual_conversations + (
         Step(
             "02b_clientes_calidad_refresh",
             (py, str(ROOT / "scripts" / "refresh_clientes_calidad.py")),

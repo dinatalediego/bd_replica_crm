@@ -320,3 +320,40 @@ sigue PRIVATE; no hay acceso directo Android a PostgreSQL. Tipos de evidencia no
 son una escala universal de calidad. Baseline de media móvil con evaluación
 temporal; sin elasticidad causal, promoción automática, nuevas consultas Redshift
 ni reactivación de Actions. Instalar publishing es opt-in en schema_sync.
+
+## MAP-ADR-021 — Conversaciones privadas con carga manual incremental
+
+Date: 2026-10-12
+Status: ACCEPTED
+
+El usuario autorizó importar exportaciones TXT de WhatsApp a Medallio desde una carpeta local mediante una tarea manual. La fuente RAW y los eventos derivados son inmutables; el SHA-256 del archivo y los IDs deterministas permiten insertar solo mensajes nuevos. Un cambio o recorte del historial se rechaza antes de escribir para evitar duplicados silenciosos. Las reglas de extracción llevan versión, conservan evidencia privada y exponen vistas de reportes de visitas, pulso horario y reacción social. El recuento de visitas es la cifra declarada en la conversación y no una medida de visitantes únicos de Sperant; los casos inciertos se marcan para revisión. La tarea horaria, Redshift y ventas canónicas no se modifican.
+
+## MAP-ADR-022 — Reglas de reacción, visitas y diagnóstico local
+
+Date: 2026-10-12
+Status: ACCEPTED — refina las reglas de ADR-021
+
+Celebraciones solo se cuentan cuando otra persona responde a una separación
+anterior. Un nombre/proyecto/unidad explícito permite vincular hasta 24 horas;
+una respuesta genérica exige un único anuncio candidato en 15 minutos. La
+evidencia y la ambigüedad del vínculo quedan registradas por versión. Las
+visitas requieren un número explícito, admiten clientes/personas atendidos,
+rangos y continuaciones; proyecto, sede, foto o mensaje de cierre no son
+prerrequisitos para conservar el conteo. Los reportes simultáneos pueden
+solaparse y siguen sujetos a revisión. Un exportador manual genera un ZIP
+privado con RAW, eventos de todas las versiones, vistas y control de cargas;
+el ZIP local se ignora en Git y se comparte solo cuando el usuario lo adjunte.
+
+---
+
+## MAP-ADR-023 — Tres intentos locales de conversaciones con corte diario
+
+Date: 2026-10-12
+Status: ACCEPTED
+
+La tarea de conversaciones se dispara tres veces al día en Windows, separada
+del ETL horario de Redshift. Tras insertar al menos un mensaje nuevo para una
+fuente durante el día civil de America/Lima, los demás intentos del día se
+omiten consultando conversation_import_runs. Una reclasificación sin mensajes
+nuevos y una revisión sin cambios no bloquean intentos posteriores. El TXT
+lo actualiza manualmente el usuario; la tarea no obtiene contenido de WhatsApp.
