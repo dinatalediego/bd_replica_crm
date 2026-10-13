@@ -48,7 +48,7 @@ rentabilidad.
 | --- | --- | --- |
 | ¿Qué datos faltan para comparar forecast con realidad? | `analytics.v_forecast_predictive_gate_v283`, `analytics.v_predictive_pre_maturity_readiness_v284` | `mature_pairs`, `global_wape_pct`, `gate_status`, `active_forecast_cells`, `incubating`, `evaluated`, `benchmark_coverage_pct`, `horizon_alignment_pct` |
 | ¿Qué forecasts siguen incubando o tienen defectos? | `analytics.v_forecast_issue_quality_v284`, `analytics.v_forecast_maturity_clock_v283`, `model_control.forecast_issue_registry`, `model_control.forecast_naive_benchmark_snapshot` | `maturity_status`, `expected_maturity_date`, `pre_maturity_quality_status`, run/version/cutoff, benchmark primario, pares por proyecto × horizonte |
-| ¿El modelo de caída usa solo información disponible al corte? | `features.v_separation_fall_training_point_in_time_health`, `features.v_separation_fall_training_point_in_time_audit`, `features.separation_fall_training_point_in_time` | snapshots y lifecycles por clase, duplicados lifecycle × snapshot, outcomes conocidos al corte, exclusiones, soporte por clase y columnas de feature |
+| ¿El modelo de caída a 30 días usa outcomes maduros y features disponibles al corte? | `features.v_separation_fall_training_30d_health`, `features.v_separation_fall_training_30d_audit`, `features.separation_fall_training_30d`, `features.v_separation_fall_training_30d_regime_profile` | snapshots y lifecycles por clase, censura, ventana de 30 días, duplicados lifecycle × snapshot, exclusiones, soporte por clase y columnas de feature |
 | ¿Ventas mensuales son consistentes y evaluables? | `analytics.comercial_proyecto_mes`, `analytics.comercial_unidad_mes`, `analytics.v_comercial_composicion_mes` | grano proyecto × mes, `stock_inicial`, `ventas_mes`, `stock_final`, meses completos/parciales y unidades marcadas para revisión |
 | ¿Qué dejó la fiscalización más reciente? | `model_control.v_model_data_quality_latest_gate`, `model_control.v_model_data_quality_latest_results`, `model_control.training_dataset_manifest` | estado de cada suite, pruebas ejecutadas/bloqueadas, excepciones, ventana, grano, target, hash de contrato y firma agregada |
 
@@ -70,20 +70,24 @@ lifecycle y el holdout fuera de tiempo antes de comparar candidatos.
 
 ### Comprobación de que existe código para entrenar
 
-La suite `model_code_readiness` revisa presencia y sintaxis de los módulos y
-tests principales. El reporte actual debería reconocer el forecast comercial y
-lead scoring con sus rutas de entrenamiento/prueba, los datasets econométricos,
-y el dataset point-in-time para riesgo. Marca `CODE_RISK_TRAINER` como `WARN`:
-hay un baseline de reglas y un dataset supervisado auditado, pero falta una
-implementación específica de ajuste, evaluación temporal agrupada y test
-end-to-end para entrenar `separation_fall_risk`. La comprobación estática no
-ejecuta los trainers ni reemplaza los tests sintéticos de CI.
+La suite `model_code_readiness` revisa presencia y sintaxis de módulos y tests.
+El repositorio ya tiene el benchmark supervisado de riesgo a 30 días en
+`scripts/benchmark_separation_fall_30d.py`, con regresión logística, Random
+Forest e HistGradientBoosting, baselines de prevalencia y split temporal que
+elimina del train los lifecycles presentes en test. Su prueba de contrato vive
+en `decision_engine/tests/test_30d_ml_benchmark_contract.py`. La suite confirma
+ese código, el forecast comercial, lead scoring y las pruebas de los datasets
+econométricos. Su `PASS` es evidencia de que el camino de código existe; no
+ejecuta los trainers con la data actual ni promueve un modelo.
 
-En el view de riesgo, el esquema permite identifiers como metadatos. Los únicos
-predictores v1 son `days_since_separation`, `proforma_age_days_at_snapshot`,
-`proforma_age_days_at_separation`, `snapshot_iso_weekday` y `snapshot_month`.
-Documento, asesor, unidad, proforma, outcome y campos post-outcome quedan fuera
-de esa lista. Las interacciones comerciales siguen sin certificación histórica.
+En el view de riesgo, el esquema permite identifiers como metadatos. El
+benchmark usa como predictores numéricos `days_since_separation`,
+`proforma_age_days_at_snapshot`, `proforma_age_days_at_separation`,
+`snapshot_iso_weekday` y `snapshot_month`; y como categóricos
+`codigo_proyecto` y `tipo_unidad_principal`. `asesor` es opt-in y no forma parte
+de la corrida por defecto. Documento, unidad, proforma, outcome y campos
+post-outcome quedan fuera de los predictores. Las interacciones comerciales
+siguen sin certificación histórica.
 
 La suite de código se ejecuta junto con las demás o sola:
 
@@ -149,6 +153,16 @@ pruebas unitarias:
 ```powershell
 python scripts\schema_sync.py --only model_data_quality_gates
 python -m unittest discover -s tests -p "test_model_data_quality_gates.py" -v
+```
+
+La prueba de integración es opcional y necesita una base PostgreSQL desechable
+para tests. No uses la base de operación. `ABSORCION_TEST_DSN` debe apuntar a
+esa base local; el fixture revierte la transacción al terminar:
+
+```powershell
+$env:ABSORCION_TEST_DSN = "postgresql://usuario:clave@localhost:5432/medallio_quality_test"
+python -m pytest tests\integration\test_model_data_quality_gates_postgres.py -q
+Remove-Item Env:ABSORCION_TEST_DSN
 ```
 
 Ejecuta las cuatro suites, revisa el detalle y vuelve a consultar el último estado:
