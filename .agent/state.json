@@ -4,22 +4,27 @@
   "project": "bd_replica_crm",
   "active_task": {
     "id": "CHAT-CONVERSATIONS-001",
-    "title": "Importación manual incremental de conversaciones comerciales",
+    "title": "Importación y revisión programada de conversaciones comerciales",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Traer PR #53, ejecutar scripts/run_conversaciones_y_zip.bat y adjuntar el ZIP privado al siguiente chat"
+    "next_action": "Traer la rama, instalar la tarea de Windows y verificar una ejecución local"
   },
   "git": {
     "base_branch": "main",
     "working_branch": "feat/conversation-intelligence-manual",
-    "checkpoint_commit": "6d2d486308d29111118fb9395a8f0019fcf62e1e",
-    "dirty": true
+    "checkpoint_commit": "df259a162fd6696b14195db03957114d80dae344",
+    "dirty": false
   },
   "validation": {
-    "last_checked_at": "2026-10-12T22:30:10Z",
-    "tests": [],
-    "notes": []
+    "last_checked_at": "2026-10-13T04:22:50.216Z",
+    "tests": [
+      "PYTHONPATH=src python -m unittest discover -s tests/conversations -p test_schedule.py -v: 4 PASS",
+      "python -m py_compile schedule.py runner.py test_schedule.py: PASS"
+    ],
+    "notes": [
+      "Programador de tareas y PostgreSQL del PC pendientes de smoke test; diagnóstico del usuario confirma importador y esquema previos."
+    ]
   },
-  "updated_at": "2026-10-12T22:30:10Z"
+  "updated_at": "2026-10-13T04:22:50.216Z"
 }
