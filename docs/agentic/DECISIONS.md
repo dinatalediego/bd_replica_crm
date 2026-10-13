@@ -346,7 +346,7 @@ el ZIP local se ignora en Git y se comparte solo cuando el usuario lo adjunte.
 
 ---
 
-## MAP-ADR-017 — Tres intentos locales de conversaciones con corte diario
+## MAP-ADR-023 — Tres intentos locales de conversaciones con corte diario
 
 Date: 2026-10-12
 Status: ACCEPTED
