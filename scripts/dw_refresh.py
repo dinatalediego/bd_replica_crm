@@ -6,6 +6,10 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from contextlib import contextmanager
+
+from replica_cygnus.connections import connect_postgres
+from replica_cygnus.settings import load_settings
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -83,7 +87,11 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
             (py, str(ROOT / "scripts" / "refresh_clientes_calidad.py")),
         ),
         Step(
-            "02c_portal_conversion_refresh",
+            "02c_marketing_audiences_refresh",
+            (py, str(ROOT / "scripts" / "refresh_marketing_audiences.py")),
+        ),
+        Step(
+            "02d_portal_conversion_refresh",
             (py, str(ROOT / "scripts" / "refresh_portal_conversion.py"), "--start-year", "2026"),
         ),
         Step(
@@ -117,7 +125,27 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
     )
 
 
+@contextmanager
+def pipeline_lock():
+    # Session lock survives commits and is released when the connection closes.
+    with connect_postgres(load_settings()) as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT pg_try_advisory_lock(hashtext('medallio.dw_refresh'))")
+            acquired = bool(cur.fetchone()[0])
+        yield acquired
+
+
 def main() -> int:
+    logger = _logger()
+    with pipeline_lock() as acquired:
+        if not acquired:
+            logger.info("SKIP_DW_REFRESH: otra ejecución ya está activa")
+            return 0
+        return _main_locked()
+
+
+def _main_locked() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Refresh maestro de Medallio DW: RAW -> schema -> staging DQ -> portal attribution -> CORE -> analytics -> "

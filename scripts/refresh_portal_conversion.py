@@ -5,7 +5,7 @@ import hashlib
 import os
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Iterable
 
 from portal_conversion.matching import (
@@ -32,6 +32,15 @@ class LeadRow:
 class BuyerRow:
     data: dict[str, Any]
     identity: PersonIdentity
+
+
+def _as_date(value: Any) -> date | None:
+    """Normaliza DATE y TIMESTAMP de PostgreSQL para compararlos sin ambigüedad."""
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return None
 
 
 def parse_args() -> argparse.Namespace:
@@ -429,12 +438,14 @@ def _match_leads(leads: list[LeadRow], buyers: list[BuyerRow]) -> list[dict[str,
     matches: list[dict[str, Any]] = []
     for lead in leads:
         lead_date = lead.data.get("fecha_creacion")
+        lead_day = _as_date(lead_date)
         scored: list[tuple[str, MatchResult]] = []
         buyer_by_uid: dict[str, BuyerRow] = {}
         for buyer_idx in index.candidates(lead.identity):
             buyer = buyers[buyer_idx]
             sep_date = buyer.data.get("fecha_separacion")
-            if lead_date and sep_date and sep_date < lead_date:
+            sep_day = _as_date(sep_date)
+            if lead_day and sep_day and sep_day < lead_day:
                 continue
             result = score_match(lead.identity, buyer.identity)
             if result.status != "NO MATCH":
@@ -450,7 +461,8 @@ def _match_leads(leads: list[LeadRow], buyers: list[BuyerRow]) -> list[dict[str,
         conversion_uid, result = best
         buyer = buyer_by_uid[conversion_uid]
         sep_date = buyer.data.get("fecha_separacion")
-        days = (sep_date.date() - lead_date.date()).days if lead_date and sep_date else None
+        sep_day = _as_date(sep_date)
+        days = (sep_day - lead_day).days if lead_day and sep_day else None
         eligible = bool(
             result.automatic_conversion
             and lead.data.get("incluir_en_kpi")

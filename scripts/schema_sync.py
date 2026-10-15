@@ -200,6 +200,20 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         ),
     ),
     SchemaComponent(
+        name="marketing_audiences",
+        files=("sql/115_marketing_audiences/01_contract.sql",),
+        expected_relations=(
+            "analytics.marketing_audiencias",
+            "analytics.marketing_consentimientos",
+            "analytics.marketing_supresiones",
+            "analytics.marketing_audiencias_refresh_runs",
+            "analytics.v_marketing_positiva",
+            "analytics.v_marketing_negativa_sin_avance",
+            "analytics.v_marketing_exclusiones",
+            "analytics.v_marketing_audiencias_health",
+        ),
+    ),
+    SchemaComponent(
         name="unidades_multifuente",
         files=(
             "sql/40_unidades_multifuente/00_add_tipologia_ubicacion.sql",

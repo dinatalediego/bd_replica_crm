@@ -1,26 +1,56 @@
 # Latest Handoff
 
 Protocol: MEDALLIO AGENT PROTOCOL 1.0
-Task: CHAT-CONVERSATIONS-001 — Importación y revisión programada
+Generated at: 2026-10-15T15:19:52Z
+Task: MARKETING-AUDIENCES-001 — Audiencias locales LAL/RMKT mantenidas por el refresh canónico
 From: chatgpt
 To: human
 Status: REVIEW_READY
-Branch: feat/conversation-intelligence-manual
-Checkpoint code commit: df259a162fd6696b14195db03957114d80dae344
+Branch: feat/medallio-refresh-hardening-review
+Commit at checkpoint: 09050eb22d4762f06b69bbc246c9d68f77ebd00d
 
 ## Exact next action
 
-Traer la rama, instalar `scripts/install_conversaciones_schedule.ps1` en
-PowerShell y ejecutar `scripts/check_conversaciones_scheduled.py` una vez.
-Ver `docs/conversaciones/PROGRAMACION.md` para horarios, requisitos y log.
+Actualizar la rama en Windows, instalar marketing_audiences y verificar el paso 02c contra medallio_dw
 
-## Evidence
+## Working-tree state
 
-El diagnóstico privado del usuario contiene 25,421 mensajes, 2 corridas,
-la segunda con 0 mensajes nuevos y 2,935 eventos reclasificados. El código
-de programación consulta `new_messages > 0` para cortar intentos solo
-después de una verdadera ampliación del TXT en el día civil de Lima.
+Dirty: no
 
-Cuatro pruebas aisladas de programación y `py_compile` pasaron. La tarea
-de Windows no pudo ejecutarse aquí; el smoke test local sigue pendiente.
-No se incluyeron TXT ni JSONL privados en Git.
+### Changed files
+
+- None
+
+### Diff stat
+
+```text
+(none)
+```
+
+### Staged diff stat
+
+```text
+(none)
+```
+
+## Validation / tests recorded for this checkpoint
+
+- PGlite marketing_audiences integration: PASS
+- Pytest relevante: 15 PASS
+- py_compile, diff-check y MAP validate: PASS
+
+## Notes
+
+- No se añadió carga Redshift; el smoke test real queda pendiente en el PC
+
+## Recent commits
+
+- 09050eb Add governed local marketing audiences for Power BI
+- 7361bd8 Merge remote-tracking branch 'origin/main' into feat/medallio-refresh-hardening-review
+- 31e18d2 Importación manual incremental de conversaciones comerciales a Medallio (#53)
+- d8e5b6e docs(publishing): document offline Android pack import (#52)
+- a1ebb3c merge: integrate Medallio OS ML and forecasting infrastructure into main
+
+## Handoff rule
+
+The receiving agent must inspect the real repository state and diff before trusting this summary. Code/runtime evidence and tests outrank this file.

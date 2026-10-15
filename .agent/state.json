@@ -3,28 +3,29 @@
   "protocol_version": "1.0",
   "project": "bd_replica_crm",
   "active_task": {
-    "id": "CHAT-CONVERSATIONS-001",
-    "title": "Importación y revisión programada de conversaciones comerciales",
+    "id": "MARKETING-AUDIENCES-001",
+    "title": "Audiencias locales LAL/RMKT mantenidas por el refresh canónico",
     "status": "REVIEW_READY",
     "owner": "chatgpt",
     "next_agent": "human",
-    "next_action": "Traer la rama, instalar la tarea de Windows y verificar una ejecución local"
+    "next_action": "Actualizar la rama en Windows, instalar marketing_audiences y verificar el paso 02c contra medallio_dw"
   },
   "git": {
     "base_branch": "main",
-    "working_branch": "feat/conversation-intelligence-manual",
-    "checkpoint_commit": "df259a162fd6696b14195db03957114d80dae344",
+    "working_branch": "feat/medallio-refresh-hardening-review",
+    "checkpoint_commit": "09050eb22d4762f06b69bbc246c9d68f77ebd00d",
     "dirty": false
   },
   "validation": {
-    "last_checked_at": "2026-10-13T04:22:50.216Z",
+    "last_checked_at": "2026-10-15T15:19:52Z",
     "tests": [
-      "PYTHONPATH=src python -m unittest discover -s tests/conversations -p test_schedule.py -v: 4 PASS",
-      "python -m py_compile schedule.py runner.py test_schedule.py: PASS"
+      "PGlite marketing_audiences integration: PASS",
+      "Pytest relevante: 15 PASS",
+      "py_compile, diff-check y MAP validate: PASS"
     ],
     "notes": [
-      "Programador de tareas y PostgreSQL del PC pendientes de smoke test; diagnóstico del usuario confirma importador y esquema previos."
+      "No se añadió carga Redshift; el smoke test real queda pendiente en el PC"
     ]
   },
-  "updated_at": "2026-10-13T04:22:50.216Z"
+  "updated_at": "2026-10-15T15:19:52Z"
 }

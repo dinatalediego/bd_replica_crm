@@ -40,3 +40,15 @@ def test_local_only_has_no_source_sync():
         not ("replica_cygnus.cli" in step.args and "sync" in step.args)
         for step in steps
     )
+
+
+def test_marketing_audiences_run_after_client_quality_without_source_call():
+    module = _load_refresh_module()
+    steps = module._steps("hourly", local_only=True)
+    names = [step.name for step in steps]
+    assert names.count("02c_marketing_audiences_refresh") == 1
+    assert names.index("02b_clientes_calidad_refresh") < names.index(
+        "02c_marketing_audiences_refresh"
+    )
+    marketing = next(step for step in steps if step.name == "02c_marketing_audiences_refresh")
+    assert marketing.args[-1].endswith("refresh_marketing_audiences.py")

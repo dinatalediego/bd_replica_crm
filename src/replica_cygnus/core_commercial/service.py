@@ -22,9 +22,7 @@ def refresh_core_commercial(conn: Connection, project_root: Path) -> dict[str, i
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                TRUNCATE TABLE
-                    core.dim_unidad,
-                    core.dim_proyecto
+                TRUNCATE TABLE core.dim_unidad
                 """
             )
 
@@ -94,6 +92,36 @@ def refresh_core_commercial(conn: Connection, project_root: Path) -> dict[str, i
                     _etl_source_run_id,
                     now()
                 FROM raw_cygnus.proyectos
+                ON CONFLICT (proyecto_id) DO UPDATE SET
+                    codigo_proyecto = EXCLUDED.codigo_proyecto,
+                    nombre_proyecto = EXCLUDED.nombre_proyecto,
+                    direccion = EXCLUDED.direccion,
+                    fecha_estimacion = EXCLUDED.fecha_estimacion,
+                    fecha_real = EXCLUDED.fecha_real,
+                    fecha_inicio_venta = EXCLUDED.fecha_inicio_venta,
+                    latitud = EXCLUDED.latitud,
+                    longitud = EXCLUDED.longitud,
+                    pais = EXCLUDED.pais,
+                    departamento = EXCLUDED.departamento,
+                    provincia = EXCLUDED.provincia,
+                    distrito = EXCLUDED.distrito,
+                    usuario_creador = EXCLUDED.usuario_creador,
+                    username = EXCLUDED.username,
+                    tipo_proyecto = EXCLUDED.tipo_proyecto,
+                    estado_construccion = EXCLUDED.estado_construccion,
+                    total_unidades_reportado = EXCLUDED.total_unidades_reportado,
+                    unidades_vendidas_reportado = EXCLUDED.unidades_vendidas_reportado,
+                    moneda = EXCLUDED.moneda,
+                    codigo_externo = EXCLUDED.codigo_externo,
+                    tasa_interes_mensual = EXCLUDED.tasa_interes_mensual,
+                    banco_promotor = EXCLUDED.banco_promotor,
+                    fecha_actualizacion_origen = EXCLUDED.fecha_actualizacion_origen,
+                    razon_social = EXCLUDED.razon_social,
+                    direccion_razon_social = EXCLUDED.direccion_razon_social,
+                    ruc_razon_social = EXCLUDED.ruc_razon_social,
+                    source_loaded_at = EXCLUDED.source_loaded_at,
+                    source_run_id = EXCLUDED.source_run_id,
+                    core_loaded_at = EXCLUDED.core_loaded_at
                 """
             )
 
@@ -203,7 +231,15 @@ def refresh_core_commercial(conn: Connection, project_root: Path) -> dict[str, i
                 """
                 SELECT
                     (SELECT COUNT(*) FROM raw_cygnus.proyectos),
-                    (SELECT COUNT(*) FROM core.dim_proyecto),
+                    (
+                        SELECT COUNT(*)
+                        FROM core.dim_proyecto p
+                        WHERE EXISTS (
+                            SELECT 1
+                            FROM raw_cygnus.proyectos r
+                            WHERE r.id = p.proyecto_id
+                        )
+                    ),
                     (SELECT COUNT(*) FROM raw_cygnus.unidades),
                     (SELECT COUNT(*) FROM core.dim_unidad)
                 """

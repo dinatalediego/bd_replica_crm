@@ -218,6 +218,25 @@ Se conserva Step 02b existente en Git y se añade helper para habilitar únicame
 el bloque comentado conocido del PC, respaldando y preservando otras reparaciones.
 Activación real Windows y duración sobre Medallio requieren verificación local.
 
+---
+
+## MAP-ADR-015 — Audiencias LAL/RMKT derivadas localmente con privacidad explícita
+
+Date: 2026-10-15
+Status: ACCEPTED
+
+Marketing confirmó cualquier medio de captación y los campos Nombres, Apellidos,
+Teléfono/Celular y Correo. El usuario eligió positiva desde proforma, separación
+o minuta/venta; negativa sin avance y exclusiones en productos separados; y
+consumo local desde Power BI. Se fija 180 días como ventana inicial de no avance.
+
+El producto se deriva después de `staging.clientes_calidad`, usando clientes,
+procesos y proformas ya replicados. No añade consultas ni frecuencia a Redshift.
+Una conversión puede ser simultáneamente semilla positiva LAL y exclusión de una
+campaña de captación. No se infiere consentimiento ni “no contactar”: existen
+tablas explícitas de evidencia y la entrega externa solo se habilita con contacto
+válido, consentimiento vigente y ausencia de supresión.
+
 
 ## MAP-ADR-015 — Universo habilitado Torre Nápoles
 

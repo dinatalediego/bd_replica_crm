@@ -57,3 +57,10 @@ Agentic coordination must remain cheaper and safer than the work it coordinates:
 - no secrets;
 - no production PII;
 - no automatic push/merge from the handoff utility.
+
+## Audiencias de marketing — 2026-10-15
+
+MARKETING-AUDIENCES-001 añade productos locales para LAL/RMKT derivados de la
+réplica y mantenidos por `dw_refresh.py`. El contrato separa positivas, negativas
+sin avance y exclusiones; añade evidencia explícita de consentimiento/supresión
+y una vista health sin PII. Ver ADR-015 y `docs/MARKETING_AUDIENCIAS.md`.

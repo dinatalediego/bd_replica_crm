@@ -1,32 +1,31 @@
 # Active Task
 
-Task ID: CHAT-CONVERSATIONS-001
-Title: Importación y revisión programada de conversaciones comerciales
+Task ID: MARKETING-AUDIENCES-001
+Title: Audiencias locales LAL/RMKT mantenidas por el refresh canónico
 Status: REVIEW_READY
 Owner: chatgpt
 Next agent: human
-Branch: feat/conversation-intelligence-manual
+Branch: feat/medallio-refresh-hardening-review
 Base branch: main
 
 ## Result
 
-El diagnóstico local del 12-oct-2026 confirma 25,421 mensajes, dos cargas y
-reglas v2. Se añadió una tarea local de Windows con tres disparadores diarios
-(09:00, 15:00, 21:00). Consulta PostgreSQL antes de cada intento y omite los
-restantes del día de Lima después de una importación con new_messages > 0.
-Las cargas sin mensajes nuevos y los errores no consumen el día. El TXT sigue
-siendo privado y debe reemplazarse manualmente en conversaciones/.
+Se añadieron un mart local y vistas separadas para base positiva, negativa sin
+avance y exclusiones. La base positiva incluye proforma, separación y
+minuta/venta; la negativa usa 180 días sin avance. Consentimientos y supresiones
+son explícitos y nunca se infieren. El paso corre después de clientes_calidad en
+el refresh canónico y no añade llamadas a Redshift.
 
 ## Validation
 
-Cuatro pruebas aisladas del nuevo gate pasan; py_compile pasa. El export
-diagnóstico acredita que la instalación SQL y el importador manual funcionaron
-en el PostgreSQL local. El programador de tareas de Windows no se puede ejecutar
-desde este entorno; requiere smoke test en el PC.
+La prueba SQL aislada PGlite pasa con proforma, separación, venta, antigüedad,
+contacto, consentimiento y supresión. Quince pruebas Python relevantes pasan;
+py_compile y diff-check pasan. El PostgreSQL y el Programador de tareas del PC
+requieren smoke test local.
 
 ## Next action
 
-En la rama, hacer git pull e instalar con
-scripts/install_conversaciones_schedule.ps1. Revisar la tarea y ejecutar
-scripts/check_conversaciones_scheduled.py una vez desde PowerShell. Ver
-docs/conversaciones/PROGRAMACION.md.
+Actualizar la rama en el PC, instalar `marketing_audiences`, ejecutar una vez el
+refresh local y verificar `02c_marketing_audiences_refresh` en el log. Luego
+conectar las vistas `analytics.v_marketing_*` desde Power BI. Ver
+`docs/MARKETING_AUDIENCIAS.md`.
