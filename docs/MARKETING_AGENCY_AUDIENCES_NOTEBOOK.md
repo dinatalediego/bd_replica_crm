@@ -2,78 +2,199 @@
 
 ## Objetivo
 
-`notebooks/13_marketing_agency_audiences_economics_lab.ipynb` es el laboratorio especializado en los medios gestionados por la agencia tercerizada de marketing digital. Reutiliza el enfoque del notebook 12, separa el universo de agencia del resto de medios y genera un Excel ejecutivo/operativo.
+`notebooks/13_marketing_agency_audiences_economics_lab.ipynb` es el laboratorio especializado en los medios gestionados por la agencia tercerizada de marketing digital.
 
-La selección de medios vive en `config/marketing_agency_channels.yml`. La configuración inicial corresponde al filtro entregado el 2026-10-15:
+El notebook usa el mart local `analytics.marketing_audiencias`, pero ahora el proyecto ya no depende solo de `staging.clientes_calidad`.
+
+El refresh resuelve el linaje comercial con estas fuentes:
+
+1. `raw_cygnus.clientes_proyectos` → proyecto y medio de **origen**;
+2. `raw_cygnus.proformas` → proyecto de **proforma**;
+3. `raw_cygnus.procesos` → proyecto de **separación/minuta/venta**;
+4. `raw_cygnus.proyectos` → catálogo código → nombre;
+5. `staging.clientes_calidad` → fallback de cliente y controles de contacto.
+
+La prioridad del campo analítico `proyecto` es:
+
+`ORIGEN > CONVERSION > PROFORMA > CLIENTE`
+
+El linaje completo se conserva además en:
+
+`analytics.marketing_audiencias_proyectos`
+
+con granularidad `persona_key + codigo_proyecto`.
+
+## Medios de agencia
+
+La selección vive en `config/marketing_agency_channels.yml`.
+
+Configuración inicial:
 
 - Facebook
-- Tik Tok (`tik tok` y alias `tiktok`)
+- Tik Tok (`tik tok` y `tiktok`)
 - Instagram
 - Meta
 - Google
 
-Las métricas del CSV de referencia no se fijan en código: el notebook siempre recalcula los resultados contra `analytics.marketing_audiencias`.
+Las métricas nunca quedan hardcodeadas; se recalculan desde Medallio local.
+
+## Ventana temporal opcional
+
+En la primera celda de parámetros:
+
+```python
+FECHA_INICIO = "01/07/26"
+FECHA_CORTE = "15/10/26"
+```
+
+También se admite:
+
+```python
+FECHA_INICIO = None
+FECHA_CORTE = None
+```
+
+Formatos aceptados:
+
+- `DD/MM/YY`
+- `DD/MM/YYYY`
+- `YYYY-MM-DD`
+
+La fecha de análisis es `fecha_origen_primario`; si no existe, usa `fecha_cliente`.
+
+El mismo filtro gobierna estadísticas, gráficos y bases Excel para evitar universos inconsistentes.
 
 ## Qué analiza
 
-1. Escala, tasa positiva, remarketing y aptitud externa por medio.
-2. Concentración de captación mediante HHI.
-3. Intervalos Wilson al 95% para las tasas.
-4. Prueba chi-cuadrado global y comparaciones de proporciones con ajuste de Holm.
-5. Matriz proyecto × canal.
-6. Cohortes mensuales para evitar comparar bases con distinta maduración.
-7. Stock de RMKT activable.
-8. Separación explícita entre asociación histórica y causalidad.
+1. escala y tasa positiva por medio;
+2. HHI de concentración;
+3. intervalos Wilson 95%;
+4. chi-cuadrado y comparaciones de proporciones con Holm;
+5. proyecto origen × medio;
+6. cohortes por fecha de captación;
+7. proyecto origen → proforma → conversión;
+8. cambios de proyecto y sustitución/cross-selling;
+9. relaciones multi-proyecto;
+10. stock positivo, RMKT y neutral reciente;
+11. separación entre bases internas y exportables.
+
+Las diferencias históricas son asociación, no causalidad. Para medir lift incremental se requiere grupo control o un diseño causal defendible.
+
+## Campos de proyecto
+
+`analytics.marketing_audiencias` expone:
+
+- `codigo_proyecto_origen`
+- `proyecto_origen`
+- `codigo_proyecto_proforma`
+- `proyecto_proforma`
+- `codigo_proyecto_conversion`
+- `proyecto_conversion`
+- `proyecto`
+- `fuente_proyecto`
+- `cambio_proyecto`
+- `fecha_origen_primario`
+
+`cambio_proyecto = TRUE` cuando el proyecto de origen difiere del proyecto de conversión; mientras aún no existe conversión, la proforma funciona como evidencia secundaria.
 
 ## Excel generado
 
-Cada ejecución crea:
+Salida:
 
-`outputs/marketing_agency_audiences/audiencias_agencia_ejecutivo_YYYYMMDD_HHMMSS.xlsx`
+```text
+outputs/marketing_agency_audiences/
+audiencias_agencia_<inicio>_<corte>_YYYYMMDD_HHMMSS.xlsx
+```
 
 Hojas:
 
-- `00_Resumen`: KPIs ejecutivos.
-- `01_Canales`: volumen, tasas, intervalos, participación y stock.
-- `02_Proyecto_Canal`: detalle agregado para filtros.
-- `03_Cohortes`: desempeño mensual por medio.
-- `04_Hipotesis`: comparaciones contra el canal benchmark.
-- `10_Base_Positiva`: base positiva apta para entrega externa.
-- `11_Base_Negativa`: base RMKT negativa apta para entrega externa.
+- `00_Resumen`
+- `01_Canales`
+- `02_Proyecto_Origen`
+- `03_Cohortes`
+- `04_Hipotesis`
+- `05_Origen_Conversion`
+- `06_Flujo_Proyectos`
+- `07_Proyecto_Detalle`
+- `10_Positiva_Interna`
+- `11_Negativa_RMKT_Interna`
+- `12_Neutral_Reciente`
+- `20_Positiva_Exportable`
+- `21_Negativa_Exportable`
 
-Las dos hojas operativas pueden contener nombres, teléfonos y correos. Se construyen desde las vistas de marketing y exigen `apto_entrega_externa = TRUE`; esas filas no se muestran en pantalla dentro del notebook.
+Las hojas 10/11/12 son internas.
 
-## Instalación / ejecución en VS Code
+Las hojas 20/21 contienen únicamente filas con `apto_entrega_externa = TRUE`.
 
-Desde la raíz de `bd_replica_crm`, en PowerShell:
+## Instalación / actualización
+
+Desde la raíz de `bd_replica_crm`:
 
 ```powershell
 git fetch origin
 git switch feat/medallio-refresh-hardening-review
-git pull
+git pull --ff-only origin feat/medallio-refresh-hardening-review
 
 $python = ".\.venv\Scripts\python.exe"
+
 & $python -m pip install -e .
-& $python -m pip install ipykernel matplotlib scipy
-& $python -m ipykernel install --user --name medallio-dw --display-name "Python (Medallio DW)"
+
+& $python .\scripts\schema_sync.py --only marketing_audiences
+& $python .\scripts\refresh_marketing_audiences.py
+
+& $python -m pytest `
+    tests\test_marketing_audiences.py `
+    tests\test_marketing_agency_audiences_notebook.py `
+    -q
 
 code .\notebooks\13_marketing_agency_audiences_economics_lab.ipynb
 ```
 
-Seleccionar el kernel **Python (Medallio DW)** y ejecutar `Run All`.
+Después seleccionar el kernel **Python (Medallio DW)** y ejecutar **Restart Kernel → Run All**.
 
-## Cambiar los medios de la agencia
+## Control rápido del nuevo linaje
 
-Editar únicamente `config/marketing_agency_channels.yml`.
+```sql
+SELECT
+    personas,
+    positivas,
+    negativas_sin_avance,
+    con_proyecto_origen,
+    con_proyecto_conversion,
+    cambios_proyecto,
+    project_links
+FROM analytics.v_marketing_audiencias_health;
+```
 
-Cada canal tiene:
+Cobertura del proyecto origen:
 
-- `key`: identificador estable;
-- `label`: nombre visible;
-- `match_values`: valores aceptados en `medio_captacion`.
+```sql
+SELECT
+    fuente_proyecto,
+    count(*) AS personas
+FROM analytics.marketing_audiencias
+GROUP BY fuente_proyecto
+ORDER BY personas DESC;
+```
 
-No es necesario modificar SQL o gráficos para incorporar un alias nuevo.
+Flujos entre proyectos:
 
-## Regla de privacidad
+```sql
+SELECT
+    proyecto_origen,
+    proyecto_conversion,
+    count(*) AS personas
+FROM analytics.marketing_audiencias
+WHERE proyecto_origen IS NOT NULL
+  AND proyecto_conversion IS NOT NULL
+GROUP BY proyecto_origen, proyecto_conversion
+ORDER BY personas DESC;
+```
 
-El bloque analítico no consulta PII. Las bases de activación se consultan recién en la sección de exportación y solo para filas aptas para entrega externa. Si el objetivo es análisis y no activación, se puede detener la ejecución antes de esa sección.
+## Privacidad
+
+`analytics.marketing_consentimientos` sigue siendo la fuente explícita de autorización publicitaria.
+
+No se modifica ni se fuerza `apto_entrega_externa`.
+
+La ausencia de consentimiento no elimina las bases internas, pero sí mantiene vacías las hojas exportables hasta que exista evidencia válida.
