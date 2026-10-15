@@ -112,6 +112,8 @@ SELECT
     exclusion_convertido,
     exclusion_contacto_invalido,
     exclusion_no_contactar,
+    consentimiento_publicidad_verificado,
+    apto_entrega_externa,
     actualizado_en
 FROM analytics.marketing_audiencias
 WHERE exclusion_convertido
