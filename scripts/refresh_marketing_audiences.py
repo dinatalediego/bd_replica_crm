@@ -24,8 +24,7 @@ def validate_inactivity_days(value: int) -> int:
     return value
 
 
-REFRESH_SQL = r"""
-DROP TABLE IF EXISTS pg_temp.marketing_audiencias_next;
+BUILD_NEXT_SQL = r"""
 CREATE TEMP TABLE marketing_audiencias_next ON COMMIT DROP AS
 WITH clientes AS (
     SELECT
@@ -190,9 +189,11 @@ SELECT
 FROM ranked r
 LEFT JOIN analytics.marketing_consentimientos c USING (persona_key)
 LEFT JOIN analytics.marketing_supresiones s USING (persona_key)
-WHERE r.rn = 1;
+WHERE r.rn = 1
+"""
 
-DELETE FROM analytics.marketing_audiencias;
+
+LOAD_AUDIENCES_SQL = r"""
 INSERT INTO analytics.marketing_audiencias (
     persona_key, source_id, nombres, apellidos, celular, email,
     medio_captacion, proyecto, fecha_cliente, fecha_proforma,
@@ -208,7 +209,7 @@ SELECT
     positiva, negativa_sin_avance, exclusion_convertido,
     exclusion_contacto_invalido, exclusion_no_contactar, contacto_valido,
     consentimiento_publicidad_verificado, apto_entrega_externa, actualizado_en
-FROM marketing_audiencias_next;
+FROM marketing_audiencias_next
 """
 
 
@@ -232,7 +233,13 @@ def refresh(conn, *, inactivity_days: int = 180, timeout_seconds: int = 600) -> 
             if not cur.fetchone()[0]:
                 raise RuntimeError("marketing_audiencias: otro refresh sigue activo")
             cur.execute("LOCK TABLE analytics.marketing_audiencias IN SHARE ROW EXCLUSIVE MODE")
-            cur.execute(REFRESH_SQL, {"inactivity_days": inactivity_days})
+            # Psycopg's extended protocol (used when binding parameters) accepts
+            # exactly one SQL command per execute call. Keep the atomic refresh
+            # transaction, but issue each command separately.
+            cur.execute("DROP TABLE IF EXISTS pg_temp.marketing_audiencias_next")
+            cur.execute(BUILD_NEXT_SQL, {"inactivity_days": inactivity_days})
+            cur.execute("DELETE FROM analytics.marketing_audiencias")
+            cur.execute(LOAD_AUDIENCES_SQL)
             cur.execute("SELECT * FROM analytics.v_marketing_audiencias_health")
             columns = [item.name for item in cur.description]
             health = dict(zip(columns, cur.fetchone()))
