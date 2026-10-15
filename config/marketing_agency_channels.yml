@@ -1,0 +1,27 @@
+agency_name: Agencia tercerizada de marketing digital
+description: >
+  Canales gestionados por la agencia para el laboratorio económico de audiencias.
+  La lista inicial proviene del filtro entregado el 2026-10-15. Las métricas no se
+  versionan aquí: se recalculan desde analytics.marketing_audiencias.
+channels:
+  - key: facebook
+    label: Facebook
+    match_values:
+      - facebook
+  - key: tik_tok
+    label: Tik Tok
+    match_values:
+      - tik tok
+      - tiktok
+  - key: instagram
+    label: Instagram
+    match_values:
+      - instagram
+  - key: meta
+    label: Meta
+    match_values:
+      - meta
+  - key: google
+    label: Google
+    match_values:
+      - google
