@@ -26,8 +26,20 @@ CREATE TABLE IF NOT EXISTS analytics.marketing_audiencias (
     celular text,
     email text,
     medio_captacion text,
+    medio_captacion_cliente text,
+    medio_captacion_origen text,
+    codigo_proyecto_origen text,
+    proyecto_origen text,
+    codigo_proyecto_proforma text,
+    proyecto_proforma text,
+    codigo_proyecto_conversion text,
+    proyecto_conversion text,
     proyecto text,
+    fuente_proyecto text,
+    cambio_proyecto boolean NOT NULL DEFAULT false,
     fecha_cliente date,
+    fecha_cliente_crm date,
+    fecha_origen_primario date,
     fecha_proforma timestamptz,
     fecha_separacion timestamptz,
     fecha_minuta_venta timestamptz,
@@ -46,10 +58,77 @@ CREATE TABLE IF NOT EXISTS analytics.marketing_audiencias (
     actualizado_en timestamptz NOT NULL DEFAULT now()
 );
 
+-- Upgrade idempotente para instalaciones existentes.
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS medio_captacion_cliente text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS medio_captacion_origen text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS codigo_proyecto_origen text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS proyecto_origen text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS codigo_proyecto_proforma text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS proyecto_proforma text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS codigo_proyecto_conversion text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS proyecto_conversion text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS fuente_proyecto text;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS cambio_proyecto boolean NOT NULL DEFAULT false;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS fecha_cliente_crm date;
+ALTER TABLE analytics.marketing_audiencias
+    ADD COLUMN IF NOT EXISTS fecha_origen_primario date;
+
 CREATE INDEX IF NOT EXISTS idx_marketing_audiencias_etapa
     ON analytics.marketing_audiencias (etapa_maxima);
 CREATE INDEX IF NOT EXISTS idx_marketing_audiencias_flags
-    ON analytics.marketing_audiencias (positiva, negativa_sin_avance, apto_entrega_externa);
+    ON analytics.marketing_audiencias (
+        positiva, negativa_sin_avance, apto_entrega_externa
+    );
+CREATE INDEX IF NOT EXISTS idx_marketing_audiencias_origen
+    ON analytics.marketing_audiencias (
+        codigo_proyecto_origen, fecha_origen_primario, medio_captacion
+    );
+CREATE INDEX IF NOT EXISTS idx_marketing_audiencias_conversion
+    ON analytics.marketing_audiencias (
+        codigo_proyecto_conversion, cambio_proyecto
+    );
+
+CREATE TABLE IF NOT EXISTS analytics.marketing_audiencias_proyectos (
+    persona_key text NOT NULL
+        REFERENCES analytics.marketing_audiencias(persona_key) ON DELETE CASCADE,
+    codigo_proyecto text NOT NULL,
+    proyecto text,
+    fecha_primer_lead date,
+    fecha_ultimo_lead date,
+    medio_captacion_primer_touch text,
+    medio_captacion_ultimo_touch text,
+    cantidad_leads bigint NOT NULL DEFAULT 0,
+    es_primer_touch boolean NOT NULL DEFAULT false,
+    es_ultimo_touch boolean NOT NULL DEFAULT false,
+    tuvo_proforma boolean NOT NULL DEFAULT false,
+    tuvo_separacion boolean NOT NULL DEFAULT false,
+    tuvo_minuta_venta boolean NOT NULL DEFAULT false,
+    fecha_primera_proforma timestamptz,
+    fecha_primera_separacion timestamptz,
+    fecha_primera_minuta_venta timestamptz,
+    actualizado_en timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (persona_key, codigo_proyecto)
+);
+
+CREATE INDEX IF NOT EXISTS idx_marketing_audiencias_proyectos_project
+    ON analytics.marketing_audiencias_proyectos (
+        codigo_proyecto, fecha_primer_lead
+    );
+CREATE INDEX IF NOT EXISTS idx_marketing_audiencias_proyectos_flags
+    ON analytics.marketing_audiencias_proyectos (
+        es_primer_touch, tuvo_proforma, tuvo_separacion, tuvo_minuta_venta
+    );
 
 CREATE TABLE IF NOT EXISTS analytics.marketing_audiencias_refresh_runs (
     run_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -61,9 +140,24 @@ CREATE TABLE IF NOT EXISTS analytics.marketing_audiencias_refresh_runs (
     negativas_sin_avance bigint NOT NULL,
     exclusiones bigint NOT NULL,
     contacto_valido bigint NOT NULL,
-    aptas_entrega_externa bigint NOT NULL
+    aptas_entrega_externa bigint NOT NULL,
+    con_proyecto_origen bigint NOT NULL DEFAULT 0,
+    con_proyecto_conversion bigint NOT NULL DEFAULT 0,
+    cambios_proyecto bigint NOT NULL DEFAULT 0,
+    project_links bigint NOT NULL DEFAULT 0
 );
 
+ALTER TABLE analytics.marketing_audiencias_refresh_runs
+    ADD COLUMN IF NOT EXISTS con_proyecto_origen bigint NOT NULL DEFAULT 0;
+ALTER TABLE analytics.marketing_audiencias_refresh_runs
+    ADD COLUMN IF NOT EXISTS con_proyecto_conversion bigint NOT NULL DEFAULT 0;
+ALTER TABLE analytics.marketing_audiencias_refresh_runs
+    ADD COLUMN IF NOT EXISTS cambios_proyecto bigint NOT NULL DEFAULT 0;
+ALTER TABLE analytics.marketing_audiencias_refresh_runs
+    ADD COLUMN IF NOT EXISTS project_links bigint NOT NULL DEFAULT 0;
+
+-- Mantener las columnas históricas al inicio permite CREATE OR REPLACE VIEW
+-- sobre instalaciones existentes; los campos nuevos se agregan al final.
 CREATE OR REPLACE VIEW analytics.v_marketing_positiva AS
 SELECT
     nombres AS "Nombres",
@@ -76,7 +170,20 @@ SELECT
     fecha_ultimo_avance,
     consentimiento_publicidad_verificado,
     apto_entrega_externa,
-    actualizado_en
+    actualizado_en,
+    medio_captacion_cliente,
+    medio_captacion_origen,
+    codigo_proyecto_origen,
+    proyecto_origen,
+    codigo_proyecto_proforma,
+    proyecto_proforma,
+    codigo_proyecto_conversion,
+    proyecto_conversion,
+    fuente_proyecto,
+    cambio_proyecto,
+    fecha_cliente,
+    fecha_cliente_crm,
+    fecha_origen_primario
 FROM analytics.marketing_audiencias
 WHERE positiva
   AND contacto_valido
@@ -94,9 +201,52 @@ SELECT
     fecha_cliente,
     consentimiento_publicidad_verificado,
     apto_entrega_externa,
-    actualizado_en
+    actualizado_en,
+    medio_captacion_cliente,
+    medio_captacion_origen,
+    codigo_proyecto_origen,
+    proyecto_origen,
+    codigo_proyecto_proforma,
+    proyecto_proforma,
+    codigo_proyecto_conversion,
+    proyecto_conversion,
+    fuente_proyecto,
+    cambio_proyecto,
+    fecha_cliente_crm,
+    fecha_origen_primario
 FROM analytics.marketing_audiencias
 WHERE negativa_sin_avance
+  AND contacto_valido
+  AND NOT exclusion_no_contactar;
+
+CREATE OR REPLACE VIEW analytics.v_marketing_neutral_reciente AS
+SELECT
+    nombres AS "Nombres",
+    apellidos AS "Apellidos",
+    celular AS "Telefono_Celular",
+    email AS "Correo_electronico",
+    medio_captacion,
+    proyecto,
+    etapa_maxima,
+    fecha_cliente,
+    consentimiento_publicidad_verificado,
+    apto_entrega_externa,
+    actualizado_en,
+    medio_captacion_cliente,
+    medio_captacion_origen,
+    codigo_proyecto_origen,
+    proyecto_origen,
+    codigo_proyecto_proforma,
+    proyecto_proforma,
+    codigo_proyecto_conversion,
+    proyecto_conversion,
+    fuente_proyecto,
+    cambio_proyecto,
+    fecha_cliente_crm,
+    fecha_origen_primario
+FROM analytics.marketing_audiencias
+WHERE NOT positiva
+  AND NOT negativa_sin_avance
   AND contacto_valido
   AND NOT exclusion_no_contactar;
 
@@ -114,7 +264,9 @@ SELECT
     exclusion_no_contactar,
     consentimiento_publicidad_verificado,
     apto_entrega_externa,
-    actualizado_en
+    actualizado_en,
+    proyecto_origen,
+    proyecto_conversion
 FROM analytics.marketing_audiencias
 WHERE exclusion_convertido
    OR exclusion_contacto_invalido
@@ -126,18 +278,41 @@ SELECT
     count(*) FILTER (WHERE positiva)::bigint AS positivas,
     count(*) FILTER (WHERE negativa_sin_avance)::bigint AS negativas_sin_avance,
     count(*) FILTER (
-        WHERE exclusion_convertido OR exclusion_contacto_invalido OR exclusion_no_contactar
+        WHERE exclusion_convertido
+           OR exclusion_contacto_invalido
+           OR exclusion_no_contactar
     )::bigint AS exclusiones,
     count(*) FILTER (WHERE contacto_valido)::bigint AS contacto_valido,
     count(*) FILTER (WHERE apto_entrega_externa)::bigint AS aptas_entrega_externa,
-    max(actualizado_en) AS actualizado_en
+    max(actualizado_en) AS actualizado_en,
+    count(*) FILTER (
+        WHERE codigo_proyecto_origen IS NOT NULL
+    )::bigint AS con_proyecto_origen,
+    count(*) FILTER (
+        WHERE codigo_proyecto_conversion IS NOT NULL
+    )::bigint AS con_proyecto_conversion,
+    count(*) FILTER (
+        WHERE cambio_proyecto
+    )::bigint AS cambios_proyecto,
+    (
+        SELECT count(*)::bigint
+        FROM analytics.marketing_audiencias_proyectos
+    ) AS project_links
 FROM analytics.marketing_audiencias;
 
 COMMENT ON TABLE analytics.marketing_audiencias IS
-'Mart local para LAL/RMKT. Se deriva de Medallio y no consulta Redshift directamente.';
+'Mart local persona-level para LAL/RMKT. Resuelve medio/proyecto con prioridad de origen sin perder proforma ni conversión.';
+COMMENT ON TABLE analytics.marketing_audiencias_proyectos IS
+'Linaje multi-proyecto por persona: captación, proforma, separación y venta/minuta sin colapsar a un único proyecto.';
 COMMENT ON TABLE analytics.marketing_consentimientos IS
 'Evidencia explícita de autorización publicitaria. El refresh no infiere consentimiento.';
 COMMENT ON TABLE analytics.marketing_supresiones IS
 'Personas que no deben activarse publicitariamente; se administra con evidencia autorizada.';
+COMMENT ON COLUMN analytics.marketing_audiencias.proyecto IS
+'Proyecto analítico resuelto con prioridad ORIGEN > CONVERSION > PROFORMA > CLIENTE.';
+COMMENT ON COLUMN analytics.marketing_audiencias.fuente_proyecto IS
+'Fuente que gobernó proyecto: ORIGEN, CONVERSION, PROFORMA, CLIENTE o SIN_PROYECTO.';
+COMMENT ON COLUMN analytics.marketing_audiencias.cambio_proyecto IS
+'TRUE cuando el proyecto de origen difiere del proyecto de conversión; usa proforma como fallback si aún no existe conversión.';
 COMMENT ON COLUMN analytics.marketing_audiencias.apto_entrega_externa IS
 'TRUE solo con contacto válido, consentimiento permitido y sin supresión activa.';

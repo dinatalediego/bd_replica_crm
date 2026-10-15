@@ -18,6 +18,7 @@ artifacts/
 output/stock_disponible/*.xlsx
 output/pdf/
 tmp/pdfs/
+outputs/marketing_agency_audiences/*.xlsx
 
 # Power BI -> Medallio adapter local state/extractions.
 .state/
