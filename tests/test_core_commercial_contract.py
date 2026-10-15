@@ -37,3 +37,10 @@ def test_core_service_derives_tipologia_ubicacion_in_dw() -> None:
 
     assert "right(trim(codigo), 2)" in source
     assert '"tipologia_ubicacion_inconsistente"' in source
+
+def test_core_refresh_preserves_projects_referenced_by_history() -> None:
+    source = SERVICE_PATH.read_text(encoding="utf-8").lower()
+
+    assert "truncate table core.dim_unidad" in source
+    assert "truncate table\n                    core.dim_unidad,\n                    core.dim_proyecto" not in source
+    assert "on conflict (proyecto_id) do update" in source
