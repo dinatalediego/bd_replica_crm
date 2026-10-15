@@ -41,13 +41,57 @@ def test_schema_exposes_required_provider_fields_and_privacy_gate():
     assert "apto_entrega_externa" in sql
     assert "marketing_consentimientos" in sql
     assert "marketing_supresiones" in sql
+    assert "v_marketing_neutral_reciente" in sql
 
 
-def test_marketing_refresh_uses_local_sources_only():
+def test_schema_exposes_project_lineage():
+    sql = (ROOT / "sql" / "115_marketing_audiences" / "01_contract.sql").read_text(
+        encoding="utf-8"
+    ).lower()
+
+    for field in (
+        "codigo_proyecto_origen",
+        "proyecto_origen",
+        "codigo_proyecto_proforma",
+        "proyecto_proforma",
+        "codigo_proyecto_conversion",
+        "proyecto_conversion",
+        "fuente_proyecto",
+        "cambio_proyecto",
+        "fecha_origen_primario",
+    ):
+        assert field in sql
+
+    assert "analytics.marketing_audiencias_proyectos" in sql
+    assert "origen > conversion > proforma > cliente" in sql
+
+
+def test_marketing_refresh_uses_local_project_sources_only():
     source = (ROOT / "scripts" / "refresh_marketing_audiences.py").read_text(
         encoding="utf-8"
-    )
-    assert "raw_cygnus.clientes" in source
-    assert "raw_cygnus.procesos" in source
-    assert "raw_cygnus.proformas" in source
-    assert "redshift" not in source.lower()
+    ).lower()
+
+    for relation in (
+        "raw_cygnus.clientes",
+        "raw_cygnus.clientes_proyectos",
+        "raw_cygnus.procesos",
+        "raw_cygnus.proformas",
+        "raw_cygnus.proyectos",
+        "staging.clientes_calidad",
+    ):
+        assert relation in source
+
+    assert "redshift" not in source
+    assert "medio_captacion_origen" in source
+    assert "codigo_proyecto_origen" in source
+    assert "codigo_proyecto_conversion" in source
+    assert "build_projects_next_sql" in source
+
+
+def test_project_resolution_prioritizes_origin():
+    source = (ROOT / "scripts" / "refresh_marketing_audiences.py").read_text(
+        encoding="utf-8"
+    ).lower().replace("\n", " ")
+
+    assert "coalesce(op.proyecto_origen, cp.proyecto_conversion, pp.proyecto_proforma, r.dq_proyecto)" in source
+    assert "when op.proyecto_origen is not null then 'origen'" in source
