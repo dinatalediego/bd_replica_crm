@@ -19,8 +19,10 @@ def main() -> int:
                 raise RuntimeError(
                     "No existe analytics.marketing_audiencias; ejecutar schema_sync primero."
                 )
+
             cur.execute("SELECT * FROM analytics.v_marketing_audiencias_health")
             health = _row_dict(cur)
+
             cur.execute(
                 """
                 SELECT etapa_maxima, count(*)::bigint AS personas
@@ -30,10 +32,23 @@ def main() -> int:
                 """
             )
             stages = cur.fetchall()
+
+            cur.execute(
+                """
+                SELECT fuente_proyecto, count(*)::bigint AS personas
+                FROM analytics.marketing_audiencias
+                GROUP BY fuente_proyecto
+                ORDER BY personas DESC, fuente_proyecto
+                """
+            )
+            project_sources = cur.fetchall()
+
             cur.execute(
                 """
                 SELECT run_id, finished_at, inactivity_days, personas, positivas,
-                       negativas_sin_avance, exclusiones, aptas_entrega_externa
+                       negativas_sin_avance, exclusiones, aptas_entrega_externa,
+                       con_proyecto_origen, con_proyecto_conversion,
+                       cambios_proyecto, project_links
                 FROM analytics.marketing_audiencias_refresh_runs
                 ORDER BY run_id DESC
                 LIMIT 1
@@ -44,12 +59,19 @@ def main() -> int:
     print("[MARKETING_AUDIENCES_HEALTH]")
     for key, value in (health or {}).items():
         print(f"  {key}: {value}")
+
     print("[ETAPA_MAXIMA]")
     for stage, count in stages:
         print(f"  {stage}: {count}")
+
+    print("[FUENTE_PROYECTO]")
+    for source, count in project_sources:
+        print(f"  {source}: {count}")
+
     print("[ULTIMO_REFRESH]")
     for key, value in (latest or {}).items():
         print(f"  {key}: {value}")
+
     return 0
 
 
