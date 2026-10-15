@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Medallio Forecast Run Manifest v1",
+  "type": "object",
+  "required": [
+    "model_version_id",
+    "issued_at",
+    "data_cutoff_date",
+    "training_start_date",
+    "training_end_date",
+    "feature_version",
+    "dataset_snapshot_id",
+    "code_sha"
+  ],
+  "properties": {
+    "model_version_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "data_cutoff_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "training_start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "training_end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "feature_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dataset_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "code_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "run_parameters": {
+      "type": "object"
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

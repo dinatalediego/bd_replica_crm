@@ -1,0 +1,110 @@
+{
+  "version": "2.0",
+  "recipient": "TU_CORREO@gmail.com",
+  "timezone": "America/Lima",
+  "kernel_name": "medallio_dw",
+  "subject_prefix": "[Medallio]",
+  "paths": {
+    "state_dir": "state/medallio_ambassador",
+    "runtime_dir": "artifacts/medallio_ambassador",
+    "credentials_file": ".secrets/google_workspace_credentials.json",
+    "token_file": ".secrets/google_workspace_token.json"
+  },
+  "notebooks": {
+    "every_run": [
+      "notebooks/Medallio_CEO_5_Minute_AI_Briefing.ipynb",
+      "notebooks/Medallio_CEO_AI_Control_Tower_Lite.ipynb"
+    ],
+    "evening_only": [
+      "notebooks/Medallio_Enterprise_AI_Analytics_Operating_System.ipynb",
+      "notebooks/Medallio_AI_Analytics_Factory.ipynb"
+    ]
+  },
+  "notebook_timeouts_seconds": {
+    "notebooks/Medallio_CEO_5_Minute_AI_Briefing.ipynb": 300,
+    "notebooks/Medallio_CEO_AI_Control_Tower_Lite.ipynb": 360,
+    "notebooks/Medallio_Enterprise_AI_Analytics_Operating_System.ipynb": 1200,
+    "notebooks/Medallio_AI_Analytics_Factory.ipynb": 1200
+  },
+  "artifact_roots": [
+    "artifacts/medallio_ceo_briefing",
+    "artifacts/medallio_enterprise",
+    "artifacts/medallio_ai_factory"
+  ],
+  "communication_policy": {
+    "email_max_attachments": 3,
+    "email_attachment_budget_mb": 5,
+    "drive_max_artifacts_per_run": 40,
+    "drive_max_total_mb_per_run": 50,
+    "slides_update_slots": [
+      "morning",
+      "evening"
+    ],
+    "calendar_min_severity": "critical",
+    "chat_min_severity": "high",
+    "materiality": {
+      "wape_change_pp": 2.0,
+      "coverage_change_pp": 5.0,
+      "open_actions_delta": 2,
+      "risk_alerts_delta": 1,
+      "trust_score_change_pp": 5.0
+    }
+  },
+  "google": {
+    "drive": {
+      "enabled": true,
+      "root_folder_name": "Medallio Intelligence Vault"
+    },
+    "sheets": {
+      "enabled": true,
+      "spreadsheet_name": "Medallio Executive Register"
+    },
+    "slides": {
+      "enabled": true,
+      "presentation_prefix": "Medallio CEO Briefing"
+    },
+    "docs": {
+      "enabled": true,
+      "weekly_memo_prefix": "Medallio Weekly Intelligence Memo"
+    },
+    "calendar": {
+      "enabled": true,
+      "calendar_id": "primary",
+      "event_duration_minutes": 20
+    },
+    "chat": {
+      "enabled": false,
+      "space_name": ""
+    }
+  },
+  "cloud_optional": {
+    "secret_manager": {
+      "enabled": false,
+      "project_id": ""
+    },
+    "pubsub": {
+      "enabled": false,
+      "project_id": "",
+      "topic_id": "medallio-executive-events"
+    },
+    "bigquery": {
+      "enabled": false,
+      "project_id": "",
+      "dataset_id": "medallio_governance",
+      "table_id": "ambassador_runs"
+    }
+  },
+  "economic_decision_policy": {
+    "currency": "PEN",
+    "currency_symbol": "S/",
+    "confidence_by_evidence_grade": {
+      "A": 0.8,
+      "B": 0.65,
+      "C": 0.45
+    },
+    "max_decisions": 12,
+    "max_projects": 10,
+    "economic_escalation_enabled": false,
+    "critical_value_at_risk": null
+  }
+}

@@ -1,0 +1,347 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:medallio:model-pack:1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "kind": {
+      "const": "model"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,119}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "classification": {
+      "enum": [
+        "PRIVATE",
+        "SYNTHETIC"
+      ]
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "semantics": {
+          "enum": [
+            "SYNTHETIC_DEMO",
+            "RECONSTRUCTED_REVISED_HISTORY",
+            "OBSERVED"
+          ]
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dataset_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "transformation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 10000
+        }
+      },
+      "required": [
+        "source",
+        "semantics",
+        "as_of",
+        "generated_at",
+        "dataset_sha256",
+        "transformation",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "data_pack_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,119}$"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "family": {
+      "const": "moving_average_3"
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4000
+      },
+      "minItems": 1,
+      "maxItems": 10000
+    },
+    "execution": {
+      "const": "external_python"
+    },
+    "training_period": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date"
+        },
+        "end": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "window": {
+          "const": 3
+        },
+        "stock_cap": {
+          "const": true
+        }
+      },
+      "required": [
+        "window",
+        "stock_cap"
+      ],
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "partition": {
+            "enum": [
+              "temporal_holdout"
+            ]
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "interpretation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "unit",
+          "partition",
+          "n",
+          "interpretation"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 10000
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,119}$"
+          },
+          "origin": {
+            "type": "string",
+            "format": "date"
+          },
+          "horizon": {
+            "const": 1
+          },
+          "prediction": {
+            "type": "number",
+            "minimum": 0
+          },
+          "stock": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "project",
+          "origin",
+          "horizon",
+          "prediction",
+          "stock"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 10000
+    },
+    "uncertainty": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "NOT_ESTIMATED"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "status",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "evidence_type": {
+      "const": "predictive"
+    },
+    "validation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4000
+      },
+      "minItems": 1,
+      "maxItems": 10000
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4000
+      },
+      "minItems": 1,
+      "maxItems": 10000
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "allowed_controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "const": "velocity_multiplier"
+          },
+          "min": {
+            "const": 0.5
+          },
+          "max": {
+            "const": 1.5
+          },
+          "default": {
+            "const": 1.0
+          },
+          "meaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "id",
+          "min",
+          "max",
+          "default",
+          "meaning"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 10000
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "version",
+    "classification",
+    "label",
+    "provenance",
+    "data_pack_id",
+    "question",
+    "family",
+    "target",
+    "features",
+    "execution",
+    "training_period",
+    "parameters",
+    "metrics",
+    "results",
+    "uncertainty",
+    "evidence_type",
+    "validation",
+    "assumptions",
+    "limitations",
+    "explanation",
+    "allowed_controls"
+  ],
+  "additionalProperties": false
+}

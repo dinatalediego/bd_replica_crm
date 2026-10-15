@@ -1,0 +1,5 @@
+.secrets/
+state/medallio_ambassador/
+artifacts/medallio_ambassador/
+__pycache__/
+*.pyc

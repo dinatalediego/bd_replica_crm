@@ -1,0 +1,119 @@
+{
+  "version": "1.0.2",
+  "source_cumulative": {
+    "relation": "analytics.v_pbi_forecast_factory_current_v101",
+    "required_aggregation_semantics": "CUMULATIVE_WINDOW",
+    "derivation_method": "CUMULATIVE_TO_MONTHLY_INCREMENT_V102"
+  },
+  "monthly_target": {
+    "target_name": "sales_units",
+    "target_unit": "units",
+    "segment_key": "ALL",
+    "aggregation_semantics": "PERIOD_VALUE",
+    "scope_semantics": "EXISTING_STOCK_NO_FUTURE_INFLOWS"
+  },
+  "actual_loader": {
+    "source_relation": "analytics.v_absorcion_ventas_mensual",
+    "column_candidates": {
+      "project": [
+        "codigo_proyecto",
+        "project_key",
+        "proyecto_codigo",
+        "codigo",
+        "project"
+      ],
+      "period": [
+        "periodo_mes",
+        "mes",
+        "fecha_mes",
+        "periodo",
+        "month",
+        "fecha"
+      ],
+      "sales": [
+        "ventas_mes",
+        "ventas",
+        "unidades_vendidas",
+        "sales_units",
+        "ventas_unidades",
+        "minutas_mes"
+      ],
+      "month_complete": [
+        "mes_completo",
+        "periodo_completo",
+        "month_complete",
+        "es_mes_completo",
+        "completo"
+      ],
+      "stock_initial": [
+        "stock_inicial",
+        "stock_inicial_mes",
+        "stock_inicio",
+        "stock_initial",
+        "stock_inicio_mes"
+      ],
+      "stock_final": [
+        "stock_final",
+        "stock_final_mes",
+        "stock_fin",
+        "stock_end",
+        "stock_cierre"
+      ]
+    },
+    "column_overrides": {
+      "project": null,
+      "period": null,
+      "sales": null,
+      "month_complete": null,
+      "stock_initial": null,
+      "stock_final": null
+    },
+    "closed_month_rule_if_no_flag": "period_start < current_month_start",
+    "actual_target_name": "sales_units",
+    "actual_target_unit": "units",
+    "segment_key": "ALL"
+  },
+  "scope_policy": {
+    "existing_stock_scope": "EXISTING_STOCK_NO_FUTURE_INFLOWS",
+    "inflow_tolerance_units": 0.01,
+    "missing_stock_flow_policy": "BLOCK_SCOPE"
+  },
+  "lead_time": {
+    "buckets": [
+      {
+        "name": "IN_PERIOD_SHADOW",
+        "min_days": -99999,
+        "max_days": 0
+      },
+      {
+        "name": "LT_1_30D",
+        "min_days": 1,
+        "max_days": 30
+      },
+      {
+        "name": "LT_31_60D",
+        "min_days": 31,
+        "max_days": 60
+      },
+      {
+        "name": "LT_61_90D",
+        "min_days": 61,
+        "max_days": 90
+      },
+      {
+        "name": "LT_91D_PLUS",
+        "min_days": 91,
+        "max_days": 99999
+      }
+    ]
+  },
+  "point_gate": {
+    "min_mature_pairs": 6,
+    "wape_threshold": 0.25,
+    "min_skill_vs_naive": 0.0
+  },
+  "uncertainty_gate": {
+    "min_interval_coverage": 0.6,
+    "status_when_no_intervals": "INCUBATING"
+  }
+}

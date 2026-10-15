@@ -1,0 +1,151 @@
+-- Crear las dos tablas calculadas primero. Después crear cada medida por separado.
+-- La clave project es texto: preservar códigos como "001".
+
+DimForecastProject =
+DISTINCT (
+    UNION (
+        SELECTCOLUMNS ( 'qForecastCoverage', "project", 'qForecastCoverage'[project] ),
+        SELECTCOLUMNS ( 'qForecastCurrent', "project", 'qForecastCurrent'[project] ),
+        SELECTCOLUMNS ( 'qForecastAsIssued', "project", 'qForecastAsIssued'[project] ),
+        SELECTCOLUMNS ( 'qForecastReviewQueue', "project", 'qForecastReviewQueue'[project] )
+    )
+)
+
+DimForecastHorizon =
+SELECTCOLUMNS ( GENERATESERIES ( 1, 6, 1 ), "horizon", [Value] )
+
+-- Cobertura del último run. Coverage tiene una sola fila por proyecto.
+Stock Total =
+SUM ( 'qForecastCoverage'[stock] )
+
+Stock Con Pronóstico =
+CALCULATE (
+    SUM ( 'qForecastCoverage'[stock] ),
+    'qForecastCoverage'[has_forecast] = TRUE ()
+)
+
+Cobertura Stock % =
+DIVIDE ( [Stock Con Pronóstico], [Stock Total] )
+
+Stock En Cuarentena =
+CALCULATE (
+    SUM ( 'qForecastCoverage'[stock] ),
+    'qForecastCoverage'[status] = "QUARANTINED_REVIEW_UNITS"
+)
+
+Proyectos Con Pronóstico =
+CALCULATE (
+    DISTINCTCOUNT ( 'qForecastCoverage'[project] ),
+    'qForecastCoverage'[has_forecast] = TRUE ()
+)
+
+Unidades Pendientes Distintas =
+DISTINCTCOUNT ( 'qForecastReviewQueue'[codigo_unidad] )
+
+-- Los horizontes son acumulados. Sin un único horizonte, no sumar pronósticos.
+Pronóstico Acumulado Seleccionado =
+IF (
+    HASONEVALUE ( 'DimForecastHorizon'[horizon] ),
+    SUM ( 'qForecastCurrent'[prediction] ),
+    BLANK ()
+)
+
+Meta Acumulada =
+IF (
+    HASONEVALUE ( 'DimForecastHorizon'[horizon] ),
+    SUM ( 'qForecastCurrent'[target_sales] ),
+    BLANK ()
+)
+
+Brecha vs Meta =
+IF (
+    ISBLANK ( [Meta Acumulada] ) || ISBLANK ( [Pronóstico Acumulado Seleccionado] ),
+    BLANK (),
+    MAX ( 0, [Meta Acumulada] - [Pronóstico Acumulado Seleccionado] )
+)
+
+-- Resultados emitidos: exigir un run y un horizonte; aplicar el mismo filtro
+-- de ámbito y fecha al numerador y al denominador de todos los errores.
+Resultados Comparables =
+IF (
+    HASONEVALUE ( 'qForecastAsIssued'[run_id] )
+        && HASONEVALUE ( 'DimForecastHorizon'[horizon] ),
+    COALESCE (
+        CALCULATE (
+            COUNTROWS ( 'qForecastAsIssued' ),
+            'qForecastAsIssued'[eligible_for_operational_scoring] = TRUE ()
+        ),
+        0
+    ),
+    BLANK ()
+)
+
+Resultados Estrictamente Prospectivos =
+IF (
+    HASONEVALUE ( 'qForecastAsIssued'[run_id] )
+        && HASONEVALUE ( 'DimForecastHorizon'[horizon] ),
+    COALESCE (
+        CALCULATE (
+            COUNTROWS ( 'qForecastAsIssued' ),
+            'qForecastAsIssued'[eligible_for_strict_prospective_scoring] = TRUE ()
+        ),
+        0
+    ),
+    BLANK ()
+)
+
+MAE Emitido =
+IF (
+    [Resultados Comparables] > 0,
+    CALCULATE (
+        AVERAGE ( 'qForecastAsIssued'[absolute_error] ),
+        'qForecastAsIssued'[eligible_for_operational_scoring] = TRUE ()
+    ),
+    BLANK ()
+)
+
+Sesgo Emitido =
+IF (
+    [Resultados Comparables] > 0,
+    CALCULATE (
+        AVERAGE ( 'qForecastAsIssued'[error] ),
+        'qForecastAsIssued'[eligible_for_operational_scoring] = TRUE ()
+    ),
+    BLANK ()
+)
+
+WAPE Emitido =
+IF (
+    [Resultados Comparables] > 0,
+    DIVIDE (
+        CALCULATE (
+            SUM ( 'qForecastAsIssued'[absolute_error] ),
+            'qForecastAsIssued'[eligible_for_operational_scoring] = TRUE ()
+        ),
+        CALCULATE (
+            SUM ( 'qForecastAsIssued'[actual] ),
+            'qForecastAsIssued'[eligible_for_operational_scoring] = TRUE ()
+        )
+    ),
+    BLANK ()
+)
+
+Cobertura Observada 80 % =
+VAR ParesConIntervalo =
+    CALCULATE (
+        COUNTROWS ( 'qForecastAsIssued' ),
+        'qForecastAsIssued'[eligible_for_operational_scoring] = TRUE (),
+        NOT ISBLANK ( 'qForecastAsIssued'[covered80] )
+    )
+VAR Aciertos =
+    CALCULATE (
+        COUNTROWS ( 'qForecastAsIssued' ),
+        'qForecastAsIssued'[eligible_for_operational_scoring] = TRUE (),
+        'qForecastAsIssued'[covered80] = TRUE ()
+    )
+RETURN
+    IF (
+        [Resultados Comparables] > 0 && ParesConIntervalo > 0,
+        DIVIDE ( COALESCE ( Aciertos, 0 ), ParesConIntervalo ),
+        BLANK ()
+    )

@@ -65,17 +65,33 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
             "--additional-config", "config/hourly_required_tables.yml",
         )),
     )
-    return source_steps + (
+    manual_conversations = ()
+    if mode == "manual" and any((ROOT / "conversaciones").glob("*.txt")):
+        manual_conversations = (
+            Step("02a_conversaciones_schema", (
+                py, str(ROOT / "scripts" / "schema_sync.py"), "--only", "conversaciones",
+            )),
+            Step("02a_conversaciones_import", (
+                py, str(ROOT / "scripts" / "import_conversaciones.py"),
+            )),
+        )
+    schema_step = (
         Step(
             "02_schema_sync",
             (py, str(ROOT / "scripts" / "schema_sync.py")),
         ),
+    )
+    return source_steps + schema_step + manual_conversations + (
         Step(
             "02b_clientes_calidad_refresh",
-            (py, str(ROOT / "scripts" / "refresh_clientes_calidad.py"), "--if-needed"),
+            (py, str(ROOT / "scripts" / "refresh_clientes_calidad.py")),
         ),
         Step(
-            "02c_portal_conversion_refresh",
+            "02c_marketing_audiences_refresh",
+            (py, str(ROOT / "scripts" / "refresh_marketing_audiences.py")),
+        ),
+        Step(
+            "02d_portal_conversion_refresh",
             (py, str(ROOT / "scripts" / "refresh_portal_conversion.py"), "--start-year", "2026"),
         ),
         Step(
@@ -97,6 +113,10 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
         Step(
             "07_pricing_projection",
             (py, str(ROOT / "scripts" / "refresh_pricing_projection.py")),
+        ),
+        Step(
+            "07b_econometric_datasets",
+            (py, str(ROOT / "scripts" / "econometric_datasets.py"), "refresh", "--once-per-day"),
         ),
         Step(
             "08_materialized_views",

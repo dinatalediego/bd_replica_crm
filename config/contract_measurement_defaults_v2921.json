@@ -1,0 +1,41 @@
+{
+  "version": "2.9.2.1",
+  "approval_candidate_defaults": {
+    "MD": {
+      "primary_metric_recommendation": "absorcion_promedio_3m",
+      "secondary_metric_recommendations": [
+        "months_to_zero",
+        "gap_value",
+        "commercial_placed_value"
+      ],
+      "outcome_capture_method_recommendation": "Use validated monthly close from analytics.comercial_proyecto_mes; persist the observed primary metric in decision_intelligence.project_contract_outcome_v292.",
+      "roi_measurement_plan_recommendation": "Keep action_cost and value_realized separately. When action_cost > 0, report ROI=(value_realized-action_cost)/action_cost. Do not attribute value causally to the intervention without an identification design.",
+      "success_criterion_template": "Define a numeric threshold ex ante against the frozen baseline for absorcion_promedio_3m and a guardrail for margin/value. Human owner must replace this template before approval."
+    },
+    "MT": {
+      "primary_metric_recommendation": "absorcion_promedio_3m",
+      "secondary_metric_recommendations": [
+        "months_to_zero",
+        "gap_value",
+        "value_to_capture"
+      ],
+      "outcome_capture_method_recommendation": "Use validated monthly close from analytics.comercial_proyecto_mes; persist the observed primary metric in decision_intelligence.project_contract_outcome_v292.",
+      "roi_measurement_plan_recommendation": "Quantify Value to Capture before activation. Track action_cost and value_realized separately; calculate ROI only when both are observed. No causal attribution without an identification design.",
+      "success_criterion_template": "Define a numeric threshold ex ante against the frozen baseline and Value to Capture. Human owner must replace this template before approval."
+    }
+  },
+  "route_defaults": {
+    "CP": {
+      "required_output": "Value to Capture + shortlist of interventions with estimated cost, metric, and evidence requirement",
+      "approval_blocked": true
+    },
+    "NP": {
+      "required_output": "Reconciled target / placed value / stock / gap with status ECONOMICS_RECONCILIATION_OK",
+      "approval_blocked": true
+    },
+    "SL": {
+      "required_output": "Prospective forecast coverage/readiness review plus project-specific commercial diagnosis",
+      "approval_blocked": true
+    }
+  }
+}

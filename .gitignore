@@ -16,6 +16,19 @@ config/decision_systems.yml
 config/lead_scoring.yml
 artifacts/
 output/stock_disponible/*.xlsx
+output/pdf/
+tmp/pdfs/
 
 # Power BI -> Medallio adapter local state/extractions.
 .state/
+
+# Medallio OS local notebook executions.
+.medallio/
+
+# Local secrets and notebook runtime files.
+.secrets/
+**/.ipynb_checkpoints/
+
+# Private WhatsApp exports; never commit text or attachments.
+conversaciones/*
+!conversaciones/README.md

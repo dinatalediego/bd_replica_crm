@@ -1,0 +1,81 @@
+-- Medallio Forecast Factory v1.0.2
+
+Monthly Forecast =
+SUM ( 'Forecast Monthly'[prediction] )
+
+Monthly Naive =
+SUM ( 'Forecast Monthly'[naive_prediction] )
+
+Monthly Actual =
+SUM ( 'Forecast Monthly'[actual_value] )
+
+Prospective Predictions =
+CALCULATE (
+    COUNTROWS ( 'Forecast Monthly' ),
+    'Forecast Monthly'[evidence_class] = "PROSPECTIVE"
+)
+
+Shadow Predictions =
+CALCULATE (
+    COUNTROWS ( 'Forecast Monthly' ),
+    'Forecast Monthly'[evidence_class] = "SHADOW"
+)
+
+Mature Prospective Predictions =
+CALCULATE (
+    COUNTROWS ( 'Forecast Monthly' ),
+    'Forecast Monthly'[evidence_class] = "PROSPECTIVE",
+    'Forecast Monthly'[maturity_status] = "MATURE"
+)
+
+Incubating Prospective Predictions =
+CALCULATE (
+    COUNTROWS ( 'Forecast Monthly' ),
+    'Forecast Monthly'[evidence_class] = "PROSPECTIVE",
+    'Forecast Monthly'[maturity_status] = "INCUBATING"
+)
+
+Blocked Scope Predictions =
+CALCULATE (
+    COUNTROWS ( 'Forecast Monthly' ),
+    'Forecast Monthly'[maturity_status] = "BLOCKED_SCOPE"
+)
+
+Lead Time WAPE =
+AVERAGE ( 'Lead Time Performance'[wape] )
+
+Lead Time Bias =
+AVERAGE ( 'Lead Time Performance'[bias] )
+
+Lead Time Naive WAPE =
+AVERAGE ( 'Lead Time Performance'[naive_wape] )
+
+Lead Time Skill =
+AVERAGE ( 'Lead Time Performance'[skill_vs_naive] )
+
+Point PASS Cells =
+CALCULATE (
+    COUNTROWS ( 'Lead Time Performance' ),
+    'Lead Time Performance'[point_gate_status] = "PASS"
+)
+
+Full PASS Cells =
+CALCULATE (
+    COUNTROWS ( 'Lead Time Performance' ),
+    'Lead Time Performance'[overall_gate_status] = "PASS"
+)
+
+Interval Incubating Cells =
+CALCULATE (
+    COUNTROWS ( 'Lead Time Performance' ),
+    'Lead Time Performance'[overall_gate_status] = "POINT_PASS_INTERVAL_INCUBATING"
+)
+
+Days to Next Maturity =
+MINX (
+    FILTER (
+        'Issuance Clock',
+        NOT ISBLANK ( 'Issuance Clock'[next_maturity_date] )
+    ),
+    DATEDIFF ( TODAY(), 'Issuance Clock'[next_maturity_date], DAY )
+)

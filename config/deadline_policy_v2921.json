@@ -1,0 +1,107 @@
+{
+  "version": "2.9.2.1",
+  "principles": [
+    "Preliminary delivery date is a planning anchor, not an automatic commitment.",
+    "A past preliminary delivery date triggers milestone review; it does not imply actual delivery.",
+    "Recommended deadlines are advisory until a human approves the contract.",
+    "Once a v2.9.2 contract is activated, its frozen deadline/baseline/outcome design must not be rewritten."
+  ],
+  "schedule_bands": [
+    {
+      "band": "PAST_PRELIMINARY_DATE",
+      "min_days_to_delivery": null,
+      "max_days_to_delivery": -1,
+      "milestone_review_sla_days": 2,
+      "approval_sla_days": 3,
+      "design_sla_days": 5,
+      "reconciliation_sla_days": 3,
+      "evidence_review_sla_days": 5,
+      "default_outcome_window_days": 30,
+      "new_experiment_allowed": false,
+      "reason": "The preliminary date has passed; confirm actual delivery/status before using delivery timing to authorize a new experiment."
+    },
+    {
+      "band": "CRITICAL",
+      "min_days_to_delivery": 0,
+      "max_days_to_delivery": 30,
+      "milestone_review_sla_days": 2,
+      "approval_sla_days": 3,
+      "design_sla_days": 5,
+      "reconciliation_sla_days": 3,
+      "evidence_review_sla_days": 5,
+      "default_outcome_window_days": 14,
+      "new_experiment_allowed": false,
+      "reason": "Too close to preliminary delivery for a new long experiment; prioritize closeout, reconciliation, or very short measured actions."
+    },
+    {
+      "band": "LATE",
+      "min_days_to_delivery": 31,
+      "max_days_to_delivery": 90,
+      "milestone_review_sla_days": 3,
+      "approval_sla_days": 7,
+      "design_sla_days": 7,
+      "reconciliation_sla_days": 5,
+      "evidence_review_sla_days": 7,
+      "default_outcome_window_days": 30,
+      "new_experiment_allowed": true,
+      "reason": "Limited runway before preliminary delivery; decisions should be narrow, measurable, and fast."
+    },
+    {
+      "band": "MID",
+      "min_days_to_delivery": 91,
+      "max_days_to_delivery": 180,
+      "milestone_review_sla_days": 5,
+      "approval_sla_days": 14,
+      "design_sla_days": 10,
+      "reconciliation_sla_days": 7,
+      "evidence_review_sla_days": 14,
+      "default_outcome_window_days": 60,
+      "new_experiment_allowed": true,
+      "reason": "Enough runway for a controlled intervention with a medium evaluation window."
+    },
+    {
+      "band": "EARLY",
+      "min_days_to_delivery": 181,
+      "max_days_to_delivery": null,
+      "milestone_review_sla_days": 7,
+      "approval_sla_days": 21,
+      "design_sla_days": 14,
+      "reconciliation_sla_days": 7,
+      "evidence_review_sla_days": 14,
+      "default_outcome_window_days": 90,
+      "new_experiment_allowed": true,
+      "reason": "Long runway permits disciplined experimentation and stronger outcome measurement."
+    }
+  ],
+  "hard_guardrails": {
+    "min_days_before_preliminary_delivery_for_new_experiment": 45,
+    "target_action_end_buffer_days_before_preliminary_delivery": 21,
+    "max_outcome_window_days": 180,
+    "min_outcome_window_days": 14,
+    "past_preliminary_date_requires_status_review": true,
+    "never_auto_approve": true,
+    "never_auto_activate": true
+  },
+  "route_deadline_rules": {
+    "ACTIVATION_CANDIDATE": {
+      "deadline_type": "approval_deadline",
+      "sla_field": "approval_sla_days",
+      "description": "Deadline for human approval/readiness, not the building delivery date."
+    },
+    "DESIGN_ONLY": {
+      "deadline_type": "design_deadline",
+      "sla_field": "design_sla_days",
+      "description": "Deadline to finish Value to Capture/intervention design; not permission to execute."
+    },
+    "BLOCKED_RECONCILIATION": {
+      "deadline_type": "reconciliation_deadline",
+      "sla_field": "reconciliation_sla_days",
+      "description": "Deadline to reconcile economics/data before any activation can be considered."
+    },
+    "EVIDENCE_BUILDING": {
+      "deadline_type": "evidence_review_deadline",
+      "sla_field": "evidence_review_sla_days",
+      "description": "Deadline for the next evidence/readiness review; not an execution deadline."
+    }
+  }
+}

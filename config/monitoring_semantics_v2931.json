@@ -1,0 +1,34 @@
+{
+  "version": "2.9.3.1",
+  "outcome_phase_semantics": {
+    "SCHEDULED": "NOT_STARTED",
+    "STARTED": "NOT_STARTED",
+    "IMPLEMENTED": "NOT_STARTED",
+    "COMPLETED": "WAITING_OUTCOME",
+    "CANCELLED": "CANCELLED"
+  },
+  "atomic_primary_metric_rule": {
+    "enabled": true,
+    "description": "One active contract must have one atomic primary metric. Composite labels such as 'gap_value y cumplimiento_actual' are invalid for outcome recording.",
+    "disallowed_connectors": [
+      " y ",
+      " and ",
+      ",",
+      ";",
+      "+",
+      "/"
+    ],
+    "recommended_pattern": "^[A-Za-z0-9_\\.]+$"
+  },
+  "dashboard_kpis": [
+    "scheduled_interventions",
+    "active_executions",
+    "waiting_outcomes",
+    "mature_outcomes"
+  ],
+  "guardrails": {
+    "do_not_modify_frozen_contract": true,
+    "do_not_start_invalid_metric_contract": true,
+    "reissue_contract_if_primary_metric_is_composite": true
+  }
+}

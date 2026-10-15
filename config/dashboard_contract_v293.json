@@ -1,0 +1,82 @@
+{
+  "version": "2.9.3",
+  "data_source": "PostgreSQL medallio_dw",
+  "recommended_frontends": {
+    "executive": "Power BI",
+    "analyst_operational": "Python/Streamlit",
+    "model_lifecycle": "MLOps tooling later; do not use MLOps as the primary business dashboard"
+  },
+  "pages": [
+    {
+      "page": "01 CEO Control Tower",
+      "grain": "project",
+      "questions": [
+        "What needs attention now?",
+        "Which contracts are active?",
+        "Which projects are blocked, in design, or building evidence?",
+        "Which SLA is at risk?"
+      ],
+      "views": [
+        "analytics.v_pbi_ai_control_tower_v293"
+      ]
+    },
+    {
+      "page": "02 Decision & Execution",
+      "grain": "active contract / intervention",
+      "questions": [
+        "Was the approved action actually started?",
+        "What changed from plan?",
+        "Who owns it and what is the deadline?",
+        "What evidence exists?"
+      ],
+      "views": [
+        "decision_intelligence.v_intervention_monitoring_v293",
+        "decision_intelligence.v_intervention_event_timeline_v293"
+      ]
+    },
+    {
+      "page": "03 Outcome & ROI",
+      "grain": "contract / outcome",
+      "questions": [
+        "Are outcomes still immature?",
+        "What is the observed value?",
+        "What is the real action cost?",
+        "What is net value and observed ROI?"
+      ],
+      "views": [
+        "analytics.v_pbi_outcome_roi_v293"
+      ]
+    },
+    {
+      "page": "04 Predictive Evidence",
+      "grain": "project / horizon",
+      "questions": [
+        "Which forecasts are incubating?",
+        "Which are mature?",
+        "Do they beat the naive benchmark?",
+        "Where is WAPE/Bias defendable?"
+      ],
+      "views": [
+        "analytics.v_pbi_predictive_evidence_v293"
+      ]
+    },
+    {
+      "page": "05 Project Deep Dive",
+      "grain": "project",
+      "questions": [
+        "Commercial state, stock, gap, months to zero",
+        "Milestones and days to preliminary delivery",
+        "Decision route and current execution",
+        "Evidence ceiling and data gaps"
+      ],
+      "views": [
+        "analytics.v_pbi_project_deep_dive_v293"
+      ]
+    }
+  ],
+  "refresh_recommendation": {
+    "power_bi": "After local Medallio hourly refresh; use Import mode initially for stability.",
+    "streamlit": "On demand for analyst exploration; cache short-lived queries.",
+    "mlops": "Only when training/deployment/monitoring of models becomes the operational bottleneck."
+  }
+}

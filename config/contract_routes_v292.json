@@ -1,0 +1,36 @@
+{
+  "version": "2.9.2.1",
+  "policy": "Only MD and MT are activation candidates. CP stays in design, NP stays blocked by reconciliation, SL stays in evidence-building.",
+  "projects": {
+    "MD": {
+      "route_status": "ACTIVATION_CANDIDATE",
+      "activation_eligible": true,
+      "required_gate": "HUMAN_APPROVAL",
+      "next_deliverable": "Human-approved execution contract"
+    },
+    "MT": {
+      "route_status": "ACTIVATION_CANDIDATE",
+      "activation_eligible": true,
+      "required_gate": "HUMAN_APPROVAL",
+      "next_deliverable": "Value to Capture + human-approved execution contract"
+    },
+    "CP": {
+      "route_status": "DESIGN_ONLY",
+      "activation_eligible": false,
+      "required_gate": "VALUE_CAPTURE_DESIGN",
+      "next_deliverable": "Economic intervention design / Value to Capture"
+    },
+    "NP": {
+      "route_status": "BLOCKED_RECONCILIATION",
+      "activation_eligible": false,
+      "required_gate": "ECONOMICS_RECONCILIATION_OK",
+      "next_deliverable": "Economics reconciliation"
+    },
+    "SL": {
+      "route_status": "EVIDENCE_BUILDING",
+      "activation_eligible": false,
+      "required_gate": "PROSPECTIVE_EVIDENCE",
+      "next_deliverable": "Predictive evidence/readiness review"
+    }
+  }
+}

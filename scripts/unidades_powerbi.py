@@ -28,6 +28,16 @@ def main() -> int:
                 """
             )
             total, cygnus, mercado, sin_clasificar, tipologia_inconsistente = cursor.fetchone()
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE NULLIF(BTRIM(nombre), '') IS NULL),
+                    COUNT(*) FILTER (WHERE NULLIF(BTRIM(nombre), '') IS NOT NULL)
+                      - COUNT(DISTINCT LOWER(NULLIF(BTRIM(nombre), '')))
+                FROM raw_mercado.unidades
+                """
+            )
+            mercado_sin_nombre, mercado_nombre_repetido = cursor.fetchone()
         conn.commit()
 
     print("analytics.unidades_powerbi actualizado:")
@@ -36,10 +46,17 @@ def main() -> int:
     print(f"  raw_mercado: {mercado}")
     print(f"  sin_clasificar: {sin_clasificar}")
     print(f"  tipologia_inconsistente: {tipologia_inconsistente}")
+    print(f"  raw_mercado_sin_nombre: {mercado_sin_nombre}")
+    print(f"  raw_mercado_nombre_repetido: {mercado_nombre_repetido}")
 
     if tipologia_inconsistente:
         raise RuntimeError(
             f"tipologia_ubicacion inconsistente en {tipologia_inconsistente} filas"
+        )
+    if mercado_sin_nombre or mercado_nombre_repetido:
+        raise RuntimeError(
+            "raw_mercado.unidades no puede ser clave de Power BI: "
+            f"{mercado_sin_nombre} nombres vacíos y {mercado_nombre_repetido} nombres repetidos"
         )
     return 0
 

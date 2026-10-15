@@ -1,0 +1,40 @@
+-- Medallio AI Control Tower v1 — starter measures after v2.9.3.1
+
+Scheduled Interventions =
+SUM('AI Control Tower KPIs'[scheduled_interventions])
+
+Active Executions =
+SUM('AI Control Tower KPIs'[active_executions])
+
+Waiting Outcomes =
+SUM('AI Control Tower KPIs'[waiting_outcomes])
+
+Mature Outcomes =
+SUM('AI Control Tower KPIs'[mature_outcomes])
+
+Executions At Risk =
+SUM('AI Control Tower KPIs'[executions_at_risk])
+
+Metric Semantics Issues =
+SUM('AI Control Tower KPIs'[contracts_with_metric_semantics_issue])
+
+Projects Need Attention =
+CALCULATE(
+    DISTINCTCOUNT('AI Control Tower'[project_key]),
+    'AI Control Tower'[what_needs_me_now] <> "MONITOR"
+)
+
+Observed Action Cost =
+SUM('Outcome ROI'[actual_action_cost])
+
+Observed Value Realized =
+SUM('Outcome ROI'[latest_value_realized])
+
+Observed Net Value =
+SUM('Outcome ROI'[observed_net_value])
+
+Observed ROI =
+DIVIDE(
+    [Observed Net Value],
+    [Observed Action Cost]
+)

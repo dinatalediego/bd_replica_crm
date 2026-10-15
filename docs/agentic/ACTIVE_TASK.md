@@ -1,42 +1,31 @@
 # Active Task
 
-Task ID: NIGHT-002  
-Title: Medallio low-impact refresh health checks  
-Status: READY  
-Owner: chatgpt  
-Next agent: claude  
-Branch: to be created by the unattended worker  
+Task ID: MARKETING-AUDIENCES-001
+Title: Audiencias locales LAL/RMKT mantenidas por el refresh canónico
+Status: REVIEW_READY
+Owner: chatgpt
+Next agent: human
+Branch: feat/medallio-refresh-hardening-review
 Base branch: main
 
-## Objective
+## Result
 
-Audit the canonical Medallio refresh path for low-impact Redshift usage and add observability/tests without increasing source load.
+Se añadieron un mart local y vistas separadas para base positiva, negativa sin
+avance y exclusiones. La base positiva incluye proforma, separación y
+minuta/venta; la negativa usa 180 días sin avance. Consentimientos y supresiones
+son explícitos y nunca se infieren. El paso corre después de clientes_calidad en
+el refresh canónico y no añade llamadas a Redshift.
 
-## Prior task evidence
+## Validation
 
-NIGHT-001 is complete:
-
-- Night Shift OS merged through PR #35;
-- GitHub CI run 181 completed successfully;
-- the previous matplotlib collection failure was fixed by installing the required dev dependency;
-- the seven-day dispatcher and morning-report automations are configured for the pilot.
-
-## Constraints
-
-- do not increase Redshift polling frequency;
-- prefer Medallio/local replica evidence;
-- no production DB writes;
-- no merge to main from unattended execution;
-- at most one automatic rework cycle;
-- leave a draft PR or justified blocker.
-
-## Acceptance criteria
-
-- canonical refresh entrypoint documented;
-- health/watch evidence exists;
-- no new high-frequency Redshift query path;
-- tests or deterministic validation added.
+La prueba SQL aislada PGlite pasa con proforma, separación, venta, antigüedad,
+contacto, consentimiento y supresión. Quince pruebas Python relevantes pasan;
+py_compile y diff-check pasan. El PostgreSQL y el Programador de tareas del PC
+requieren smoke test local.
 
 ## Next action
 
-The Night Shift Dispatcher should claim NIGHT-002, inspect the real refresh orchestration, create a feature branch, and implement only evidence-backed low-impact guards.
+Actualizar la rama en el PC, instalar `marketing_audiences`, ejecutar una vez el
+refresh local y verificar `02c_marketing_audiences_refresh` en el log. Luego
+conectar las vistas `analytics.v_marketing_*` desde Power BI. Ver
+`docs/MARKETING_AUDIENCIAS.md`.

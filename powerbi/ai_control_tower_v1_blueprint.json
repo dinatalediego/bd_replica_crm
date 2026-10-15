@@ -1,0 +1,79 @@
+{
+  "version": "Power BI Medallio AI Control Tower v1",
+  "source": "PostgreSQL medallio_dw",
+  "recommended_mode": "Import initially; refresh after local Medallio refresh.",
+  "pages": [
+    {
+      "page": "01 CEO Control Tower",
+      "purpose": "One-screen answer to what needs attention now.",
+      "source_views": [
+        "analytics.v_pbi_ai_control_tower_v293",
+        "analytics.v_ai_control_tower_kpis_v2931"
+      ],
+      "top_kpis": [
+        "Scheduled interventions",
+        "Active executions",
+        "Waiting outcomes",
+        "Mature outcomes"
+      ],
+      "core_visuals": [
+        "What Needs Me Now table",
+        "Priority vs state",
+        "Execution/Outcome stage funnel",
+        "Critical issues strip"
+      ]
+    },
+    {
+      "page": "02 Decision & Execution",
+      "source_views": [
+        "decision_intelligence.v_intervention_monitoring_v293",
+        "decision_intelligence.v_intervention_event_timeline_v293"
+      ],
+      "core_visuals": [
+        "Contract-to-execution state matrix",
+        "Deadline / SLA status",
+        "Intervention timeline",
+        "Actual vs planned cost"
+      ]
+    },
+    {
+      "page": "03 Outcome & ROI",
+      "source_views": [
+        "analytics.v_pbi_outcome_roi_v293"
+      ],
+      "core_visuals": [
+        "Outcome maturity",
+        "Observed value",
+        "Action cost",
+        "Observed net value",
+        "Observed ROI"
+      ]
+    },
+    {
+      "page": "04 Predictive Evidence",
+      "source_views": [
+        "analytics.v_pbi_predictive_evidence_v293"
+      ],
+      "core_visuals": [
+        "Prospective issuance",
+        "Maturity clock",
+        "WAPE/Bias when mature",
+        "Benchmark skill"
+      ]
+    },
+    {
+      "page": "05 Project Deep Dive",
+      "source_views": [
+        "analytics.v_pbi_project_deep_dive_v293"
+      ],
+      "core_visuals": [
+        "Stock / sales / months-to-zero",
+        "Gap and target",
+        "Milestone runway",
+        "Evidence level",
+        "Current decision / execution state"
+      ]
+    }
+  ],
+  "semantic_rule": "Keep business semantics in PostgreSQL; DAX should aggregate, format, rank and calculate presentation metrics—not recreate governance logic."
+}

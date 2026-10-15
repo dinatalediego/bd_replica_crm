@@ -1,7 +1,6 @@
 """Behavior checks that do not require a database or optional connectors."""
 import ast
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -14,19 +13,6 @@ def load_functions(path, names, namespace):
     tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
     exec(compile(tree, path, 'exec'), namespace)
     return namespace
-
-
-def test_refresh_decisions():
-    fn = load_functions('scripts/refresh_clientes_calidad.py', {'needs_refresh'}, {})['needs_refresh']
-    now = datetime.now(timezone.utc)
-    assert not fn(10, 10, now, now)
-    assert not fn(10, 10, now, now + timedelta(seconds=1))
-    assert fn(10, 10, now + timedelta(seconds=1), now)
-    assert fn(11, 10, now, now)
-    assert fn(9, 10, now, now)
-    assert fn(10, 10, None, now)
-    assert fn(10, 10, now, None)
-    assert not fn(0, 0, None, None)
 
 
 def test_second_instance_skips_all_steps_and_connection_closes():

@@ -1,0 +1,99 @@
+{
+  "contract_name": "Medallio Forecast Factory Contract",
+  "contract_version": "1.0.0",
+  "purpose": "Define a stable, model-agnostic interface between forecasting models, prospective evaluation, evidence governance, PostgreSQL and Power BI.",
+  "principles": [
+    "Every forecast must be issued before the outcome it predicts if it is to count as prospective evidence.",
+    "Every forecast must include a naive benchmark.",
+    "Every forecast must carry model/version/run identity and a frozen data cutoff.",
+    "Intervals are mandatory for production forecasts.",
+    "Incomplete periods must never mature into evaluation evidence.",
+    "Backtests remain useful, but are never relabeled as prospective evidence.",
+    "Power BI consumes stable semantic views; model-specific logic remains behind the contract.",
+    "WAPE, Bias and Skill are calculated only on mature actuals.",
+    "Positive Skill means the model beats the naive benchmark."
+  ],
+  "canonical_grain": {
+    "prediction": [
+      "run_id",
+      "project_key",
+      "target_name",
+      "segment_key",
+      "forecast_for_period",
+      "horizon_months"
+    ],
+    "actual": [
+      "project_key",
+      "target_name",
+      "segment_key",
+      "actual_period"
+    ],
+    "evaluation": [
+      "prediction_id"
+    ]
+  },
+  "required_prediction_fields": [
+    "run_id",
+    "project_key",
+    "target_name",
+    "target_unit",
+    "segment_key",
+    "forecast_for_period",
+    "horizon_months",
+    "prediction",
+    "prediction_lower",
+    "prediction_upper",
+    "interval_level",
+    "naive_method",
+    "naive_prediction",
+    "evidence_class"
+  ],
+  "required_run_fields": [
+    "model_version_id",
+    "issued_at",
+    "data_cutoff_date",
+    "training_start_date",
+    "training_end_date",
+    "feature_version",
+    "dataset_snapshot_id",
+    "code_sha"
+  ],
+  "statuses": {
+    "run": [
+      "ISSUED",
+      "INVALIDATED",
+      "RETIRED"
+    ],
+    "prediction": [
+      "ISSUED",
+      "INCUBATING",
+      "MATURE",
+      "EVALUATED",
+      "INVALIDATED"
+    ],
+    "evidence_class": [
+      "PROSPECTIVE",
+      "BACKTEST"
+    ],
+    "model_lifecycle": [
+      "DEVELOPMENT",
+      "CHALLENGER",
+      "CHAMPION",
+      "RETIRED"
+    ]
+  },
+  "metrics": {
+    "wape": "SUM(ABS(prediction-actual)) / SUM(ABS(actual))",
+    "bias": "SUM(prediction-actual) / SUM(ABS(actual))",
+    "naive_wape": "SUM(ABS(naive_prediction-actual)) / SUM(ABS(actual))",
+    "skill_vs_naive": "1 - WAPE / Naive_WAPE",
+    "interval_coverage": "AVG(actual BETWEEN prediction_lower AND prediction_upper)"
+  },
+  "default_gate_policy": {
+    "wape_threshold": 0.25,
+    "min_mature_pairs": 6,
+    "min_skill_vs_naive": 0.0,
+    "min_interval_coverage": 0.6,
+    "prospective_only": true
+  }
+}

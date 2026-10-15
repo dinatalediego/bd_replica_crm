@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -42,7 +43,7 @@ SOURCE_TO_TARGET = {
     "tipo_unidad": "tipo_unidad",
 }
 
-REQUIRED_TARGET_COLUMNS = {"codigo", "codigo_proyecto", "id", "_etl_source_run_id"}
+REQUIRED_TARGET_COLUMNS = {"codigo", "nombre", "codigo_proyecto", "id", "_etl_source_run_id"}
 
 
 def _sha256(path: Path) -> str:
@@ -171,6 +172,17 @@ def _blank_to_none(value: str | None):
     return value if value != "" else None
 
 
+def _unit_name(row: dict[str, str], code: str) -> str:
+    """Preserve a supplied name, otherwise label the apartment number in its code."""
+    supplied = _blank_to_none(row.get("nombre")) or _blank_to_none(row.get("unidad"))
+    if supplied:
+        return supplied
+    suffix = code.rsplit("-", 1)[-1]
+    number = suffix if "-" in code and re.fullmatch(r"[0-9]+", suffix) else code
+    unit_type = _blank_to_none(row.get("tipo_unidad")) or "Unidad"
+    return f"{unit_type} {number}"
+
+
 def _build_canonical_rows(rows: list[dict[str, str]], target_columns: list[str], source_run_id: str) -> tuple[list[str], list[tuple]]:
     target_set = set(target_columns)
     insert_columns: list[str] = []
@@ -182,7 +194,7 @@ def _build_canonical_rows(rows: list[dict[str, str]], target_columns: list[str],
             continue
         if any(target == column and source in rows[0] for source, target in SOURCE_TO_TARGET.items()):
             insert_columns.append(column)
-    for required in ("codigo", "codigo_proyecto", "id"):
+    for required in ("codigo", "nombre", "codigo_proyecto", "id"):
         if required not in insert_columns:
             insert_columns.append(required)
     insert_columns.append("_etl_source_run_id")
@@ -192,6 +204,7 @@ def _build_canonical_rows(rows: list[dict[str, str]], target_columns: list[str],
     payload: list[tuple] = []
     seen_ids: set[str] = set()
     seen_codes: set[str] = set()
+    seen_names: set[str] = set()
     for index, row in enumerate(rows, start=1):
         canonical: dict[str, object] = {}
         for column in target_columns:
@@ -210,12 +223,17 @@ def _build_canonical_rows(rows: list[dict[str, str]], target_columns: list[str],
             raise ValueError(f"Fila {index}: faltan campos obligatorios: {', '.join(missing_required)}")
         code = str(canonical["codigo"])
         row_id = str(canonical["id"])
+        canonical["nombre"] = _unit_name(row, code)
         if code in seen_codes:
             raise ValueError(f"Fila {index}: codigo duplicado en el CSV: {code}")
         if row_id in seen_ids:
             raise ValueError(f"Fila {index}: id duplicado en el CSV: {row_id}")
+        name_key = str(canonical["nombre"]).casefold()
+        if name_key in seen_names:
+            raise ValueError(f"Fila {index}: nombre duplicado para la clave de Power BI: {canonical['nombre']}")
         seen_codes.add(code)
         seen_ids.add(row_id)
+        seen_names.add(name_key)
         payload.append(tuple(canonical.get(column) for column in insert_columns))
     return insert_columns, payload
 

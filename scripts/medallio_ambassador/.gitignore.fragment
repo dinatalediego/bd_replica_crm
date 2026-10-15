@@ -1,0 +1,4 @@
+# Medallio Ambassador secrets and runtime
+.secrets/
+artifacts/medallio_ambassador/outbox/
+artifacts/medallio_ambassador/logs/

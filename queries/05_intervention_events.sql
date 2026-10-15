@@ -1,0 +1,2 @@
+SELECT *
+FROM decision_intelligence.v_intervention_event_timeline_v293;

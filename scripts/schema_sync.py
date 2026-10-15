@@ -19,6 +19,44 @@ class SchemaComponent:
 
 COMPONENTS: tuple[SchemaComponent, ...] = (
     SchemaComponent(
+        name="publishing",
+        files=("sql/101_publishing/01_registry.sql",),
+        expected_relations=("publish.product_release", "publish.data_product", "publish.model_run", "publish.finding", "publish.decision_insight", "publish.wisdom_card", "publish.decision_event", "publish.decision_learning"),
+    ),
+    SchemaComponent(
+        name="conversaciones",
+        files=("sql/102_conversaciones/01_contract.sql",),
+        expected_relations=(
+            "etl_control.conversation_sources",
+            "etl_control.conversation_import_runs",
+            "raw_conversations.messages",
+            "analytics.conversation_events",
+            "analytics.v_conversation_events_current",
+            "analytics.v_conversation_visit_reports",
+            "analytics.v_conversation_visits_daily",
+            "analytics.v_conversation_project_hourly",
+            "analytics.v_conversation_project_day_signals",
+            "analytics.v_conversation_daily_rhythm",
+            "analytics.v_conversation_sale_reactions",
+        ),
+    ),
+    SchemaComponent(
+        name="commercial_forecasting",
+        files=(
+            "sql/97_commercial_forecasting/01_evidence.sql",
+            "sql/97_commercial_forecasting/02_monthly_projection.sql",
+        ),
+        expected_relations=(
+            "features.commercial_forecast_snapshots",
+            "model_control.commercial_forecast_runs",
+            "analytics.commercial_forecast_predictions",
+            "analytics.v_commercial_forecast_current",
+            "analytics.v_commercial_forecast_monthly",
+            "analytics.v_commercial_forecast_performance",
+            "analytics.v_commercial_forecast_coverage",
+        ),
+    ),
+    SchemaComponent(
         name="core_commercial",
         files=("sql/init_core_commercial.sql",),
         expected_relations=("core.dim_proyecto", "core.dim_unidad"),
@@ -39,6 +77,83 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         expected_procedures=(
             "analytics.refresh_absorption_phase_b_incremental(integer)",
             "analytics.run_sale_date_pago_ci_qa()",
+        ),
+    ),
+    SchemaComponent(
+        name="absorcion_ventas_mensual",
+        files=(
+            "sql/96_absorcion_ventas/00_reconciliacion.sql",
+            "sql/96_absorcion_ventas/01_contract.sql",
+        ),
+        expected_relations=(
+            "analytics.absorcion_inicio_proyecto",
+            "analytics.v_absorcion_unidades_habilitadas",
+            "analytics.v_absorcion_ventas_unidad",
+            "analytics.v_absorcion_ventas_mensual",
+            "analytics.v_absorcion_ventas_ciclos",
+            "analytics.v_absorcion_ventas_revision",
+            "analytics.v_absorcion_proyectos_sin_inicio",
+            "analytics.v_absorcion_ventas_reconciliado",
+            "analytics.v_absorcion_inicio_proyecto",
+            "analytics.v_absorcion_ventas_observaciones",
+        ),
+        expected_procedures=("analytics.absorcion_ventas_mensual(date)",),
+    ),
+    SchemaComponent(
+        name="evolucion_comercial",
+        files=("sql/99_evolucion_comercial/01_contract.sql",),
+        expected_relations=(
+            "analytics.comercial_precio_observado",
+            "analytics.comercial_unidad_mes",
+            "analytics.comercial_proyecto_mes",
+            "analytics.v_comercial_composicion_mes",
+            "analytics.v_comercial_calendario",
+            "analytics.v_comercial_indice_precios",
+        ),
+        expected_procedures=("analytics.refresh_evolucion_comercial()",),
+    ),
+    SchemaComponent(
+        name="econometric_datasets",
+        files=(
+            "sql/97_commercial_forecasting/01_evidence.sql",
+            "sql/100_econometria/01_tables.sql",
+            "sql/100_econometria/02_capture.sql",
+            "sql/100_econometria/03_datasets.sql",
+            "sql/100_econometria/04_evaluation.sql",
+        ),
+        expected_relations=(
+            "analytics.fact_evento_comercial", "analytics.snapshot_unidad_diario",
+            "analytics.historial_oferta_unidad", "analytics.historial_etapa_proyecto",
+            "analytics.intervencion_comercial", "analytics.contexto_mercado_mes",
+            "analytics.panel_demanda_proyecto_semana",
+            "features.dataset_unidad_prediccion", "features.unidad_prediccion_resultado",
+            "features.unidad_resultado_version", "model_control.prediccion_unidad",
+            "analytics.registro_prediccion_resultado", "analytics.v_econometria_cobertura",
+            "analytics.v_econometria_serie_precios", "features.v_estacionalidad_panel",
+            "features.v_dataset_unidad_entrenamiento", "features.v_contexto_mercado_por_corte",
+            "model_control.econometria_runs", "model_control.econometria_fuentes",
+            "analytics.v_prediccion_unidad_evaluacion", "analytics.v_econometria_precios_relativos",
+            "analytics.v_evento_comercial_actual", "analytics.proyecto_mercado_econometria",
+        ),
+        expected_procedures=(
+            "analytics.capture_econometric_events()", "analytics.capture_econometric_current()",
+            "analytics.backfill_econometric_prices()", "analytics.backfill_econometric_stock()",
+            "analytics.build_econometric_datasets(boolean)",
+        ),
+    ),
+    SchemaComponent(
+        name="ml_impact",
+        files=("sql/98_ml_impact/01_contract.sql",),
+        expected_relations=(
+            "decision_intelligence.ml_impact_snapshot",
+            "decision_intelligence.ml_impact_metric",
+            "decision_intelligence.ml_impact_scenario",
+            "decision_intelligence.v_ml_impact_baseline",
+            "decision_intelligence.v_ml_impact_proyecto",
+            "decision_intelligence.v_ml_impact_portafolio",
+            "decision_intelligence.v_ml_impact_proyecto_actual",
+            "decision_intelligence.v_ml_impact_portafolio_actual",
+            "decision_intelligence.v_ml_impact_vs_absorcion",
         ),
     ),
     SchemaComponent(
@@ -67,6 +182,7 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         files=("sql/90_clientes_calidad/01_clientes_calidad.sql",),
         expected_relations=(
             "staging.clientes_calidad",
+            "staging.clientes_calidad_refresh_runs",
             "staging.v_clientes_calidad_health",
         ),
         expected_procedures=("staging.refresh_clientes_calidad()",),
@@ -81,6 +197,20 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
             "analytics.v_portal_conversion_export",
             "analytics.v_portal_conversion_medio_total",
             "analytics.v_portal_conversion_health",
+        ),
+    ),
+    SchemaComponent(
+        name="marketing_audiences",
+        files=("sql/115_marketing_audiences/01_contract.sql",),
+        expected_relations=(
+            "analytics.marketing_audiencias",
+            "analytics.marketing_consentimientos",
+            "analytics.marketing_supresiones",
+            "analytics.marketing_audiencias_refresh_runs",
+            "analytics.v_marketing_positiva",
+            "analytics.v_marketing_negativa_sin_avance",
+            "analytics.v_marketing_exclusiones",
+            "analytics.v_marketing_audiencias_health",
         ),
     ),
     SchemaComponent(
@@ -332,10 +462,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    settings = load_settings()
+    settings = load_settings(require_source=False)
     root = Path(settings.project_root)
 
-    selected = COMPONENTS
+    # Publishing and private conversation evidence install only when selected.
+    selected = tuple(c for c in COMPONENTS if c.name not in {"publishing", "conversaciones"})
     if args.only:
         requested = set(args.only)
         selected = tuple(c for c in COMPONENTS if c.name in requested)

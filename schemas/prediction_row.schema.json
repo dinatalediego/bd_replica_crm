@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Medallio Forecast Prediction Row v1",
+  "type": "object",
+  "required": [
+    "run_id",
+    "project_key",
+    "target_name",
+    "target_unit",
+    "segment_key",
+    "forecast_for_period",
+    "horizon_months",
+    "prediction",
+    "prediction_lower",
+    "prediction_upper",
+    "interval_level",
+    "naive_method",
+    "naive_prediction",
+    "evidence_class"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "project_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_unit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "segment_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "forecast_for_period": {
+      "type": "string",
+      "format": "date"
+    },
+    "horizon_months": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "prediction": {
+      "type": "number"
+    },
+    "prediction_lower": {
+      "type": "number"
+    },
+    "prediction_upper": {
+      "type": "number"
+    },
+    "interval_level": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 1
+    },
+    "naive_method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "naive_prediction": {
+      "type": "number"
+    },
+    "evidence_class": {
+      "enum": [
+        "PROSPECTIVE",
+        "BACKTEST"
+      ]
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

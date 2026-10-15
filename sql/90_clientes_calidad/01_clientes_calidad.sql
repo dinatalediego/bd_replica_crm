@@ -75,15 +75,101 @@ CREATE INDEX IF NOT EXISTS idx_clientes_calidad_documento
 CREATE INDEX IF NOT EXISTS idx_clientes_calidad_celular
     ON staging.clientes_calidad (dq_celular_limpio);
 
+-- Aggregate operational evidence only; no customer PII in this table.
+CREATE TABLE IF NOT EXISTS staging.clientes_calidad_refresh_runs (
+    run_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    started_at timestamptz NOT NULL,
+    finished_at timestamptz NOT NULL,
+    rule_hash text NOT NULL,
+    mode text NOT NULL,
+    source_rows bigint NOT NULL,
+    inserted_rows bigint NOT NULL,
+    updated_rows bigint NOT NULL,
+    deleted_rows bigint NOT NULL,
+    unchanged_rows bigint NOT NULL
+);
+
 CREATE OR REPLACE PROCEDURE staging.refresh_clientes_calidad()
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_started timestamptz := clock_timestamp();
+    v_rule_hash text;
+    v_rebuild boolean;
+    v_inserted bigint;
+    v_updated bigint;
+    v_deleted bigint;
+    v_source bigint;
+    v_changed bigint;
 BEGIN
+    -- Fail rather than run two DQ writers at once; the DW must not report OK.
+    IF NOT pg_try_advisory_xact_lock(9042026, 2) THEN
+        RAISE EXCEPTION 'clientes_calidad: otro refresh sigue activo; reintentar al terminar.';
+    END IF;
     IF to_regclass('raw_cygnus.clientes') IS NULL THEN
         RAISE EXCEPTION 'No existe raw_cygnus.clientes; ejecutar la sincronización RAW antes del refresh DQ.';
     END IF;
 
-    TRUNCATE TABLE staging.clientes_calidad;
+    -- Stabilize RAW until validation/commit, and serialize all target writers.
+    -- Readers (Power BI) continue seeing the previous committed version.
+    LOCK TABLE raw_cygnus.clientes IN SHARE MODE;
+    LOCK TABLE staging.clientes_calidad IN SHARE ROW EXCLUSIVE MODE;
+
+    DROP TABLE IF EXISTS pg_temp.clientes_dq_source;
+    DROP TABLE IF EXISTS pg_temp.clientes_dq_changed;
+    CREATE TEMP TABLE clientes_dq_source ON COMMIT DROP AS
+    SELECT src ->> 'id' AS source_id, md5(src::text) AS source_row_hash, src
+    FROM (
+        SELECT to_jsonb(c) - '_etl_loaded_at' - '_etl_source_run_id' AS src
+        FROM raw_cygnus.clientes AS c
+    ) AS raw;
+
+    IF EXISTS (SELECT 1 FROM clientes_dq_source
+               WHERE source_id IS NULL OR btrim(source_id) = '') THEN
+        RAISE EXCEPTION 'clientes_calidad: RAW contiene id nulo/vacio; no se modifica staging.';
+    END IF;
+    IF EXISTS (SELECT 1 FROM clientes_dq_source
+               GROUP BY source_id HAVING count(*) > 1) THEN
+        RAISE EXCEPTION 'clientes_calidad: RAW contiene id duplicado; no se modifica staging.';
+    END IF;
+    CREATE UNIQUE INDEX ON clientes_dq_source (source_id);
+    ANALYZE clientes_dq_source;
+    SELECT count(*) INTO v_source FROM clientes_dq_source;
+
+    -- A new rule definition triggers exactly one rebuild, including legacy hashes.
+    v_rule_hash := md5(
+        pg_get_functiondef('staging.refresh_clientes_calidad()'::regprocedure)
+        || pg_get_functiondef('staging.dq_normalize_text(text)'::regprocedure)
+    );
+    SELECT COALESCE((SELECT rule_hash IS DISTINCT FROM v_rule_hash
+                     FROM staging.clientes_calidad_refresh_runs
+                     ORDER BY run_id DESC LIMIT 1), true)
+           OR COALESCE(current_setting('medallio.clientes_calidad_full', true) = 'on', false)
+    INTO v_rebuild;
+
+    CREATE TEMP TABLE clientes_dq_changed ON COMMIT DROP AS
+    SELECT r.source_id
+    FROM clientes_dq_source AS r
+    LEFT JOIN (
+        SELECT source_id, min(source_row_hash) AS source_row_hash, count(*) AS copies
+        FROM staging.clientes_calidad GROUP BY source_id
+    ) AS t USING (source_id)
+    WHERE v_rebuild OR t.source_id IS NULL OR t.copies <> 1
+          OR t.source_row_hash IS DISTINCT FROM r.source_row_hash;
+    CREATE UNIQUE INDEX ON clientes_dq_changed (source_id);
+    ANALYZE clientes_dq_changed;
+    SELECT count(*) INTO v_changed FROM clientes_dq_changed;
+    SELECT count(*) INTO v_inserted FROM clientes_dq_changed AS c
+    WHERE NOT EXISTS (SELECT 1 FROM staging.clientes_calidad AS t
+                      WHERE t.source_id = c.source_id);
+    v_updated := v_changed - v_inserted;
+
+    DELETE FROM staging.clientes_calidad AS t
+    WHERE NOT EXISTS (SELECT 1 FROM clientes_dq_source AS r WHERE r.source_id = t.source_id);
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    -- Replace only changed identities, atomically. Unchanged timestamps stay intact.
+    DELETE FROM staging.clientes_calidad AS t
+    USING clientes_dq_changed AS c WHERE t.source_id = c.source_id;
 
     INSERT INTO staging.clientes_calidad (
         source_id,
@@ -144,11 +230,12 @@ BEGIN
         dq_cliente_sin_contacto_estado,
         refreshed_at
     )
-    WITH source_rows AS (
-        SELECT to_jsonb(c) AS src
-        FROM raw_cygnus.clientes AS c
+    WITH source_rows AS MATERIALIZED (
+        SELECT r.src
+        FROM clientes_dq_source AS r
+        JOIN clientes_dq_changed AS c USING (source_id)
     ),
-    extracted AS (
+    extracted AS MATERIALIZED (
         SELECT
             src,
             src ->> 'id' AS source_id,
@@ -185,7 +272,7 @@ BEGIN
             END AS columna_celular
         FROM source_rows
     ),
-    chosen AS (
+    chosen AS MATERIALIZED (
         SELECT
             e.*,
             COALESCE(
@@ -212,14 +299,14 @@ BEGIN
             COALESCE(e.estado, e.estado_cliente) AS dq_estado_cliente
         FROM extracted AS e
     ),
-    phone_raw AS (
+    phone_raw AS MATERIALIZED (
         SELECT
             c.*,
             regexp_replace(COALESCE(c.telefono_elegido, ''), '[^0-9]', '', 'g') AS digitos_raw,
             left(btrim(COALESCE(c.telefono_elegido, '')), 1) = '+' AS tiene_signo_mas
         FROM chosen AS c
     ),
-    phone_int AS (
+    phone_int AS MATERIALIZED (
         SELECT
             p.*,
             p.digitos_raw LIKE '00%' AS tiene_prefijo00,
@@ -229,7 +316,7 @@ BEGIN
             END AS digitos_internacionales
         FROM phone_raw AS p
     ),
-    phone_country AS (
+    phone_country AS MATERIALIZED (
         SELECT
             p.*,
             length(p.digitos_internacionales) AS largo_internacional,
@@ -237,7 +324,7 @@ BEGIN
                 AND (length(p.digitos_internacionales) - 2) IN (7, 8, 9) AS es_peru_con_codigo
         FROM phone_int AS p
     ),
-    phone_local AS (
+    phone_local AS MATERIALIZED (
         SELECT
             p.*,
             CASE
@@ -246,7 +333,7 @@ BEGIN
             END AS numero_local_pe
         FROM phone_country AS p
     ),
-    phone_flags AS (
+    phone_flags AS MATERIALIZED (
         SELECT
             p.*,
             length(p.numero_local_pe) AS largo_local,
@@ -256,7 +343,7 @@ BEGIN
             p.tiene_signo_mas OR p.tiene_prefijo00 AS es_formato_internacional_explicito
         FROM phone_local AS p
     ),
-    phone_classified AS (
+    phone_classified AS MATERIALIZED (
         SELECT
             p.*,
             (
@@ -276,7 +363,7 @@ BEGIN
             ) AS es_celular_extranjero
         FROM phone_flags AS p
     ),
-    dq_base AS (
+    dq_base AS MATERIALIZED (
         SELECT
             p.*,
             CASE
@@ -316,7 +403,7 @@ BEGIN
             p.dq_estado_cliente IS NOT NULL AS dq_estado_cliente_ok
         FROM phone_classified AS p
     ),
-    dq_flags AS (
+    dq_flags AS MATERIALIZED (
         SELECT
             d.*,
             (d.dq_celular_ok OR d.dq_email_ok) AS dq_contacto_valido_ok,
@@ -324,7 +411,7 @@ BEGIN
             NOT (d.dq_celular_ok OR d.dq_email_ok) AS dq_cliente_sin_contacto
         FROM dq_base AS d
     ),
-    scored AS (
+    scored AS MATERIALIZED (
         SELECT
             d.*,
             GREATEST(
@@ -408,6 +495,27 @@ BEGIN
         CASE WHEN s.dq_cliente_sin_contacto THEN 'error' ELSE 'OK' END,
         now()
     FROM scored AS s;
+
+    -- Verify identities AND hashes, not only coincidentally equal row counts.
+    IF (SELECT count(*) FROM staging.clientes_calidad) <> v_source
+       OR EXISTS (
+           SELECT 1 FROM clientes_dq_source AS r
+           LEFT JOIN staging.clientes_calidad AS t USING (source_id)
+           WHERE t.source_id IS NULL OR t.source_row_hash IS DISTINCT FROM r.source_row_hash
+       ) THEN
+        RAISE EXCEPTION 'clientes_calidad: gate de identidad/hash no aprobado; rollback.';
+    END IF;
+    INSERT INTO staging.clientes_calidad_refresh_runs (
+        started_at, finished_at, rule_hash, mode, source_rows,
+        inserted_rows, updated_rows, deleted_rows, unchanged_rows
+    ) VALUES (
+        v_started, clock_timestamp(), v_rule_hash,
+        CASE WHEN v_rebuild THEN 'rebuild' ELSE 'incremental' END,
+        v_source, v_inserted, v_updated, v_deleted, v_source - v_changed
+    );
+    IF v_changed > 0 OR v_deleted > 0 THEN
+        ANALYZE staging.clientes_calidad;
+    END IF;
 END;
 $$;
 

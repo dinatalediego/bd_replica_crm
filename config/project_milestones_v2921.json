@@ -1,0 +1,100 @@
+{
+  "version": "2.9.2.1",
+  "as_of_reference_date": "2026-10-08",
+  "source": {
+    "type": "USER_PROVIDED_DAX_ARRAY",
+    "field_name": "Fecha de Entrega",
+    "status": "PRELIMINARY",
+    "note": "Dates are preliminary delivery dates. A past preliminary date does NOT imply that actual delivery occurred."
+  },
+  "projects": [
+    {
+      "project_key": "TZ",
+      "project_name": "Tizón y Bueno",
+      "aliases": [
+        "Tizón y Bueno",
+        "Tizon y Bueno"
+      ],
+      "preliminary_delivery_date": "2025-12-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "EEUU",
+      "project_name": "Edificio Urbanzen",
+      "aliases": [
+        "Edificio Urbanzen",
+        "Urbanzen"
+      ],
+      "preliminary_delivery_date": "2025-06-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "GY",
+      "project_name": "Alicanto",
+      "aliases": [
+        "Alicanto"
+      ],
+      "preliminary_delivery_date": "2026-11-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "CP",
+      "project_name": "Capadocia",
+      "aliases": [
+        "Capadocia"
+      ],
+      "preliminary_delivery_date": "2026-09-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "SL",
+      "project_name": "Sialia",
+      "aliases": [
+        "Sialia"
+      ],
+      "preliminary_delivery_date": "2026-12-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "FX",
+      "project_name": "Fenix",
+      "aliases": [
+        "Fenix",
+        "Fénix"
+      ],
+      "preliminary_delivery_date": "2026-06-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "MD",
+      "project_name": "Modena",
+      "aliases": [
+        "Modena",
+        "Módena"
+      ],
+      "preliminary_delivery_date": "2027-09-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "MT",
+      "project_name": "Matera",
+      "aliases": [
+        "Matera"
+      ],
+      "preliminary_delivery_date": "2027-09-30",
+      "delivery_status": "PRELIMINARY"
+    },
+    {
+      "project_key": "NP",
+      "project_name": "Torre Nápoles",
+      "aliases": [
+        "Torre Nápoles",
+        "Torre Napoles",
+        "Nápoles",
+        "Napoles"
+      ],
+      "preliminary_delivery_date": "2028-11-30",
+      "delivery_status": "PRELIMINARY"
+    }
+  ]
+}
