@@ -35,6 +35,7 @@ if (-not (Test-Path $python)) { $python = "..\.venv\Scripts\python.exe" }
 & $python -m pip install -e .
 & $python .\scripts\schema_sync.py --only marketing_audiences
 & $python .\scripts\refresh_marketing_audiences.py
+& $python .\scripts\check_marketing_audiences.py
 ```
 
 Consulta de control:
