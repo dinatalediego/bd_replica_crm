@@ -150,11 +150,22 @@ def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_
     }
 
 
-def read_source(dsn: str, codes: list[str], from_month: date) -> tuple[list[dict], list[dict]]:
+def read_source(dsn: str | None, codes: list[str], from_month: date) -> tuple[list[dict], list[dict]]:
     import psycopg
     from psycopg.rows import dict_row
 
-    with psycopg.connect(dsn, options="-c default_transaction_read_only=on", row_factory=dict_row) as conn:
+    if dsn:
+        connection = {"conninfo": dsn}
+    else:
+        from replica_cygnus.settings import load_settings
+
+        cfg = load_settings(Path(__file__).resolve().parents[1], require_source=False).postgres
+        connection = {
+            "host": cfg.host, "port": cfg.port, "dbname": cfg.database,
+            "user": cfg.user, "password": cfg.password, "sslmode": cfg.sslmode,
+            "connect_timeout": cfg.connect_timeout,
+        }
+    with psycopg.connect(**connection, options="-c default_transaction_read_only=on", row_factory=dict_row) as conn:
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout = '30s'")
             cur.execute(HISTORY_SQL, (codes, from_month))
@@ -177,9 +188,7 @@ def main() -> int:
         parser.error("Elija 1–5 códigos sin duplicados")
     if args.output.exists():
         parser.error("El archivo de salida ya existe")
-    dsn = os.getenv("MEDALLIO_DSN")
-    if not dsn:
-        parser.error("Configure MEDALLIO_DSN para la base PostgreSQL local")
+    dsn = os.getenv("MEDALLIO_DSN")  # opcional: por defecto usa POSTGRES_* del .env habitual
     history, forecast = read_source(dsn, args.project, date.fromisoformat(args.from_month))
     packet = build_packet(history, forecast, datetime.now(timezone.utc).isoformat())
     args.output.parent.mkdir(parents=True, exist_ok=True)
