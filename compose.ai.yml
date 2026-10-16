@@ -12,6 +12,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      - ./config:/app/config
       - ./artifacts:/app/artifacts
       - ./logs:/app/logs
       - ./.medallio:/app/.medallio
