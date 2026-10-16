@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+COPY scripts ./scripts
+COPY config ./config
+COPY sql ./sql
+
+RUN python -m pip install --upgrade pip && \
+    python -m pip install -e .
+
+RUN mkdir -p /app/artifacts /app/logs /app/.medallio
+
+ENTRYPOINT ["python", "scripts/medallio_ai_runtime.py"]
+CMD ["run", "--profile", "auto"]
