@@ -24,7 +24,7 @@
 
 ## Ejecución en el PC
 
-En el entorno habitual del repositorio, con `MEDALLIO_DSN` apuntando a `medallio_dw` local y después del refresh de Medallio:
+En el entorno habitual del repositorio, después del refresh de Medallio, usa `POSTGRES_*` del `.env` existente. `MEDALLIO_DSN` es una alternativa opcional:
 
 ```powershell
 python scripts/export_decision_room.py --project MT --project NP --from-month 2025-01-01 --output artifacts/decision_room/medallio_real.json
