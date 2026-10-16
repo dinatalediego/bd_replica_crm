@@ -24,6 +24,34 @@ def forecast(horizon=1, run="run-2", issued="2026-10-03 12:00:00", origin_stock=
     }
 
 
+def funnel(
+    *,
+    leads=10,
+    unique_clients=8,
+    mapped=9,
+    ambiguous=0,
+    unmatched=1,
+    proformas=4,
+    separations=7,
+    minutas=3,
+):
+    return {
+        "codigo_proyecto": "MT",
+        "periodo_mes": date(2026, 9, 1),
+        "leads": leads,
+        "clientes_unicos": unique_clients,
+        "leads_identidad_mapeada": mapped,
+        "leads_identidad_ambigua": ambiguous,
+        "leads_identidad_sin_match": unmatched,
+        "identity_match_rate": mapped / leads if leads else None,
+        "proformas": proformas,
+        "separaciones": separations,
+        "minutas": minutas,
+        "commercial_cutoff": date(2026, 10, 16),
+        "funnel_semantics": "EVENT_MONTH_NOT_COHORT",
+    }
+
+
 class DecisionRoomExportTests(unittest.TestCase):
     def test_real_packet_preserves_missing_and_source_limitations(self):
         packet = build_packet(history(), [forecast()], "2026-10-16T10:00:00Z")
@@ -32,8 +60,11 @@ class DecisionRoomExportTests(unittest.TestCase):
         self.assertEqual(packet["origin"], "MEDALLIO_LOCAL_AGGREGATE")
         self.assertEqual((row["minutas"], row["separations"]), (3, 7))
         self.assertIsNone(row["leads"])
+        self.assertIsNone(row["unique_clients"])
+        self.assertIsNone(row["proformas"])
         self.assertIsNone(row["revenue_pen"])
         self.assertIsNone(row["margin_pen"])
+        self.assertEqual(project["funnel_meta"]["status"], "UNAVAILABLE")
         self.assertIsNone(project["forecast"][0]["cumulative_lower80"])
         self.assertIn("otro universo", packet["definitions"]["separations"])
 
@@ -74,6 +105,31 @@ class DecisionRoomExportTests(unittest.TestCase):
         })
         self.assertEqual(readiness["gates"]["stock_reconciliation"]["delta_units"], 1.0)
         self.assertEqual(packet["readiness_summary"], {"ready_projects": 0, "blocked_projects": 1})
+
+    def test_funnel_attaches_activity_without_inventing_cohort_rates(self):
+        packet = build_packet(
+            history(cutoff=date(2026, 10, 16), review=0),
+            [],
+            "2026-10-16T15:00:00+00:00",
+            funnel_rows=[funnel()],
+        )
+        project = packet["projects"][0]
+        row = project["history"][0]
+        self.assertEqual((row["leads"], row["unique_clients"], row["proformas"]), (10, 8, 4))
+        self.assertEqual(project["funnel_meta"]["status"], "AVAILABLE")
+        self.assertFalse(project["funnel_meta"]["conversion_rates_allowed"])
+        self.assertEqual(project["funnel"][0]["lead_identity"]["match_rate"], 0.9)
+        self.assertIn("NO es una cohorte", packet["definitions"]["funnel"])
+
+    def test_funnel_rejects_mismatch_with_governed_minutas(self):
+        bad = funnel(minutas=2)
+        with self.assertRaisesRegex(ValueError, "Funnel/minutas no concilia"):
+            build_packet(
+                history(cutoff=date(2026, 10, 16), review=0),
+                [],
+                "2026-10-16T15:00:00+00:00",
+                funnel_rows=[bad],
+            )
 
 
 if __name__ == "__main__":
