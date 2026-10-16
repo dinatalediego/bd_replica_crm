@@ -4,11 +4,11 @@ import unittest
 from scripts.export_decision_room import build_packet
 
 
-def history(stock=20, close=17, cutoff=date(2026, 10, 15), review=1):
+def history(stock=20, close=17, sales=3, cutoff=date(2026, 10, 15), review=1):
     return [{
         "codigo_proyecto": "MT", "nombre_proyecto": "Matera",
         "periodo_mes": date(2026, 9, 1), "fecha_corte": cutoff,
-        "stock_inicial": stock, "ventas_mes": stock - close, "stock_final": close,
+        "stock_inicial": stock, "ventas_mes": sales, "stock_final": close,
         "unidades_revision": review, "separaciones_brutas": 7,
     }]
 
@@ -39,7 +39,7 @@ class DecisionRoomExportTests(unittest.TestCase):
 
     def test_stock_reconciliation_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "Stock no concilia"):
-            build_packet(history(stock=20, close=18), [], "2026-10-16T10:00:00Z")
+            build_packet(history(stock=20, close=18, sales=3), [], "2026-10-16T10:00:00Z")
 
     def test_latest_run_keeps_all_horizons_even_with_different_issue_timestamps(self):
         old = forecast(run="run-1", issued="2026-10-02 12:00:00")
@@ -50,7 +50,7 @@ class DecisionRoomExportTests(unittest.TestCase):
         self.assertEqual([row["horizon"] for row in project["forecast"]], [1, 2])
 
     def test_readiness_ready_only_when_all_four_gates_pass(self):
-        rows = history(stock=43, close=40, cutoff=date(2026, 10, 16), review=0)
+        rows = history(stock=43, close=40, sales=3, cutoff=date(2026, 10, 16), review=0)
         forecasts = [forecast(horizon=h, origin_stock=40) for h in range(1, 7)]
         packet = build_packet(rows, forecasts, "2026-10-16T15:00:00+00:00")
         readiness = packet["projects"][0]["readiness"]
@@ -61,7 +61,7 @@ class DecisionRoomExportTests(unittest.TestCase):
         self.assertEqual(packet["readiness_summary"], {"ready_projects": 1, "blocked_projects": 0})
 
     def test_readiness_blocks_and_explains_every_failed_rule(self):
-        rows = history(stock=20, close=17, cutoff=date(2026, 10, 15), review=1)
+        rows = history(stock=20, close=17, sales=3, cutoff=date(2026, 10, 15), review=1)
         forecasts = [forecast(horizon=1, origin_stock=18)]
         packet = build_packet(rows, forecasts, "2026-10-16T15:00:00+00:00")
         readiness = packet["projects"][0]["readiness"]
