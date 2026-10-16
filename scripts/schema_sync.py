@@ -214,6 +214,11 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         ),
     ),
     SchemaComponent(
+        name="decision_room_funnel",
+        files=("sql/117_decision_room_funnel/01_contract.sql",),
+        expected_relations=("analytics.v_decision_room_funnel_monthly",),
+    ),
+    SchemaComponent(
         name="unidades_multifuente",
         files=(
             "sql/40_unidades_multifuente/00_add_tipologia_ubicacion.sql",
