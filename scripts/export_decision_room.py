@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 LIMA = ZoneInfo("America/Lima")
 EXPECTED_FORECAST_HORIZONS = tuple(range(1, 7))
 STOCK_TOLERANCE = 1e-6
+RATE_TOLERANCE = 1e-9
 
 HISTORY_SQL = """
 SELECT p.codigo_proyecto, p.nombre_proyecto, p.periodo_mes, p.fecha_corte,
@@ -38,6 +39,18 @@ SELECT project, run_id::text, origin, forecast_month, horizon, model,
 FROM analytics.v_commercial_forecast_monthly
 WHERE project = ANY(%s) AND horizon BETWEEN 1 AND 6
 ORDER BY project, created_at DESC, run_id DESC, horizon
+"""
+
+FUNNEL_SQL = """
+SELECT codigo_proyecto, periodo_mes,
+       leads, clientes_unicos,
+       leads_identidad_mapeada, leads_identidad_ambigua, leads_identidad_sin_match,
+       identity_match_rate, proformas, separaciones, minutas,
+       commercial_cutoff, funnel_semantics
+FROM analytics.v_decision_room_funnel_monthly
+WHERE codigo_proyecto = ANY(%s)
+  AND periodo_mes >= %s
+ORDER BY codigo_proyecto, periodo_mes
 """
 
 
@@ -62,6 +75,10 @@ def _count(value: Any, field: str) -> int:
     if isinstance(value, bool) or value is None or int(value) != value or value < 0:
         raise ValueError(f"{field} debe ser un conteo no negativo")
     return int(value)
+
+
+def _optional_count(value: Any, field: str) -> int | None:
+    return None if value is None else _count(value, field)
 
 
 def _project_readiness(project: dict, generated_at: str) -> dict:
@@ -161,7 +178,101 @@ def _project_readiness(project: dict, generated_at: str) -> dict:
     }
 
 
-def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_at: str) -> dict:
+def _attach_funnel(projects: dict[str, dict], funnel_rows: list[dict]) -> None:
+    """Adjunta actividad mensual y reconcilia etapas ya gobernadas en history."""
+    seen: set[tuple[str, str]] = set()
+    for raw in funnel_rows:
+        code = raw["codigo_proyecto"]
+        if code not in projects:
+            continue
+        month = _day(raw["periodo_mes"])
+        if month.day != 1:
+            raise ValueError("Mes de funnel inválido")
+        key = (code, month.isoformat())
+        if key in seen:
+            raise ValueError("Mes de funnel duplicado para un proyecto")
+        seen.add(key)
+
+        leads = _count(raw["leads"], "leads")
+        unique_clients = _count(raw["clientes_unicos"], "clientes_unicos")
+        mapped = _count(raw["leads_identidad_mapeada"], "leads_identidad_mapeada")
+        ambiguous = _count(raw["leads_identidad_ambigua"], "leads_identidad_ambigua")
+        unmatched = _count(raw["leads_identidad_sin_match"], "leads_identidad_sin_match")
+        if mapped + ambiguous + unmatched != leads:
+            raise ValueError(f"Identidad de leads no concilia: {code} {month}")
+        if unique_clients > mapped:
+            raise ValueError(f"Clientes únicos exceden leads mapeados: {code} {month}")
+
+        rate = raw["identity_match_rate"]
+        expected_rate = (mapped / leads) if leads else None
+        if rate is not None:
+            rate = float(rate)
+            if not 0 <= rate <= 1:
+                raise ValueError("identity_match_rate fuera de rango")
+            if expected_rate is None or abs(rate - expected_rate) > RATE_TOLERANCE:
+                raise ValueError(f"identity_match_rate no concilia: {code} {month}")
+        elif expected_rate is not None:
+            raise ValueError(f"identity_match_rate faltante: {code} {month}")
+
+        proformas = _count(raw["proformas"], "proformas")
+        separations = _optional_count(raw["separaciones"], "separaciones")
+        minutas = _optional_count(raw["minutas"], "minutas")
+        semantics = str(raw["funnel_semantics"])
+        if semantics != "EVENT_MONTH_NOT_COHORT":
+            raise ValueError("Semántica de funnel no reconocida")
+
+        item = {
+            "month": month.isoformat(),
+            "leads": leads,
+            "unique_clients": unique_clients,
+            "proformas": proformas,
+            "separations": separations,
+            "minutas": minutas,
+            "lead_identity": {
+                "mapped_leads": mapped,
+                "ambiguous_leads": ambiguous,
+                "unmatched_leads": unmatched,
+                "match_rate": rate,
+            },
+            "commercial_cutoff": (
+                _day(raw["commercial_cutoff"]).isoformat()
+                if raw["commercial_cutoff"] is not None else None
+            ),
+        }
+        project = projects[code]
+        project["funnel"].append(item)
+
+        history_row = next((row for row in project["history"] if row["month"] == item["month"]), None)
+        if history_row is not None:
+            if minutas is not None and minutas != history_row["minutas"]:
+                raise ValueError(f"Funnel/minutas no concilia: {code} {month}")
+            if separations != history_row["separations"]:
+                raise ValueError(f"Funnel/separaciones no concilia: {code} {month}")
+            history_row["leads"] = leads
+            history_row["unique_clients"] = unique_clients
+            history_row["proformas"] = proformas
+
+    for project in projects.values():
+        project["funnel"].sort(key=lambda row: row["month"])
+        total_leads = sum(row["leads"] for row in project["funnel"])
+        total_mapped = sum(row["lead_identity"]["mapped_leads"] for row in project["funnel"])
+        project["funnel_meta"] = {
+            "status": "AVAILABLE" if project["funnel"] else "UNAVAILABLE",
+            "semantics": "EVENT_MONTH_NOT_COHORT",
+            "months": len(project["funnel"]),
+            "identity_match_rate_weighted": (
+                total_mapped / total_leads if total_leads else None
+            ),
+            "conversion_rates_allowed": False,
+        }
+
+
+def build_packet(
+    history_rows: list[dict],
+    forecast_rows: list[dict],
+    generated_at: str,
+    funnel_rows: list[dict] | None = None,
+) -> dict:
     """Valida los hechos y conserva NULL donde Medallio aún no tiene contrato."""
     if not history_rows or len(history_rows) > 1200:
         raise ValueError("Se requieren 1–1200 filas mensuales")
@@ -188,7 +299,7 @@ def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_
             separations = _count(separations, "separaciones_brutas")
         project = projects.setdefault(code, {
             "code": code, "name": name, "history": [], "forecast": [],
-            "forecast_meta": None,
+            "forecast_meta": None, "funnel": [], "funnel_meta": None,
         })
         if project["name"] != name:
             raise ValueError("Nombre de proyecto inconsistente")
@@ -197,10 +308,14 @@ def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_
             "stock_open": stock_open, "stock_close": stock_close,
             "minutas": sales, "separations": separations,
             "review_units": _count(raw["unidades_revision"], "unidades_revision"),
-            "leads": None, "revenue_pen": None, "margin_pen": None,
+            "leads": None, "unique_clients": None, "proformas": None,
+            "revenue_pen": None, "margin_pen": None,
         })
     if len(projects) > 5:
         raise ValueError("Máximo cinco proyectos por archivo")
+
+    _attach_funnel(projects, funnel_rows or [])
+
     runs: dict[tuple[str, str], list[dict]] = {}
     for row in forecast_rows:
         code = row["project"]
@@ -254,9 +369,12 @@ def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_
             "minutas": "ventas_mes de analytics.comercial_proyecto_mes; venta documental gobernada",
             "separations": "separaciones_brutas de analytics.agg_ventas_mensual; otro universo, no tasa de cohorte",
             "stock": "stock reconstruido retrospectivamente; no snapshot histórico as-issued",
+            "funnel": "actividad por mes de evento: leads -> clientes únicos -> proformas -> separaciones -> minutas; NO es una cohorte y no autoriza dividir etapas como tasas de conversión",
+            "unique_clients": "personas únicas por proyecto y mes entre leads con identidad no ambigua; la cobertura se expone en lead_identity",
+            "proformas": "codigo_proforma distintos en proforma_unidad, restringidos al universo residencial gobernado de absorción",
             "forecast": "v_commercial_forecast_monthly; 1–6 meses, pronóstico mensual derivado de horizontes acumulados",
             "readiness": "READY solo si freshness, conciliación stock history↔forecast, quality y horizontes 1–6 pasan",
-            "missing": "leads, ingresos, margen y elasticidades no se fabrican",
+            "missing": "ingresos, margen y elasticidades no se fabrican; el funnel queda vacío si su contrato no está instalado",
         },
         "readiness_summary": {
             "ready_projects": ready,
@@ -266,7 +384,11 @@ def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_
     }
 
 
-def read_source(dsn: str | None, codes: list[str], from_month: date) -> tuple[list[dict], list[dict]]:
+def read_source(
+    dsn: str | None,
+    codes: list[str],
+    from_month: date,
+) -> tuple[list[dict], list[dict], list[dict]]:
     import psycopg
     from psycopg.rows import dict_row
 
@@ -286,12 +408,19 @@ def read_source(dsn: str | None, codes: list[str], from_month: date) -> tuple[li
             cur.execute("SET LOCAL statement_timeout = '30s'")
             cur.execute(HISTORY_SQL, (codes, from_month))
             history = cur.fetchall()
+
             cur.execute("SELECT to_regclass('analytics.v_commercial_forecast_monthly')")
             forecast = []
             if cur.fetchone()["to_regclass"] is not None:
                 cur.execute(FORECAST_SQL, (codes,))
                 forecast = cur.fetchall()
-    return history, forecast
+
+            cur.execute("SELECT to_regclass('analytics.v_decision_room_funnel_monthly')")
+            funnel = []
+            if cur.fetchone()["to_regclass"] is not None:
+                cur.execute(FUNNEL_SQL, (codes, from_month))
+                funnel = cur.fetchall()
+    return history, forecast, funnel
 
 
 def main() -> int:
@@ -305,8 +434,13 @@ def main() -> int:
     if args.output.exists():
         parser.error("El archivo de salida ya existe")
     dsn = os.getenv("MEDALLIO_DSN")  # opcional: por defecto usa POSTGRES_* del .env habitual
-    history, forecast = read_source(dsn, args.project, date.fromisoformat(args.from_month))
-    packet = build_packet(history, forecast, datetime.now(timezone.utc).isoformat())
+    history, forecast, funnel = read_source(dsn, args.project, date.fromisoformat(args.from_month))
+    packet = build_packet(
+        history,
+        forecast,
+        datetime.now(timezone.utc).isoformat(),
+        funnel_rows=funnel,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as f:
         json.dump(packet, f, ensure_ascii=False, indent=2)
@@ -315,6 +449,7 @@ def main() -> int:
         f"Archivo generado: {args.output} | proyectos={len(packet['projects'])} | "
         f"ready={packet['readiness_summary']['ready_projects']} | "
         f"blocked={packet['readiness_summary']['blocked_projects']} | "
+        f"funnel_rows={sum(len(p['funnel']) for p in packet['projects'])} | "
         f"filas={sum(len(p['history']) for p in packet['projects'])}"
     )
     return 0
