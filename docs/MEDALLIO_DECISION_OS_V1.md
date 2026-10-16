@@ -68,7 +68,8 @@ Desde `C:\Cygnus\projects\bd_replica_crm`:
 
 ```powershell
 git fetch origin
-git switch feat/medallio-decision-os-v1
+git switch main
+git pull --ff-only origin main
 python scripts/schema_sync_decision_os.py --status
 python scripts/schema_sync_decision_os.py
 python scripts/schema_sync_decision_os.py --status
