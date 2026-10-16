@@ -11,7 +11,12 @@ import os
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
+
+LIMA = ZoneInfo("America/Lima")
+EXPECTED_FORECAST_HORIZONS = tuple(range(1, 7))
+STOCK_TOLERANCE = 1e-6
 
 HISTORY_SQL = """
 SELECT p.codigo_proyecto, p.nombre_proyecto, p.periodo_mes, p.fecha_corte,
@@ -46,10 +51,114 @@ def _day(value: Any) -> date:
     raise ValueError("Fecha inválida en el mart")
 
 
+def _generated_local_day(value: str) -> date:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(LIMA).date()
+
+
 def _count(value: Any, field: str) -> int:
     if isinstance(value, bool) or value is None or int(value) != value or value < 0:
         raise ValueError(f"{field} debe ser un conteo no negativo")
     return int(value)
+
+
+def _project_readiness(project: dict, generated_at: str) -> dict:
+    """Evalúa cuatro gates fail-closed sin ocultar el proyecto del paquete."""
+    history = project["history"]
+    forecast = project["forecast"]
+    forecast_meta = project["forecast_meta"]
+    expected_cutoff = _generated_local_day(generated_at)
+
+    latest_cutoff = max(_day(row["source_cutoff"]) for row in history)
+    freshness_ok = latest_cutoff == expected_cutoff
+    freshness = {
+        "status": "PASS" if freshness_ok else "FAIL",
+        "source_cutoff": latest_cutoff.isoformat(),
+        "expected_cutoff": expected_cutoff.isoformat(),
+        "age_days": (expected_cutoff - latest_cutoff).days,
+    }
+
+    horizons = sorted(row["horizon"] for row in forecast)
+    missing_horizons = sorted(set(EXPECTED_FORECAST_HORIZONS) - set(horizons))
+    extra_horizons = sorted(set(horizons) - set(EXPECTED_FORECAST_HORIZONS))
+    forecast_ok = (
+        forecast_meta is not None
+        and horizons == list(EXPECTED_FORECAST_HORIZONS)
+        and not missing_horizons
+        and not extra_horizons
+    )
+    forecast_availability = {
+        "status": "PASS" if forecast_ok else "FAIL",
+        "horizons": horizons,
+        "expected_horizons": list(EXPECTED_FORECAST_HORIZONS),
+        "missing_horizons": missing_horizons,
+        "extra_horizons": extra_horizons,
+    }
+
+    origin = forecast_meta["origin"] if forecast_meta else None
+    origin_history = next((row for row in history if row["month"] == origin), None)
+    implied_stocks = [
+        row["stock_remaining"] + row["minutas_cumulative"]
+        for row in forecast
+        if row["stock_remaining"] is not None
+    ]
+    implied_consistent = (
+        bool(forecast)
+        and len(implied_stocks) == len(forecast)
+        and max(implied_stocks) - min(implied_stocks) <= STOCK_TOLERANCE
+    )
+    forecast_origin_stock = implied_stocks[0] if implied_consistent else None
+    history_origin_stock = origin_history["stock_close"] if origin_history else None
+    stock_delta = (
+        forecast_origin_stock - history_origin_stock
+        if forecast_origin_stock is not None and history_origin_stock is not None
+        else None
+    )
+    stock_ok = (
+        implied_consistent
+        and origin_history is not None
+        and stock_delta is not None
+        and abs(stock_delta) <= STOCK_TOLERANCE
+    )
+    stock_reconciliation = {
+        "status": "PASS" if stock_ok else "FAIL",
+        "origin": origin,
+        "history_origin_stock": history_origin_stock,
+        "forecast_origin_stock": forecast_origin_stock,
+        "delta_units": 0.0 if stock_ok else stock_delta,
+        "forecast_implied_stock_consistent": implied_consistent,
+    }
+
+    review_units_max = max(row["review_units"] for row in history)
+    origin_review_units = origin_history["review_units"] if origin_history else None
+    quality_ok = review_units_max == 0
+    quality = {
+        "status": "PASS" if quality_ok else "FAIL",
+        "review_units_max": review_units_max,
+        "origin_review_units": origin_review_units,
+    }
+
+    gates = {
+        "freshness": freshness,
+        "stock_reconciliation": stock_reconciliation,
+        "quality": quality,
+        "forecast_availability": forecast_availability,
+    }
+    reason_codes = {
+        "freshness": "STALE_SOURCE",
+        "stock_reconciliation": "STOCK_MISMATCH",
+        "quality": "DATA_QUALITY_QUARANTINE",
+        "forecast_availability": "FORECAST_INCOMPLETE",
+    }
+    failures = [name for name, gate in gates.items() if gate["status"] != "PASS"]
+    return {
+        "status": "READY" if not failures else "BLOCKED",
+        "failures": failures,
+        "blocking_reasons": [reason_codes[name] for name in failures],
+        "gates": gates,
+    }
 
 
 def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_at: str) -> dict:
@@ -136,6 +245,8 @@ def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_
         project["forecast"].sort(key=lambda r: r["horizon"])
         if len({r["horizon"] for r in project["forecast"]}) != len(project["forecast"]):
             raise ValueError("Horizonte de pronóstico duplicado")
+        project["readiness"] = _project_readiness(project, generated_at)
+    ready = sum(project["readiness"]["status"] == "READY" for project in projects.values())
     return {
         "contract": "medallio_decision_room_v1", "origin": "MEDALLIO_LOCAL_AGGREGATE",
         "generated_at": generated_at,
@@ -144,7 +255,12 @@ def build_packet(history_rows: list[dict], forecast_rows: list[dict], generated_
             "separations": "separaciones_brutas de analytics.agg_ventas_mensual; otro universo, no tasa de cohorte",
             "stock": "stock reconstruido retrospectivamente; no snapshot histórico as-issued",
             "forecast": "v_commercial_forecast_monthly; 1–6 meses, pronóstico mensual derivado de horizontes acumulados",
+            "readiness": "READY solo si freshness, conciliación stock history↔forecast, quality y horizontes 1–6 pasan",
             "missing": "leads, ingresos, margen y elasticidades no se fabrican",
+        },
+        "readiness_summary": {
+            "ready_projects": ready,
+            "blocked_projects": len(projects) - ready,
         },
         "projects": list(projects.values()),
     }
@@ -195,7 +311,12 @@ def main() -> int:
     with args.output.open("x", encoding="utf-8") as f:
         json.dump(packet, f, ensure_ascii=False, indent=2)
         f.write("\n")
-    print(f"Archivo generado: {args.output} | proyectos={len(packet['projects'])} | filas={sum(len(p['history']) for p in packet['projects'])}")
+    print(
+        f"Archivo generado: {args.output} | proyectos={len(packet['projects'])} | "
+        f"ready={packet['readiness_summary']['ready_projects']} | "
+        f"blocked={packet['readiness_summary']['blocked_projects']} | "
+        f"filas={sum(len(p['history']) for p in packet['projects'])}"
+    )
     return 0
 
 
