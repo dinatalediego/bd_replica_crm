@@ -1,0 +1,19 @@
+services:
+  medallio-ai:
+    image: medallio-ai:local
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.medallio-ai
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: ${MEDALLIO_DOCKER_POSTGRES_HOST:-host.docker.internal}
+      PYTHONUNBUFFERED: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config:/app/config
+      - ./artifacts:/app/artifacts
+      - ./logs:/app/logs
+      - ./.medallio:/app/.medallio
+    restart: "no"
