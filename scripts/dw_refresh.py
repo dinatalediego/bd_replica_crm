@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -81,6 +82,22 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
             (py, str(ROOT / "scripts" / "schema_sync.py")),
         ),
     )
+
+    # Pocket remains opt-in. If the isolated target and HMAC key are not configured,
+    # the canonical local DW refresh is unchanged.
+    pocket_steps: tuple[Step, ...] = ()
+    if os.getenv("POCKET_SUPABASE_DB_URL") and os.getenv("POCKET_PROJECT_HMAC_KEY"):
+        pocket_steps = (
+            Step(
+                "09a_pocket_commercial_contract",
+                (py, str(ROOT / "scripts" / "install_pocket_commercial.py")),
+            ),
+            Step(
+                "09b_pocket_prod_sync",
+                (py, str(ROOT / "scripts" / "sync_pocket_prod.py")),
+            ),
+        )
+
     return source_steps + schema_step + manual_conversations + (
         Step(
             "02b_clientes_calidad_refresh",
@@ -122,7 +139,7 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
             "08_materialized_views",
             (py, str(ROOT / "scripts" / "refresh_materialized_views.py")),
         ),
-    )
+    ) + pocket_steps
 
 
 @contextmanager
@@ -149,7 +166,7 @@ def _main_locked() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Refresh maestro de Medallio DW: RAW -> schema -> staging DQ -> portal attribution -> CORE -> analytics -> "
-            "lifecycle -> pricing -> materialized views -> observabilidad."
+            "lifecycle -> pricing -> materialized views -> Pocket sanitizado opcional -> observabilidad."
         )
     )
     parser.add_argument(
