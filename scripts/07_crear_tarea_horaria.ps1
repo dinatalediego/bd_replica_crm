@@ -10,15 +10,16 @@ $Settings = New-ScheduledTaskSettingsSet `
   -DontStopIfGoingOnBatteries `
   -StartWhenAvailable `
   -MultipleInstances IgnoreNew `
-  -ExecutionTimeLimit (New-TimeSpan -Minutes 55)
+  -ExecutionTimeLimit (New-TimeSpan -Minutes 90)
 
 Register-ScheduledTask `
   -TaskName $TaskName `
   -Action $Action `
   -Trigger $Trigger `
   -Settings $Settings `
-  -Description "Sincroniza Redshift hacia PostgreSQL y registra observabilidad para Medallio Control Tower cada hora; Gate por tabla: incremental 4 horas, full refresh 24 horas." `
+  -Description "Sincroniza Redshift hacia PostgreSQL y mantiene Medallio: Gate por tabla (incremental 4h, full refresh 24h), marts locales y evolucion comercial al menos una vez al dia." `
   -Force
 
 Write-Host "Tarea creada: $TaskName"
 Write-Host "La primera ejecucion sera aproximadamente en 2 minutos y luego cada hora durante 10 anos."
+Write-Host "El limite por corrida es 90 minutos; MultipleInstances=IgnoreNew evita solapamientos."

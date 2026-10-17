@@ -52,3 +52,27 @@ def test_marketing_audiences_run_after_client_quality_without_source_call():
     )
     marketing = next(step for step in steps if step.name == "02c_marketing_audiences_refresh")
     assert marketing.args[-1].endswith("refresh_marketing_audiences.py")
+
+
+def test_commercial_evolution_refresh_is_daily_and_after_absorption():
+    module = _load_refresh_module()
+    steps = module._steps("hourly", local_only=True)
+    names = [step.name for step in steps]
+    assert names.count("06b_evolucion_comercial_daily") == 1
+    assert names.index("05_absorption_phase_b_incremental") < names.index(
+        "06b_evolucion_comercial_daily"
+    )
+    assert names.index("06b_evolucion_comercial_daily") < names.index(
+        "07_pricing_projection"
+    )
+    evolution = next(step for step in steps if step.name == "06b_evolucion_comercial_daily")
+    assert evolution.args[-2].endswith("refresh_evolucion_comercial.py")
+    assert evolution.args[-1] == "--once-per-day"
+
+
+def test_daily_evolution_script_has_explicit_lima_cutoff_guard():
+    code = (ROOT / "scripts" / "refresh_evolucion_comercial.py").read_text(encoding="utf-8")
+    assert "--once-per-day" in code
+    assert "America/Lima" in code
+    assert "min(fecha_corte)" in code
+    assert "max(fecha_corte)" in code

@@ -204,6 +204,7 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
         files=("sql/115_marketing_audiences/01_contract.sql",),
         expected_relations=(
             "analytics.marketing_audiencias",
+            "analytics.marketing_audiencias_proyectos",
             "analytics.marketing_consentimientos",
             "analytics.marketing_supresiones",
             "analytics.marketing_audiencias_refresh_runs",
@@ -211,6 +212,15 @@ COMPONENTS: tuple[SchemaComponent, ...] = (
             "analytics.v_marketing_negativa_sin_avance",
             "analytics.v_marketing_exclusiones",
             "analytics.v_marketing_audiencias_health",
+        ),
+    ),
+    SchemaComponent(
+        name="decision_room_funnel",
+        files=("sql/117_decision_room_funnel/01_contract.sql",),
+        expected_relations=(
+            "analytics.v_decision_room_funnel_monthly",
+            "analytics.v_decision_room_identity_audit_monthly",
+            "analytics.v_decision_room_funnel_cohort_monthly",
         ),
     ),
     SchemaComponent(
