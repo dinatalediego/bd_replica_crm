@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import os
-from datetime import date
-from pathlib import Path
 
 import psycopg
 from psycopg.rows import dict_row
 
+from replica_cygnus.connections import connect_postgres
 from replica_cygnus.pocket_export import SOURCE_FIELDS, build_rows, health_score, latest_rows
+from replica_cygnus.settings import load_settings
 
 
 SOURCE_SQL = """
@@ -89,17 +89,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def read_source(source_dsn: str) -> list[dict]:
-    with psycopg.connect(
-        source_dsn,
-        application_name='medallio_pocket_source',
-        options='-c default_transaction_read_only=on',
-        row_factory=dict_row,
-    ) as conn:
-        with conn.cursor() as cur:
+def read_source() -> list[dict]:
+    with connect_postgres(load_settings(require_source=False)) as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(SOURCE_SQL)
             rows = cur.fetchall()
-            if tuple(rows[0].keys()) != SOURCE_FIELDS if rows else False:
+            if rows and tuple(rows[0].keys()) != SOURCE_FIELDS:
                 raise RuntimeError('Unexpected source column order/contract')
             return rows
 
@@ -161,16 +156,13 @@ def sync_target(target_dsn: str, rows) -> None:
 
 def main() -> int:
     args = parse_args()
-    source_dsn = os.getenv('MEDALLIO_DSN')
     target_dsn = os.getenv('POCKET_SUPABASE_DB_URL')
     secret_raw = os.getenv('POCKET_PROJECT_HMAC_KEY')
 
-    if not source_dsn:
-        raise SystemExit('Falta MEDALLIO_DSN')
     if not secret_raw or len(secret_raw.encode('utf-8')) < 32:
         raise SystemExit('Falta POCKET_PROJECT_HMAC_KEY (minimo 32 bytes)')
 
-    source_rows = read_source(source_dsn)
+    source_rows = read_source()
     rows = build_rows(source_rows, secret_raw.encode('utf-8'))
     projects = len({row.project_ref for row in rows})
     closed = sum(not row.is_partial for row in rows)
