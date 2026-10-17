@@ -128,6 +128,10 @@ def _steps(mode: str, local_only: bool = False) -> tuple[Step, ...]:
             (py, str(ROOT / "scripts" / "core_commercial_lifecycle.py"), "init"),
         ),
         Step(
+            "06b_evolucion_comercial_daily",
+            (py, str(ROOT / "scripts" / "refresh_evolucion_comercial.py"), "--once-per-day"),
+        ),
+        Step(
             "07_pricing_projection",
             (py, str(ROOT / "scripts" / "refresh_pricing_projection.py")),
         ),
@@ -166,7 +170,7 @@ def _main_locked() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Refresh maestro de Medallio DW: RAW -> schema -> staging DQ -> portal attribution -> CORE -> analytics -> "
-            "lifecycle -> pricing -> materialized views -> Pocket sanitizado opcional -> observabilidad."
+            "lifecycle -> evolución comercial diaria -> pricing -> materialized views -> Pocket sanitizado opcional -> observabilidad."
         )
     )
     parser.add_argument(
